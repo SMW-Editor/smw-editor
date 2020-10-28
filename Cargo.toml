@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "nsmwe_app",
+    "nsmwe_rom",
+]
