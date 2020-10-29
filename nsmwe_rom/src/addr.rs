@@ -30,7 +30,7 @@ pub mod address_spaces {
 pub mod aliases {
     pub type AddressPC = u32;
     pub type AddressSNES = u32;
-    pub type AddressSpace = std::ops::RangeInclusive<super::AddressSNES>;
+    pub type AddressSpace = std::ops::RangeInclusive<AddressSNES>;
     pub type Mask = u32;
 }
 

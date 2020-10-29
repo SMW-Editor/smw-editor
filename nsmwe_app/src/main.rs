@@ -1,8 +1,6 @@
-use nsmwe_rom;
+use nsmwe_app::App;
 
 fn main() {
-    let rom_path = std::env::var("ROM_PATH").expect("ROM_PATH");
-    let rom_data = std::fs::read(std::path::Path::new(&rom_path))
-        .expect(format!("File '{}' not found.", rom_path).as_str());
-    nsmwe_rom::parse_rom_data(rom_data);
+    let app = App::new(800, 600, "NSMWE v0.1.0");
+    app.run();
 }
