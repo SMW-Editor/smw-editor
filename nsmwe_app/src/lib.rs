@@ -1,8 +1,11 @@
 mod main_window;
 
-use nsmwe_rom;
+use glium::{
+    glutin,
 
-use glium::{glutin, Display, Surface};
+    Display,
+    Surface,
+};
 use glium::glutin::{
     dpi::LogicalSize,
     event::{
@@ -15,15 +18,12 @@ use glium::glutin::{
     },
     window::WindowBuilder,
 };
-use imgui::{
-    Condition,
-    Context,
-    Window,
-
-    im_str,
-};
+use imgui::Context;
 use imgui_glium_renderer::Renderer;
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use imgui_winit_support::{
+    HiDpiMode,
+    WinitPlatform,
+};
 use std::time::Instant;
 
 pub struct App {
@@ -92,7 +92,9 @@ impl App {
             Event::MainEventsCleared => {
                 let gl_window = display.gl_window();
                 let window = gl_window.window();
-                platform.prepare_frame(context.io_mut(), window);
+                platform
+                    .prepare_frame(context.io_mut(), window)
+                    .expect("Failed to prepare frame.");
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
