@@ -1,15 +1,19 @@
-use imgui::{
-    Condition,
-    Window,
-    Ui,
+use crate::address_converter::UiAddressConverter;
 
-    im_str,
-};
+use imgui::Ui;
 
-pub fn run(ui: &mut Ui) {
-    Window::new(im_str!("Test"))
-        .size([400.0, 300.0], Condition::FirstUseEver)
-        .build(ui, || {
-            ui.text(im_str!("The app runs!"));
-        });
+pub struct UiMainWindow {
+    address_converter: UiAddressConverter,
+}
+
+impl UiMainWindow {
+    pub fn new() -> Self {
+        UiMainWindow {
+            address_converter: UiAddressConverter::new(),
+        }
+    }
+
+    pub fn run(&mut self, ui: &Ui) {
+        self.address_converter.run(ui);
+    }
 }

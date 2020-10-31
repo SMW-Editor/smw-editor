@@ -1,8 +1,8 @@
+mod address_converter;
 mod main_window;
 
 use glium::{
     glutin,
-
     Display,
     Surface,
 };
@@ -24,6 +24,7 @@ use imgui_winit_support::{
     HiDpiMode,
     WinitPlatform,
 };
+use main_window::UiMainWindow;
 use std::time::Instant;
 
 pub struct App {
@@ -38,7 +39,7 @@ impl App {
     pub fn new(width: u32, height: u32, title: &str) -> Self {
         let event_loop = EventLoop::new();
 
-        let context = glutin::ContextBuilder::new()
+        let glutin_context = glutin::ContextBuilder::new()
             .with_vsync(true);
 
         let size = LogicalSize::new(width, height);
@@ -47,26 +48,26 @@ impl App {
             .with_inner_size(size);
 
         let display = Display::new(
-            window_builder, context, &event_loop)
+            window_builder, glutin_context, &event_loop)
             .expect("Failed to create Display.");
 
-        let mut ig = Context::create();
+        let mut context = Context::create();
 
         let platform = {
-            let mut platform = WinitPlatform::init(&mut ig);
+            let mut platform = WinitPlatform::init(&mut context);
             let gl_window = display.gl_window();
             let window = gl_window.window();
-            platform.attach_window(ig.io_mut(), window, HiDpiMode::Rounded);
+            platform.attach_window(context.io_mut(), window, HiDpiMode::Rounded);
             platform
         };
 
-        let renderer = Renderer::init(&mut ig, &display)
+        let renderer = Renderer::init(&mut context, &display)
             .expect("Failed to create Renderer.");
 
         App {
             event_loop,
             display,
-            context: ig,
+            context,
             platform,
             renderer,
         }
@@ -83,6 +84,8 @@ impl App {
         } = self;
         let mut last_frame = Instant::now();
 
+        let mut mw = UiMainWindow::new();
+
         event_loop.run(move |event, _, control_flow| match event {
             Event::NewEvents(_) => {
                 let now = Instant::now();
@@ -98,8 +101,8 @@ impl App {
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                let mut ui = context.frame();
-                main_window::run(&mut ui);
+                let ui = context.frame();
+                mw.run(&ui);
 
                 let gl_window = display.gl_window();
                 let mut target = display.draw();

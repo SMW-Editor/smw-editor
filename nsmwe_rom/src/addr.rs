@@ -103,9 +103,9 @@ pub mod conversions {
             }
         }
 
-        pub fn hirom(addr: AddressPC) -> AddressSNES {
+        pub fn hirom(addr: AddressPC) -> Result<AddressSNES, String> {
             let (bb, hhdd) = get_bb_hhdd(addr);
-            ((bb + *HIROM_BB.start()) | hhdd) & BBHHDD
+            Ok(((bb + *HIROM_BB.start()) | hhdd) & BBHHDD)
         }
     }
 
@@ -120,9 +120,9 @@ pub mod conversions {
         pub fn lorom(addr: AddressSNES) -> Result<AddressPC, String> {
             if is_valid_lorom_address(addr) {
                 let (bb, hhdd) = get_bb_hhdd(addr);
-                Ok((((bb & 0x7F0000) | hhdd) - 0x7E00) & BBHHDD)
+                Ok((((bb & 0x7F0000) | hhdd) - 0x8000) & BBHHDD)
             } else {
-                Err(format!("Invalid LoROM address: {:#x}.", addr))
+                Err(format!("Invalid LoROM address: ${:x}.", addr))
             }
         }
 
@@ -131,7 +131,7 @@ pub mod conversions {
                 let (bb, hhdd) = get_bb_hhdd(addr);
                 Ok(((bb - *HIROM_BB.start()) | hhdd) & BBHHDD)
             } else {
-                Err(format!("Invalid HiROM address: {:#x}.", addr))
+                Err(format!("Invalid HiROM address: ${:x}.", addr))
             }
         }
     }
