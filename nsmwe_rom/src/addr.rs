@@ -19,11 +19,13 @@ pub mod address_spaces {
     pub const LOROM_HHDD:      AddressSpace = 0x008000..=0x00FFFF;
     pub const HIROM_BB:        AddressSpace = 0xC00000..=0xFF0000;
     pub const HIROM_HHDD:      AddressSpace = 0x000000..=0x00FFFF;
+
     pub const RAM_MIRROR_BB:   AddressSpace = 0x000000..=0x3F0000;
     pub const RAM_MIRROR_HHDD: AddressSpace = 0x000000..=0x001FFF;
     pub const RAM:             AddressSpace = 0x7E0000..=0x7FFFFF;
     pub const SRAM_BB:         AddressSpace = 0x700000..=0x730000;
     pub const SRAM_HHDD:       AddressSpace = 0x000000..=0x007FFF;
+
     pub const STACK:           AddressSpace = 0x7E0000..=0x7E1FFF;
 }
 

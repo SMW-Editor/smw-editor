@@ -1,6 +1,6 @@
 use crate::{
-    address_converter::UiAddressConverter,
     tool::UiTool,
+    utils::address_converter::UiAddressConverter,
 };
 
 use imgui::{
@@ -17,15 +17,17 @@ pub struct UiMainWindow {
 impl UiTool for UiMainWindow {
     fn run(&mut self, ui: &Ui) -> bool {
         self.main_menu_bar(ui);
-        let mut to_close = Vec::new();
+
+        let mut tools_to_close = Vec::new();
         for tool in self.tools.iter_mut() {
             if !tool.0.run(ui) {
-                to_close.push(tool.1);
+                tools_to_close.push(tool.1);
             }
         }
-        for id in to_close {
+        for id in tools_to_close {
             self.close_tool(id);
         }
+
         true
     }
 }
