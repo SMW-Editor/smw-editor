@@ -1,6 +1,8 @@
 mod address_converter;
 mod main_window;
 
+pub mod tool;
+
 use glium::{
     glutin,
     Display,
@@ -25,6 +27,7 @@ use imgui_winit_support::{
     WinitPlatform,
 };
 use main_window::UiMainWindow;
+use tool::UiTool;
 use std::time::Instant;
 
 pub struct App {
@@ -83,7 +86,6 @@ impl App {
             ..
         } = self;
         let mut last_frame = Instant::now();
-
         let mut mw = UiMainWindow::new();
 
         event_loop.run(move |event, _, control_flow| match event {

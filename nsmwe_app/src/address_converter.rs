@@ -1,3 +1,8 @@
+use crate::tool::UiTool;
+
+use helpers::*;
+use modes::*;
+
 use imgui::{
     Condition,
     ImString,
@@ -7,18 +12,6 @@ use imgui::{
 };
 use inline_tweak::*;
 use nsmwe_rom::addr;
-use std::cmp::PartialEq;
-
-#[derive(Clone, Copy, PartialEq)]
-enum ConversionMode {
-    LoRom,
-    HiRom,
-}
-
-enum ConvDir {
-    PcToSnes,
-    SnesToPc,
-}
 
 pub struct UiAddressConverter {
     conversion_mode: ConversionMode,
@@ -26,7 +19,24 @@ pub struct UiAddressConverter {
 
     text_pc: ImString,
     text_snes: ImString,
-    error: ImString,
+    text_error: ImString,
+}
+
+impl UiTool for UiAddressConverter {
+    fn run(&mut self, ui: &Ui) -> bool {
+        let mut running = true;
+        Window::new(im_str!("Address converter"))
+            .size([tweak!(300.0), tweak!(165.0)], Condition::Always)
+            .resizable(false)
+            .collapsible(false)
+            .scroll_bar(false)
+            .opened(&mut running)
+            .build(ui, || {
+                self.mode_selection(ui);
+                self.conversions(ui);
+            });
+        running
+    }
 }
 
 impl UiAddressConverter {
@@ -35,20 +45,9 @@ impl UiAddressConverter {
             conversion_mode: ConversionMode::LoRom,
             include_header: false,
             text_pc: ImString::new("0"),
-            text_snes: ImString::new("0"),
-            error: ImString::new(""),
+            text_snes: ImString::new("8000"),
+            text_error: ImString::new(""),
         }
-    }
-
-    pub fn run(&mut self, ui: &Ui) {
-        Window::new(im_str!("Address converter"))
-            .size([tweak!(300.0), tweak!(165.0)], Condition::Always)
-            .resizable(false)
-            .collapsible(false)
-            .build(ui, || {
-                self.mode_selection(ui);
-                self.conversions(ui);
-            });
     }
 
     fn mode_selection(&mut self, ui: &Ui) {
@@ -76,8 +75,8 @@ impl UiAddressConverter {
     fn conversions(&mut self, ui: &Ui) {
         self.address_input(&ui, ConvDir::PcToSnes);
         self.address_input(&ui, ConvDir::SnesToPc);
-        if !self.error.is_empty() {
-            ui.text_colored([1.0, 0.0, 0.0, 1.0], self.error.to_str());
+        if !self.text_error.is_empty() {
+            ui.text_colored([1.0, 0.0, 0.0, 1.0], self.text_error.to_str());
         }
     }
 
@@ -103,14 +102,17 @@ impl UiAddressConverter {
             ConvDir::SnesToPc => (&mut self.text_snes, &mut self.text_pc),
         };
 
-        let addr_src = u32::from_str_radix(buf_src.to_str(), 16).unwrap_or(0);
-        let addr_src = if self.include_header {
-            match direction {
-                ConvDir::PcToSnes => adjust_to_header(addr_src, false),
-                ConvDir::SnesToPc => addr_src + 0x200,
+        let addr_src = {
+            let addr = u32::from_str_radix(buf_src.to_str(), 16)
+                .unwrap_or(0);
+            if self.include_header {
+                match direction {
+                    ConvDir::PcToSnes => adjust_to_header(addr, false),
+                    ConvDir::SnesToPc => adjust_to_header(addr, true),
+                }
+            } else {
+                addr
             }
-        } else {
-            addr_src
         };
 
         let addr_dst = match self.conversion_mode {
@@ -125,21 +127,38 @@ impl UiAddressConverter {
         };
 
         if let Err(msg) = addr_dst {
-            self.error = ImString::new(msg);
+            self.text_error = ImString::new(msg);
         } else {
             let addr_dst = addr_dst.unwrap();
             *buf_dst = ImString::new(format!("{:x}", addr_dst));
-            self.error.clear();
+            self.text_error.clear();
         }
     }
 }
 
-fn adjust_to_header(addr: u32, include_header: bool) -> u32 {
-    if include_header {
-        addr + 0x200
-    } else if addr >= 0x200 {
-        addr - 0x200
-    } else {
-        0
+mod modes {
+    use std::cmp::PartialEq;
+
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum ConversionMode {
+        LoRom,
+        HiRom,
+    }
+
+    pub enum ConvDir {
+        PcToSnes,
+        SnesToPc,
+    }
+}
+
+mod helpers {
+    pub fn adjust_to_header(addr: u32, include_header: bool) -> u32 {
+        if include_header {
+            addr + 0x200
+        } else if addr >= 0x200 {
+            addr - 0x200
+        } else {
+            0
+        }
     }
 }
