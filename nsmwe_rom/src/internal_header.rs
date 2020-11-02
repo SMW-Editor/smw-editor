@@ -17,10 +17,10 @@ use std::convert::{
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
 pub enum MapMode {
-    LoRom       = 0b000000,
-    HiRom       = 0b000001,
-    ExHiRom     = 0b000010,
-    ExLoRom     = 0b000100,
+    LoRom       = 0b100000,
+    HiRom       = 0b100001,
+    ExHiRom     = 0b100010,
+    ExLoRom     = 0b100100,
     FastLoRom   = 0b110000,
     FastHiRom   = 0b110001,
     FastExHiRom = 0b110010,
