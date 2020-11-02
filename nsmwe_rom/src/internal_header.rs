@@ -94,18 +94,18 @@ pub enum DestinationCode {
 }
 
 pub struct InternalHeader {
-    maker_code: [u8; 2],
-    game_code: [u8; 4],
-    expansion_ram_size: u8, // actual size = 2^expansion_ram_size
-    special_version: u8,
-    cartridge_type: u8,
-    internal_rom_name: [u8; 21],
-    map_mode: MapMode,
-    rom_type: RomType,
-    rom_size: u8,  // actual size = 2^rom_size
-    sram_size: u8, // actual size = 2^sram_size
-    destination_code: DestinationCode,
-    version_number: u8,
+    pub maker_code: [u8; 2],
+    pub game_code: [u8; 4],
+    pub expansion_ram_size: u8, // actual size = 2^expansion_ram_size
+    pub special_version: u8,
+    pub cartridge_type: u8,
+    pub internal_rom_name: [u8; 21],
+    pub map_mode: MapMode,
+    pub rom_type: RomType,
+    pub rom_size: u8,  // actual size = 2^rom_size
+    pub sram_size: u8, // actual size = 2^sram_size
+    pub destination_code: DestinationCode,
+    pub version_number: u8,
 }
 
 pub mod address_spaces {
