@@ -12,7 +12,7 @@ pub struct Rom {
 
 pub fn parse_rom_data(data: &[u8]) -> Result<Rom, String> {
     let smc_header_offset = if has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
-    let internal_header = InternalHeader::from_rom_data(data, smc_header_offset);
+    let internal_header = InternalHeader::from_rom_data(data, smc_header_offset)?;
 
     Ok(Rom {
         internal_header,
@@ -51,6 +51,15 @@ mod helpers {
         let idx = idx as usize;
         if let Some(slice) = data.get(idx..=idx + 1) {
             Ok(u16::from_le_bytes(slice.try_into().unwrap()))
+        } else {
+            Err(String::from("Could not locate header: ROM size is too small."))
+        }
+    }
+
+    pub fn get_slice_at(data: &[u8], idx: u32, size: usize) -> Result<&[u8], String> {
+        let idx = idx as usize;
+        if let Some(slice) = data.get(idx..idx + size) {
+            Ok(slice)
         } else {
             Err(String::from("Could not locate header: ROM size is too small."))
         }
