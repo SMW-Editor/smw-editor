@@ -214,6 +214,7 @@ pub struct InternalHeader {
     pub rom_size: u8,
     pub sram_size: u8,
     pub destination_code: DestinationCode,
+    pub developer_id: u8,
     pub version_number: u8,
 }
 
@@ -244,6 +245,8 @@ impl InternalHeader {
                 DestinationCode::try_from(dc)
                     .or_else(|_| Err(String::from("Invalid destination code.")))?
             },
+            developer_id:
+                get_byte_at(data, begin + offset::DEVELOPER_ID)?,
             version_number:
                 get_byte_at(data, begin + offset::VERSION_NUMBER)?,
         })

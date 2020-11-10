@@ -18,7 +18,7 @@ impl UiTool for UiRomInfo {
     fn run(&mut self, ui: &Ui) -> bool {
         let mut running = true;
         Window::new(im_str!("ROM info"))
-            .size([tweak!(270.0), tweak!(150.0)], Condition::Always)
+            .size([tweak!(270.0), tweak!(170.0)], Condition::Always)
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
@@ -50,7 +50,8 @@ impl UiRomInfo {
                 ImString::from(format!("ROM size: {} kB", header.rom_size_in_kb())),
                 ImString::from(format!("SRAM size: {} kB", header.sram_size_in_kb())),
                 ImString::from(format!("Region: {}", header.destination_code)),
-                ImString::from(format!("Version: {:x}", header.version_number)),
+                ImString::from(format!("Developer ID: ${:x}", header.developer_id)),
+                ImString::from(format!("Version: ${:x}", header.version_number)),
             ]
         }
     }

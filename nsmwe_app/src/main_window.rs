@@ -64,10 +64,11 @@ impl UiMainWindow {
 
     fn menu_tools(&mut self, ui: &Ui) {
         ui.menu(im_str!("Tools"), true, || {
-            if MenuItem::new(im_str!("Address converter")).build(ui) {
+            let menu_item = |label| MenuItem::new(label).build(ui);
+            if menu_item(im_str!("Address converter")) {
                 self.open_tool(UiAddressConverter::new);
             }
-            if MenuItem::new(im_str!("ROM info")).build(ui) {
+            if menu_item(im_str!("ROM info")) {
                 self.open_tool(UiRomInfo::new);
             }
         });
