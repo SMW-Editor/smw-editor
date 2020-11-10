@@ -1,6 +1,9 @@
 use crate::{
     tool::UiTool,
-    utils::address_converter::UiAddressConverter,
+    utils::{
+        address_converter::UiAddressConverter,
+        rom_info::UiRomInfo,
+    },
 };
 
 use imgui::{
@@ -63,6 +66,9 @@ impl UiMainWindow {
         ui.menu(im_str!("Tools"), true, || {
             if MenuItem::new(im_str!("Address converter")).build(ui) {
                 self.open_tool(UiAddressConverter::new);
+            }
+            if MenuItem::new(im_str!("ROM info")).build(ui) {
+                self.open_tool(UiRomInfo::new);
             }
         });
     }

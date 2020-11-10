@@ -7,7 +7,7 @@ pub use helpers::*;
 use internal_header::InternalHeader;
 
 pub struct Rom {
-    internal_header: InternalHeader,
+    pub internal_header: InternalHeader,
 }
 
 pub fn parse_rom_data(data: &[u8]) -> Result<Rom, String> {
