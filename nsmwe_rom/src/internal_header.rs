@@ -1,8 +1,7 @@
-use crate::addr::AddressPC;
-
-pub use address_spaces::*;
+pub use self::address_spaces::*;
 
 use crate::{
+    addr::AddressPC,
     get_byte_at,
     get_word_at,
     get_slice_at,
@@ -12,12 +11,10 @@ use num_enum::{
     IntoPrimitive,
     TryFromPrimitive,
 };
+
 use std::{
     clone::Clone,
-    convert::{
-        TryFrom,
-        TryInto,
-    },
+    convert::TryFrom,
     fmt,
 };
 
@@ -207,8 +204,8 @@ pub mod offset {
     pub const CHECKSUM:           u32 = 0x2E;
 }
 
-pub struct InternalHeader {
-    pub internal_rom_name: [u8; 21],
+pub struct RomInternalHeader {
+    pub internal_rom_name: String,
     pub map_mode: MapMode,
     pub rom_type: RomType,
     pub rom_size: u8,
@@ -218,14 +215,15 @@ pub struct InternalHeader {
     pub version_number: u8,
 }
 
-impl InternalHeader {
+impl RomInternalHeader {
     pub fn from_rom_data(data: &[u8], smc_header_offset: AddressPC) -> Result<Self, String> {
-        let begin = InternalHeader::find(data, smc_header_offset)?;
-        Ok(InternalHeader {
-            internal_rom_name:
-                get_slice_at(data, begin + offset::INTERNAL_ROM_NAME, 21)?
-                    .try_into()
-                    .unwrap(),
+        let begin = RomInternalHeader::find(data, smc_header_offset)?;
+        Ok(RomInternalHeader {
+            internal_rom_name: {
+                let slice = get_slice_at(data, begin + offset::INTERNAL_ROM_NAME, 21)?;
+                let slice = Vec::from(slice);
+                String::from_utf8(slice).unwrap_or(String::from("error"))
+            },
             map_mode: {
                 let mm = get_byte_at(data, begin + offset::MAP_MODE)?;
                 MapMode::try_from(mm)

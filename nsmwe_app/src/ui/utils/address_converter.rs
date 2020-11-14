@@ -1,16 +1,18 @@
-use crate::tool::UiTool;
+use crate::ui::{
+    color,
+    tool::UiTool,
+};
 
-use helpers::*;
-use modes::*;
+use self::helpers::*;
+use self::modes::*;
 
 use imgui::{
-    Condition,
     ImString,
     Window,
     Ui,
     im_str,
 };
-use inline_tweak::*;
+
 use nsmwe_rom::addr;
 
 pub struct UiAddressConverter {
@@ -25,8 +27,9 @@ pub struct UiAddressConverter {
 impl UiTool for UiAddressConverter {
     fn run(&mut self, ui: &Ui) -> bool {
         let mut running = true;
+
         Window::new(im_str!("Address converter"))
-            .size([tweak!(300.0), tweak!(165.0)], Condition::Always)
+            .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
@@ -35,6 +38,7 @@ impl UiTool for UiAddressConverter {
                 self.mode_selection(ui);
                 self.conversions(ui);
             });
+
         running
     }
 }
@@ -76,7 +80,7 @@ impl UiAddressConverter {
         self.address_input(&ui, ConvDir::PcToSnes);
         self.address_input(&ui, ConvDir::SnesToPc);
         if !self.text_error.is_empty() {
-            ui.text_colored([1.0, 0.0, 0.0, 1.0], self.text_error.to_str());
+            ui.text_colored(color::TEXT_ERROR, self.text_error.to_str());
         }
     }
 
@@ -152,11 +156,13 @@ mod modes {
 }
 
 mod helpers {
+    use nsmwe_rom::SMC_HEADER_SIZE;
+
     pub fn adjust_to_header(addr: u32, include_header: bool) -> u32 {
         if include_header {
-            addr + 0x200
-        } else if addr >= 0x200 {
-            addr - 0x200
+            addr + SMC_HEADER_SIZE
+        } else if addr >= SMC_HEADER_SIZE {
+            addr - SMC_HEADER_SIZE
         } else {
             0
         }

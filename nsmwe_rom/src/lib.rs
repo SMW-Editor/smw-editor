@@ -1,22 +1,35 @@
 pub mod addr;
 pub mod internal_header;
 
-pub use constants::*;
-pub use helpers::*;
+pub use crate::internal_header::RomInternalHeader;
 
-use internal_header::InternalHeader;
+pub use self::{
+    constants::*,
+    helpers::*,
+};
+
+use std::path::Path;
 
 pub struct Rom {
-    pub internal_header: InternalHeader,
+    pub internal_header: RomInternalHeader,
 }
 
-pub fn parse_rom_data(data: &[u8]) -> Result<Rom, String> {
-    let smc_header_offset = if has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
-    let internal_header = InternalHeader::from_rom_data(data, smc_header_offset)?;
+impl Rom {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Rom, String> {
+        match std::fs::read(path) {
+            Ok(rom_data) => Rom::from_raw(&rom_data),
+            Err(err) => Err(format!("Unable to open ROM file: {}", err.to_string())),
+        }
+    }
 
-    Ok(Rom {
-        internal_header,
-    })
+    pub fn from_raw(data: &[u8]) -> Result<Rom, String> {
+        let smc_header_offset = if has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
+        let internal_header = RomInternalHeader::from_rom_data(data, smc_header_offset)?;
+
+        Ok(Rom {
+            internal_header,
+        })
+    }
 }
 
 mod constants {
