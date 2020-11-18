@@ -1,15 +1,15 @@
+pub mod color;
 pub mod main_window;
 pub mod project_creator;
-pub mod utils;
 pub mod tool;
-pub mod color;
+pub mod utils;
 
 pub use self::{
     main_window::UiMainWindow,
     project_creator::UiProjectCreator,
+    tool::UiTool,
     utils::{
         address_converter::UiAddressConverter,
         rom_info::UiRomInfo,
     },
-    tool::UiTool,
 };

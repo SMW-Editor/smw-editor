@@ -3,9 +3,12 @@ pub mod ui;
 mod backend;
 mod project;
 
-pub use self::project::{
-    OptProjectRef,
-    Project,
+pub use crate::{
+    project::{
+        OptProjectRef,
+        Project,
+    },
+    ui::*,
 };
 
 use self::backend::Backend;

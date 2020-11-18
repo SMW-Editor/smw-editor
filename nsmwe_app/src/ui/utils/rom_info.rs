@@ -35,14 +35,14 @@ impl UiRomInfo {
     pub fn new(header: &RomInternalHeader) -> Self {
         UiRomInfo {
             display_data: vec![
-                ImString::from(format!("Internal ROM name: {}",    header.internal_rom_name)),
-                ImString::from(format!("Map mode:          {}",    header.map_mode)),
-                ImString::from(format!("ROM type:          {}",    header.rom_type)),
-                ImString::from(format!("ROM size:          {} kB", header.rom_size_in_kb())),
-                ImString::from(format!("SRAM size:         {} kB", header.sram_size_in_kb())),
-                ImString::from(format!("Region:            {}",    header.destination_code)),
-                ImString::from(format!("Developer ID:      ${:x}", header.developer_id)),
-                ImString::from(format!("Version:           1.{}",  header.version_number)),
+                ImString::new(format!("Internal ROM name: {}",    header.internal_rom_name)),
+                ImString::new(format!("Map mode:          {}",    header.map_mode)),
+                ImString::new(format!("ROM type:          {}",    header.rom_type)),
+                ImString::new(format!("ROM size:          {} kB", header.rom_size_in_kb())),
+                ImString::new(format!("SRAM size:         {} kB", header.sram_size_in_kb())),
+                ImString::new(format!("Region:            {}",    header.destination_code)),
+                ImString::new(format!("Developer ID:      ${:x}", header.developer_id)),
+                ImString::new(format!("Version:           1.{}",  header.version_number)),
             ]
         }
     }

@@ -1,10 +1,8 @@
 use crate::{
     OptProjectRef,
     Project,
-    ui::{
-        UiTool,
-        color,
-    },
+    UiTool,
+    color,
 };
 
 use imgui::{
@@ -57,16 +55,18 @@ impl UiTool for UiProjectCreator {
 
 impl UiProjectCreator {
     pub fn new(project_ref: Rc<OptProjectRef>) -> Self {
-        UiProjectCreator {
+        let mut myself = UiProjectCreator {
             project_title: ImString::new("My SMW hack"),
-            base_rom_path: ImString::new("ROM/SMW.smc"),
+            base_rom_path: ImString::new(""),
 
             err_project_title: ImString::new(""),
             err_base_rom_path: ImString::new(""),
             err_project_creation: ImString::new(""),
 
             project_ref,
-        }
+        };
+        myself.handle_rom_file_path();
+        myself
     }
 
     fn input_project_title(&mut self, ui: &Ui) {
@@ -84,7 +84,7 @@ impl UiProjectCreator {
 
     fn handle_project_title(&mut self) {
         if self.project_title.is_empty() {
-            self.err_project_title = ImString::from(im_str!("Project title cannot be empty."));
+            self.err_project_title = ImString::new("Project title cannot be empty.");
         } else {
             self.err_project_title.clear();
         }
@@ -98,11 +98,9 @@ impl UiProjectCreator {
             self.handle_rom_file_path();
         }
         ui.same_line(0.0);
-
-        ui.text_disabled(im_str!("Browse..."));
-        // if ui.small_button(im_str!("Browse...")) {
-        //
-        // }
+        if ui.small_button(im_str!("Browse...")) {
+            self.open_file_selector();
+        }
 
         if !self.err_base_rom_path.is_empty() {
             ui.text_colored(color::TEXT_ERROR, &self.err_base_rom_path);
@@ -112,13 +110,23 @@ impl UiProjectCreator {
     fn handle_rom_file_path(&mut self) {
         let file_path = Path::new(self.base_rom_path.to_str());
         if !file_path.exists() {
-            self.err_base_rom_path = ImString::from(
+            self.err_base_rom_path = ImString::new(
                 format!("File '{}' does not exist.", self.base_rom_path));
         } else if file_path.is_dir() {
-            self.err_base_rom_path = ImString::from(
+            self.err_base_rom_path = ImString::new(
                 format!("'{}' is not a file.", self.base_rom_path));
         } else {
             self.err_base_rom_path.clear();
+        }
+    }
+
+    fn open_file_selector(&mut self) {
+        use nfd2::Response;
+        if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None)
+            .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
+        {
+            self.base_rom_path = ImString::new(path.to_str().unwrap());
+            self.handle_rom_file_path();
         }
     }
 
