@@ -26,15 +26,6 @@ pub struct UiMainWindow {
     project_ref: Rc<OptProjectRef>,
 }
 
-impl UiTool for UiMainWindow {
-    fn run(&mut self, ui: &Ui) -> bool {
-        self.main_menu_bar(ui);
-        self.handle_tools(ui);
-
-        self.running
-    }
-}
-
 impl UiMainWindow {
     pub fn new(project_ref: Rc<OptProjectRef>) -> Self {
         UiMainWindow {
@@ -45,13 +36,20 @@ impl UiMainWindow {
         }
     }
 
-    pub fn open_tool<ToolType, Construct>(&mut self, construct: Construct)
+    pub fn run(&mut self, ui: &Ui) -> bool {
+        self.main_menu_bar(ui);
+        self.handle_tools(ui);
+
+        self.running
+    }
+
+    pub fn open_tool<ToolType, Construct>(&mut self, construct_tool: Construct)
         where ToolType: 'static + UiTool,
               Construct: FnOnce() -> ToolType,
     {
         let tool_type = TypeId::of::<ToolType>();
-        if self.tools.iter().find(|(_, type_id)| type_id == &tool_type).is_none() {
-            self.tools.push((Box::new(construct()), tool_type));
+        if !self.tools.iter().any(|(_, type_id)| type_id == &tool_type) {
+            self.tools.push((Box::new(construct_tool()), tool_type));
         }
     }
 

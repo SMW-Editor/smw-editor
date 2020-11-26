@@ -1,4 +1,5 @@
 pub mod addr;
+pub mod graphics;
 pub mod internal_header;
 
 pub use crate::internal_header::RomInternalHeader;
@@ -50,7 +51,7 @@ mod helpers {
         }
     }
 
-    pub fn get_byte_at(data: &[u8], idx: u32) -> Result<u8, String> {
+    pub fn get_byte_at(data: &[u8], idx: usize) -> Result<u8, String> {
         if let Some(b) = data.get(idx as usize) {
             Ok(*b)
         } else {
@@ -58,10 +59,9 @@ mod helpers {
         }
     }
 
-    pub fn get_word_at(data: &[u8], idx: u32) -> Result<u16, String> {
+    pub fn get_word_at(data: &[u8], idx: usize) -> Result<u16, String> {
         use std::convert::TryInto;
 
-        let idx = idx as usize;
         if let Some(slice) = data.get(idx..=idx + 1) {
             Ok(u16::from_le_bytes(slice.try_into().unwrap()))
         } else {
@@ -69,7 +69,7 @@ mod helpers {
         }
     }
 
-    pub fn get_slice_at(data: &[u8], idx: u32, size: usize) -> Result<&[u8], String> {
+    pub fn get_slice_at(data: &[u8], idx: usize, size: usize) -> Result<&[u8], String> {
         let idx = idx as usize;
         if let Some(slice) = data.get(idx..idx + size) {
             Ok(slice)

@@ -220,33 +220,45 @@ impl RomInternalHeader {
         let begin = RomInternalHeader::find(data, smc_header_offset)?;
         Ok(RomInternalHeader {
             internal_rom_name: {
-                let slice = get_slice_at(data, begin + offset::INTERNAL_ROM_NAME, 21)?;
+                let idx = (begin + offset::INTERNAL_ROM_NAME) as usize;
+                let slice = get_slice_at(data, idx, 21)?;
                 let slice = Vec::from(slice);
                 String::from_utf8(slice).unwrap_or(String::from("error"))
             },
             map_mode: {
-                let mm = get_byte_at(data, begin + offset::MAP_MODE)?;
+                let idx = (begin + offset::MAP_MODE) as usize;
+                let mm = get_byte_at(data, idx)?;
                 MapMode::try_from(mm)
                     .or_else(|_| Err(String::from("Invalid map mode.")))?
             },
             rom_type: {
-                let rt = get_byte_at(data, begin + offset::ROM_TYPE)?;
+                let idx = (begin + offset::ROM_TYPE) as usize;
+                let rt = get_byte_at(data, idx)?;
                 RomType::try_from(rt)
                     .or_else(|_| Err(String::from("Invalid ROM type.")))?
             },
-            rom_size:
-                get_byte_at(data, begin + offset::ROM_SIZE)?,
-            sram_size:
-                get_byte_at(data, begin + offset::SRAM_SIZE)?,
+            rom_size: {
+                let idx = (begin + offset::ROM_SIZE) as usize;
+                get_byte_at(data, idx)?
+            },
+            sram_size: {
+                let idx = (begin + offset::SRAM_SIZE) as usize;
+                get_byte_at(data, idx)?
+            },
             destination_code: {
-                let dc = get_byte_at(data, begin + offset::DESTINATION_CODE)?;
+                let idx = (begin + offset::DESTINATION_CODE) as usize;
+                let dc = get_byte_at(data, idx)?;
                 DestinationCode::try_from(dc)
                     .or_else(|_| Err(String::from("Invalid destination code.")))?
             },
-            developer_id:
-                get_byte_at(data, begin + offset::DEVELOPER_ID)?,
-            version_number:
-                get_byte_at(data, begin + offset::VERSION_NUMBER)?,
+            developer_id: {
+                let idx = (begin + offset::DEVELOPER_ID) as usize;
+                get_byte_at(data, idx)?
+            },
+            version_number: {
+                let idx = (begin + offset::VERSION_NUMBER) as usize;
+                get_byte_at(data, idx)?
+            },
         })
     }
 
@@ -259,10 +271,10 @@ impl RomInternalHeader {
         let hirom_checksum_idx = hirom_header_start + offset::CHECKSUM;
         let hirom_complmnt_idx = hirom_header_start + offset::COMPLEMENT_CHECK;
 
-        let lorom_checksum = get_word_at(data, lorom_checksum_idx)?;
-        let lorom_complmnt = get_word_at(data, lorom_complmnt_idx)?;
-        let hirom_checksum = get_word_at(data, hirom_checksum_idx)?;
-        let hirom_complmnt = get_word_at(data, hirom_complmnt_idx)?;
+        let lorom_checksum = get_word_at(data, lorom_checksum_idx as usize)?;
+        let lorom_complmnt = get_word_at(data, lorom_complmnt_idx as usize)?;
+        let hirom_checksum = get_word_at(data, hirom_checksum_idx as usize)?;
+        let hirom_complmnt = get_word_at(data, hirom_complmnt_idx as usize)?;
 
         if (lorom_checksum ^ lorom_complmnt) == 0xFFFF {
             Ok(lorom_header_start)
