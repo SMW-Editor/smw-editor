@@ -15,13 +15,11 @@ pub struct RomAddressError {
 }
 
 #[derive(Debug)]
-pub struct RomHeaderChecksumError;
-
-#[derive(Debug)]
-pub enum RomHeaderDataError {
-    DestinationCode,
-    MapMode,
-    RomType,
+pub enum RomHeaderError {
+    Checksum,
+    DestinationCode(u8),
+    MapMode(u8),
+    RomType(u8),
 }
 
 #[derive(Debug)]
@@ -29,9 +27,8 @@ pub struct RomSizeError {
     pub size: usize,
 }
 
-create_error!(pub RomHeaderError: RomAddressError, RomHeaderDataError, RomHeaderFindError);
-create_error!(pub RomHeaderFindError: RomAddressError, RomHeaderChecksumError);
-create_error!(pub RomParseError: RomAddressError, RomHeaderError, RomSizeError);
+create_error!(pub RomHeaderParseError: RomAddressError, RomHeaderError);
+create_error!(pub RomParseError: RomAddressError, RomHeaderParseError, RomSizeError);
 create_error!(pub RomReadError: IoError, RomParseError);
 
 // Implementations ---------------------------------------------------------------------------------
@@ -42,19 +39,14 @@ impl fmt::Display for RomAddressError {
     }
 }
 
-impl fmt::Display for RomHeaderChecksumError {
+impl fmt::Display for RomHeaderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Cannot find internal header: both checksums are incorrect.")
-    }
-}
-
-impl fmt::Display for RomHeaderDataError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use RomHeaderDataError::*;
-        write!(f, "Invalid {}.", match self {
-            DestinationCode => "destination code",
-            MapMode => "map mode",
-            RomType => "ROM type",
+        use RomHeaderError::*;
+        write!(f, "Could not load header: invalid {}.", match self {
+            Checksum => String::from("checksum"),
+            DestinationCode(dc) => format!("destination code {:#x}", dc),
+            MapMode(mm) => format!("map mode {:#x}", mm),
+            RomType(rt) => format!("ROM type {:#x}", rt),
         })
     }
 }
@@ -66,6 +58,5 @@ impl fmt::Display for RomSizeError {
 }
 
 impl Error for RomAddressError {}
-impl Error for RomHeaderChecksumError {}
-impl Error for RomHeaderDataError {}
+impl Error for RomHeaderError {}
 impl Error for RomSizeError {}

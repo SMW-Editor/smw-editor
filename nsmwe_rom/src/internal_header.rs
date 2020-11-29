@@ -3,10 +3,8 @@ pub use self::address_spaces::*;
 use crate::{
     addr::AddressPC,
     error::{
-        RomHeaderChecksumError,
-        RomHeaderDataError,
         RomHeaderError,
-        RomHeaderFindError,
+        RomHeaderParseError,
     },
     get_byte_at,
     get_word_at,
@@ -23,6 +21,8 @@ use std::{
     convert::TryFrom,
     fmt,
 };
+
+pub type Result<Value> = std::result::Result<Value, RomHeaderParseError>;
 
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
@@ -222,7 +222,7 @@ pub struct RomInternalHeader {
 }
 
 impl RomInternalHeader {
-    pub fn from_rom_data(data: &[u8], smc_header_offset: AddressPC) -> Result<Self, RomHeaderError> {
+    pub fn from_rom_data(data: &[u8], smc_header_offset: AddressPC) -> Result<Self> {
         let begin = RomInternalHeader::find(data, smc_header_offset)?;
         Ok(RomInternalHeader {
             internal_rom_name: {
@@ -235,13 +235,13 @@ impl RomInternalHeader {
                 let idx = (begin + offset::MAP_MODE) as usize;
                 let mm = get_byte_at(data, idx)?;
                 MapMode::try_from(mm)
-                    .or_else(|_| Err(RomHeaderDataError::MapMode))?
+                    .or_else(|_| Err(RomHeaderError::MapMode(mm)))?
             },
             rom_type: {
                 let idx = (begin + offset::ROM_TYPE) as usize;
                 let rt = get_byte_at(data, idx)?;
                 RomType::try_from(rt)
-                    .or_else(|_| Err(RomHeaderDataError::RomType))?
+                    .or_else(|_| Err(RomHeaderError::RomType(rt)))?
             },
             rom_size: {
                 let idx = (begin + offset::ROM_SIZE) as usize;
@@ -255,7 +255,7 @@ impl RomInternalHeader {
                 let idx = (begin + offset::DESTINATION_CODE) as usize;
                 let dc = get_byte_at(data, idx)?;
                 DestinationCode::try_from(dc)
-                    .or_else(|_| Err(RomHeaderDataError::DestinationCode))?
+                    .or_else(|_| Err(RomHeaderError::DestinationCode(dc)))?
             },
             developer_id: {
                 let idx = (begin + offset::DEVELOPER_ID) as usize;
@@ -268,7 +268,7 @@ impl RomInternalHeader {
         })
     }
 
-    fn find(data: &[u8], smc_header_offset: u32) -> Result<AddressPC, RomHeaderFindError> {
+    fn find(data: &[u8], smc_header_offset: u32) -> Result<AddressPC> {
         let lorom_header_start = smc_header_offset + *HEADER_LOROM.start();
         let hirom_header_start = smc_header_offset + *HEADER_HIROM.start();
 
@@ -287,7 +287,7 @@ impl RomInternalHeader {
         } else if (hirom_checksum ^ hirom_complmnt) == 0xFFFF {
             Ok(hirom_header_start)
         } else {
-            Err(RomHeaderChecksumError.into())
+            Err(RomHeaderError::Checksum.into())
         }
     }
 
