@@ -1,3 +1,5 @@
+extern crate nsmwe_app;
+
 use nsmwe_app::App;
 
 fn main() {

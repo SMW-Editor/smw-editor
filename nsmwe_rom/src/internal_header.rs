@@ -297,8 +297,9 @@ impl RomInternalHeader {
     }
 
     pub fn sram_size_in_kb(&self) -> u32 {
-        let exponent = self.sram_size as u32;
-        let non_zero = (exponent > 0) as u32;
-        non_zero * 2u32.pow(exponent)
+        match self.sram_size as u32 {
+            0 => 0,
+            exponent => 2u32.pow(exponent),
+        }
     }
 }

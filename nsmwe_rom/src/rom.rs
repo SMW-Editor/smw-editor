@@ -1,12 +1,15 @@
+pub use constants::*;
+
 use crate::{
-    constants::SMC_HEADER_SIZE,
     error::{
         RomParseError,
         RomReadError,
     },
     internal_header::RomInternalHeader,
 };
-use self::helpers::*;
+use self::{
+    helpers::*,
+};
 
 use std::{
     fs,
@@ -38,11 +41,16 @@ impl Rom {
     }
 }
 
+pub mod constants {
+    pub const SMC_HEADER_SIZE: u32 = 0x200;
+}
+
 mod helpers {
     use crate::error::RomSizeError;
 
     pub fn data_has_smc_header(data: &[u8]) -> Result<bool, RomSizeError> {
         use crate::SMC_HEADER_SIZE;
+
         let rem = (data.len() % 0x400) as u32;
         if rem == SMC_HEADER_SIZE {
             Ok(true)
