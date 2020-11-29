@@ -1,4 +1,7 @@
-use crate::get_word_at;
+use crate::{
+    error::RomAddressError,
+    get_word_at,
+};
 
 pub type Bgr16 = u16;
 pub type Rgba = [f32; 4];
@@ -23,7 +26,7 @@ pub fn rgba_to_bgr16(color: Rgba) -> Bgr16 {
     (r << 0x0) | (g << 0x5) | (b << 0xA)
 }
 
-pub fn read_bgr16_as_rgba(data: &[u8], idx: usize) -> Result<Rgba, String> {
+pub fn read_bgr16_as_rgba(data: &[u8], idx: usize) -> Result<Rgba, RomAddressError> {
     let color = get_word_at(data, idx)?;
     Ok(bgr16_to_rgba(color))
 }

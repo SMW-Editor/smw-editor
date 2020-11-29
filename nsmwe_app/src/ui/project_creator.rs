@@ -156,7 +156,7 @@ impl UiProjectCreator {
                 self.err_project_creation.clear();
             }
             Err(err) => {
-                self.err_project_creation = ImString::from(err);
+                self.err_project_creation = ImString::from(err.to_string());
                 ui.open_popup(im_str!("Error!##project_error"));
             }
         }

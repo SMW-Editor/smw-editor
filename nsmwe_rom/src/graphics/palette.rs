@@ -1,5 +1,6 @@
 use crate::{
     addr::AddressSNES,
+    error::RomAddressError,
     graphics::color::{
         read_bgr16_as_rgba,
         Rgba,
@@ -16,7 +17,7 @@ pub struct Palette {
 }
 
 impl Palette {
-    pub fn from_data(data: &[u8]) -> Result<Self, String> {
+    pub fn from_data(data: &[u8]) -> Result<Self, RomAddressError> {
         assert_eq!(PALETTE_DATA_SIZE, data.len());
 
         let back_area_color = read_bgr16_as_rgba(data, 0)?;

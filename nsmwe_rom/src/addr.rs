@@ -19,14 +19,6 @@ pub mod address_spaces {
     pub const LOROM_HHDD:      AddressSpace = 0x008000..=0x00FFFF;
     pub const HIROM_BB:        AddressSpace = 0xC00000..=0xFF0000;
     pub const HIROM_HHDD:      AddressSpace = 0x000000..=0x00FFFF;
-
-    pub const RAM_MIRROR_BB:   AddressSpace = 0x000000..=0x3F0000;
-    pub const RAM_MIRROR_HHDD: AddressSpace = 0x000000..=0x001FFF;
-    pub const RAM:             AddressSpace = 0x7E0000..=0x7FFFFF;
-    pub const SRAM_BB:         AddressSpace = 0x700000..=0x730000;
-    pub const SRAM_HHDD:       AddressSpace = 0x000000..=0x007FFF;
-
-    pub const STACK:           AddressSpace = 0x7E0000..=0x7E1FFF;
 }
 
 pub mod aliases {
@@ -39,20 +31,12 @@ pub mod aliases {
 pub mod helpers {
     use crate::addr::{
         address_spaces::*,
-        aliases::*,
+        aliases::AddressSNES,
         masks::*,
     };
 
     pub fn get_bb_hhdd(addr: AddressSNES) -> (u32, u32) {
         (addr & BB, addr & HHDD)
-    }
-
-    pub fn is_in_ram(addr: AddressSNES) -> bool {
-        RAM.contains(&addr)
-    }
-
-    pub fn is_in_stack(addr: AddressSNES) -> bool {
-        STACK.contains(&addr)
     }
 
     pub fn is_valid_lorom_address(addr: AddressSNES) -> bool {
@@ -63,25 +47,6 @@ pub mod helpers {
     pub fn is_valid_hirom_address(addr: AddressSNES) -> bool {
         let (bb, hhdd) = get_bb_hhdd(addr);
         HIROM_BB.contains(&bb) && HIROM_HHDD.contains(&hhdd)
-    }
-
-    pub fn is_in_sram(addr: AddressSNES) -> bool {
-        let (bb, hhdd) = get_bb_hhdd(addr);
-        SRAM_BB.contains(&bb) && SRAM_HHDD.contains(&hhdd)
-    }
-
-    pub fn is_stack_mirror(addr: AddressSNES) -> bool {
-        let (bb, hhdd) = get_bb_hhdd(addr);
-        RAM_MIRROR_BB.contains(&bb) && RAM_MIRROR_HHDD.contains(&hhdd)
-    }
-
-    pub fn mirror_to_stack(addr: AddressSNES) -> Option<AddressSNES> {
-        if is_stack_mirror(addr) {
-            let hhdd = addr & HHDD;
-            Some(*STACK.start() | hhdd)
-        } else {
-            None
-        }
     }
 }
 
