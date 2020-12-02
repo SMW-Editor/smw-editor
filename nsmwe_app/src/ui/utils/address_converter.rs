@@ -68,7 +68,7 @@ impl UiAddressConverter {
         }
 
         if ui.checkbox(im_str!("Include header"), &mut self.include_header) {
-            let addr_pc = u32::from_str_radix(self.text_pc.to_str(), 16)
+            let addr_pc = usize::from_str_radix(self.text_pc.to_str(), 16)
                 .unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
             self.text_pc = ImString::new(format!("{:x}", addr_pc));
@@ -107,7 +107,7 @@ impl UiAddressConverter {
         };
 
         let addr_src = {
-            let addr = u32::from_str_radix(buf_src.to_str(), 16)
+            let addr = usize::from_str_radix(buf_src.to_str(), 16)
                 .unwrap_or(0);
             if self.include_header {
                 match direction {
@@ -158,7 +158,7 @@ mod modes {
 mod helpers {
     use nsmwe_rom::SMC_HEADER_SIZE;
 
-    pub fn adjust_to_header(addr: u32, include_header: bool) -> u32 {
+    pub fn adjust_to_header(addr: usize, include_header: bool) -> usize {
         if include_header {
             addr + SMC_HEADER_SIZE
         } else if addr >= SMC_HEADER_SIZE {

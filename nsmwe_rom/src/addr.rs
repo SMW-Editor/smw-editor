@@ -22,29 +22,29 @@ pub mod address_spaces {
 }
 
 pub mod aliases {
-    pub type AddressPC = u32;
-    pub type AddressSNES = u32;
-    pub type AddressSpace = std::ops::RangeInclusive<AddressSNES>;
-    pub type Mask = u32;
+    pub type AddressPc = usize;
+    pub type AddressSnes = usize;
+    pub type AddressSpace = std::ops::RangeInclusive<AddressSnes>;
+    pub type Mask = usize;
 }
 
 pub mod helpers {
     use crate::addr::{
         address_spaces::*,
-        aliases::AddressSNES,
+        aliases::AddressSnes,
         masks::*,
     };
 
-    pub fn get_bb_hhdd(addr: AddressSNES) -> (u32, u32) {
+    pub fn get_bb_hhdd(addr: AddressSnes) -> (usize, usize) {
         (addr & BB, addr & HHDD)
     }
 
-    pub fn is_valid_lorom_address(addr: AddressSNES) -> bool {
+    pub fn is_valid_lorom_address(addr: AddressSnes) -> bool {
         let (bb, hhdd) = get_bb_hhdd(addr);
         LOROM_BB.contains(&bb) && LOROM_HHDD.contains(&hhdd)
     }
 
-    pub fn is_valid_hirom_address(addr: AddressSNES) -> bool {
+    pub fn is_valid_hirom_address(addr: AddressSnes) -> bool {
         let (bb, hhdd) = get_bb_hhdd(addr);
         HIROM_BB.contains(&bb) && HIROM_HHDD.contains(&hhdd)
     }
@@ -59,7 +59,7 @@ pub mod conversions {
             masks::*,
         };
 
-        pub fn lorom(addr: AddressPC) -> Result<AddressSNES, String> {
+        pub fn lorom(addr: AddressPc) -> Result<AddressSnes, String> {
             if addr < 0x400000 {
                 let bb = (addr & BB) | if addr >= 0x380000 { 0x800000 } else { 0 };
                 let hh = (addr & 0x7F00) + 0x8000;
@@ -70,7 +70,7 @@ pub mod conversions {
             }
         }
 
-        pub fn hirom(addr: AddressPC) -> Result<AddressSNES, String> {
+        pub fn hirom(addr: AddressPc) -> Result<AddressSnes, String> {
             let (bb, hhdd) = get_bb_hhdd(addr);
             Ok(((bb + *HIROM_BB.start()) | hhdd) & BBHHDD)
         }
@@ -84,7 +84,7 @@ pub mod conversions {
             masks::*,
         };
 
-        pub fn lorom(addr: AddressSNES) -> Result<AddressPC, String> {
+        pub fn lorom(addr: AddressSnes) -> Result<AddressPc, String> {
             if is_valid_lorom_address(addr) {
                 let (bb, hhdd) = get_bb_hhdd(addr);
                 Ok((((bb & 0x7F0000) | hhdd) - 0x8000) & BBHHDD)
@@ -93,7 +93,7 @@ pub mod conversions {
             }
         }
 
-        pub fn hirom(addr: AddressSNES) -> Result<AddressPC, String> {
+        pub fn hirom(addr: AddressSnes) -> Result<AddressPc, String> {
             if is_valid_hirom_address(addr) {
                 let (bb, hhdd) = get_bb_hhdd(addr);
                 Ok(((bb - *HIROM_BB.start()) | hhdd) & BBHHDD)

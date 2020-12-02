@@ -1,14 +1,23 @@
 pub use self::address_spaces::*;
 
-use crate::{
-    addr::AddressPC,
+use crate::addr::AddressPc;
+
+use nom::{
+    Err as NomErr,
     error::{
-        RomHeaderError,
-        RomHeaderParseError,
+        Error as NomError,
+        ErrorKind,
     },
-    get_byte_at,
-    get_word_at,
-    get_slice_at,
+    into,
+    IResult,
+    named,
+    number::complete::{
+        le_u8,
+        le_u16,
+    },
+    sequence::tuple,
+    take,
+    take_str,
 };
 
 use num_enum::{
@@ -18,11 +27,12 @@ use num_enum::{
 
 use std::{
     clone::Clone,
-    convert::TryFrom,
+    convert::{
+        From,
+        TryFrom,
+    },
     fmt,
 };
-
-pub type Result<Value> = std::result::Result<Value, RomHeaderParseError>;
 
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
@@ -35,6 +45,14 @@ pub enum MapMode {
     FastHiRom   = 0b110001,
     FastExHiRom = 0b110010,
     FastExLoRom = 0b110100,
+
+    Error,
+}
+
+impl From<&[u8]> for MapMode {
+    fn from(input: &[u8]) -> Self {
+        MapMode::try_from(input[0]).unwrap_or(MapMode::Error)
+    }
 }
 
 impl fmt::Display for MapMode {
@@ -49,6 +67,7 @@ impl fmt::Display for MapMode {
             FastHiRom   => "Fast HiROM",
             FastExLoRom => "Fast ExLoROM",
             FastExHiRom => "Fast ExHiROM",
+            Error       => "ERROR",
         })
     }
 }
@@ -95,6 +114,14 @@ pub enum RomType {
     RomSRtcSram    = 0x56,
     RomOtherSram   = 0xE6,
     RomCustomSram  = 0xF6,
+
+    Error,
+}
+
+impl From<&[u8]> for RomType {
+    fn from(input: &[u8]) -> Self {
+        RomType::try_from(input[0]).unwrap_or(RomType::Error)
+    }
 }
 
 impl fmt::Display for RomType {
@@ -107,6 +134,7 @@ impl fmt::Display for RomType {
             Rom => String::from("ROM"),
             RomRam => String::from("ROM + RAM"),
             RomRamSram => String::from("ROM + RAM + SRAM"),
+            Error => String::from("ERROR"),
             _ => format!("ROM + {}", {
                 let coprocessor = match self_as_byte & 0xF0 {
                     0x00 => "DSP",
@@ -160,6 +188,14 @@ pub enum DestinationCode {
     Other1       = 0x12,
     Other2       = 0x13,
     Other3       = 0x14,
+
+    Error,
+}
+
+impl From<&[u8]> for DestinationCode {
+    fn from(input: &[u8]) -> Self {
+        DestinationCode::try_from(input[0]).unwrap_or(DestinationCode::Error)
+    }
 }
 
 impl fmt::Display for DestinationCode {
@@ -187,27 +223,25 @@ impl fmt::Display for DestinationCode {
             Other1       => "Other (1)",
             Other2       => "Other (2)",
             Other3       => "Other (3)",
+            Error        => "ERROR",
         })
     }
 }
 
 pub mod address_spaces {
     use crate::addr::AddressSpace;
-    pub const HEADER_LOROM: AddressSpace = 0x007FB0..=0x008000;
-    pub const HEADER_HIROM: AddressSpace = 0x00FFB0..=0x010000;
+    pub const HEADER_LOROM: AddressSpace = 0x007FC0..=0x008000;
+    pub const HEADER_HIROM: AddressSpace = 0x00FFC0..=0x010000;
 }
 
 pub mod offset {
-    pub const INTERNAL_ROM_NAME:  u32 = 0x10;
-    pub const MAP_MODE:           u32 = 0x25;
-    pub const ROM_TYPE:           u32 = 0x26;
-    pub const ROM_SIZE:           u32 = 0x27;
-    pub const SRAM_SIZE:          u32 = 0x28;
-    pub const DESTINATION_CODE:   u32 = 0x29;
-    pub const DEVELOPER_ID:       u32 = 0x2A;
-    pub const VERSION_NUMBER:     u32 = 0x2B;
-    pub const COMPLEMENT_CHECK:   u32 = 0x2C;
-    pub const CHECKSUM:           u32 = 0x2E;
+    pub const COMPLEMENT_CHECK: usize = 0x1C;
+    pub const CHECKSUM:         usize = 0x1E;
+}
+
+pub mod length {
+    pub const INTERNAL_HEADER:   usize = 32;
+    pub const INTERNAL_ROM_NAME: usize = 21;
 }
 
 pub struct RomInternalHeader {
@@ -222,73 +256,75 @@ pub struct RomInternalHeader {
 }
 
 impl RomInternalHeader {
-    pub fn from_rom_data(data: &[u8], smc_header_offset: AddressPC) -> Result<Self> {
-        let begin = RomInternalHeader::find(data, smc_header_offset)?;
-        Ok(RomInternalHeader {
-            internal_rom_name: {
-                let idx = (begin + offset::INTERNAL_ROM_NAME) as usize;
-                let slice = get_slice_at(data, idx, 21)?;
-                let slice = Vec::from(slice);
-                String::from_utf8(slice).unwrap_or(String::from("error"))
-            },
-            map_mode: {
-                let idx = (begin + offset::MAP_MODE) as usize;
-                let mm = get_byte_at(data, idx)?;
-                MapMode::try_from(mm)
-                    .or_else(|_| Err(RomHeaderError::MapMode(mm)))?
-            },
-            rom_type: {
-                let idx = (begin + offset::ROM_TYPE) as usize;
-                let rt = get_byte_at(data, idx)?;
-                RomType::try_from(rt)
-                    .or_else(|_| Err(RomHeaderError::RomType(rt)))?
-            },
-            rom_size: {
-                let idx = (begin + offset::ROM_SIZE) as usize;
-                get_byte_at(data, idx)?
-            },
-            sram_size: {
-                let idx = (begin + offset::SRAM_SIZE) as usize;
-                get_byte_at(data, idx)?
-            },
-            destination_code: {
-                let idx = (begin + offset::DESTINATION_CODE) as usize;
-                let dc = get_byte_at(data, idx)?;
-                DestinationCode::try_from(dc)
-                    .or_else(|_| Err(RomHeaderError::DestinationCode(dc)))?
-            },
-            developer_id: {
-                let idx = (begin + offset::DEVELOPER_ID) as usize;
-                get_byte_at(data, idx)?
-            },
-            version_number: {
-                let idx = (begin + offset::VERSION_NUMBER) as usize;
-                get_byte_at(data, idx)?
-            },
-        })
+    pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
+        match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
+            Some(begin) => RomInternalHeader::parse(&rom_data[begin..begin + length::INTERNAL_HEADER]),
+            None => Err(NomErr::Error(NomError::new(rom_data, ErrorKind::Satisfy))),
+        }
     }
 
-    fn find(data: &[u8], smc_header_offset: u32) -> Result<AddressPC> {
+    fn find(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Option<AddressPc>> {
         let lorom_header_start = smc_header_offset + *HEADER_LOROM.start();
         let hirom_header_start = smc_header_offset + *HEADER_HIROM.start();
 
-        let lorom_checksum_idx = lorom_header_start + offset::CHECKSUM;
         let lorom_complmnt_idx = lorom_header_start + offset::COMPLEMENT_CHECK;
-        let hirom_checksum_idx = hirom_header_start + offset::CHECKSUM;
+        let lorom_checksum_idx = lorom_header_start + offset::CHECKSUM;
         let hirom_complmnt_idx = hirom_header_start + offset::COMPLEMENT_CHECK;
+        let hirom_checksum_idx = hirom_header_start + offset::CHECKSUM;
 
-        let lorom_checksum = get_word_at(data, lorom_checksum_idx as usize)?;
-        let lorom_complmnt = get_word_at(data, lorom_complmnt_idx as usize)?;
-        let hirom_checksum = get_word_at(data, hirom_checksum_idx as usize)?;
-        let hirom_complmnt = get_word_at(data, hirom_complmnt_idx as usize)?;
+        let lorom_input = &rom_data[lorom_complmnt_idx..=lorom_checksum_idx+2];
+        let hirom_input = &rom_data[hirom_complmnt_idx..=hirom_checksum_idx+2];
 
-        if (lorom_checksum ^ lorom_complmnt) == 0xFFFF {
-            Ok(lorom_header_start)
-        } else if (hirom_checksum ^ hirom_complmnt) == 0xFFFF {
-            Ok(hirom_header_start)
+        let (_, (lorom_complement, lorom_checksum)) = tuple((le_u16, le_u16))(lorom_input)?;
+        let (_, (hirom_complement, hirom_checksum)) = tuple((le_u16, le_u16))(hirom_input)?;
+
+        if (lorom_checksum ^ lorom_complement) == 0xFFFF {
+            Ok((rom_data, Some(lorom_header_start)))
+        } else if (hirom_checksum ^ hirom_complement) == 0xFFFF {
+            Ok((rom_data, Some(hirom_header_start)))
         } else {
-            Err(RomHeaderError::Checksum.into())
+            Ok((rom_data, None))
         }
+    }
+
+    fn parse(input: &[u8]) -> IResult<&[u8], RomInternalHeader> {
+        named!(take_internal_rom_name<&[u8], &str>, take_str!(length::INTERNAL_ROM_NAME));
+        named!(take_one<&[u8], &[u8]>, take!(1));
+        named!(take_map_mode<&[u8], MapMode>, into!(take_one));
+        named!(take_rom_type<&[u8], RomType>, into!(take_one));
+        named!(take_destination_code<&[u8], DestinationCode>, into!(take_one));
+
+        let (input, (
+            internal_rom_name,
+            map_mode,
+            rom_type,
+            rom_size,
+            sram_size,
+            destination_code,
+            developer_id,
+            version_number)
+        ) = tuple((
+            take_internal_rom_name,
+            take_map_mode,
+            take_rom_type,
+            le_u8,
+            le_u8,
+            take_destination_code,
+            le_u8,
+            le_u8))(input)?;
+
+        let internal_rom_name = String::from(internal_rom_name);
+
+        Ok((input, RomInternalHeader {
+            internal_rom_name,
+            map_mode,
+            rom_type,
+            rom_size,
+            sram_size,
+            destination_code,
+            developer_id,
+            version_number,
+        }))
     }
 
     pub fn rom_size_in_kb(&self) -> u32 {

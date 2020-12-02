@@ -33,7 +33,11 @@ impl Rom {
 
     pub fn from_raw(data: &[u8]) -> Result<Rom, RomParseError> {
         let smc_header_offset = if data_has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
-        let internal_header = RomInternalHeader::from_rom_data(data, smc_header_offset)?;
+        let (_input, internal_header) =
+            match RomInternalHeader::from_rom_data(data, smc_header_offset) {
+                Ok(res) => res,
+                Err(_) => return Err(RomParseError::InternalHeader),
+            };
 
         Ok(Rom {
             internal_header,
@@ -42,22 +46,22 @@ impl Rom {
 }
 
 pub mod constants {
-    pub const SMC_HEADER_SIZE: u32 = 0x200;
+    pub const SMC_HEADER_SIZE: usize = 0x200;
 }
 
 mod helpers {
-    use crate::error::RomSizeError;
+    use crate::error::RomParseError;
 
-    pub fn data_has_smc_header(data: &[u8]) -> Result<bool, RomSizeError> {
+    pub fn data_has_smc_header(data: &[u8]) -> Result<bool, RomParseError> {
         use crate::SMC_HEADER_SIZE;
 
-        let rem = (data.len() % 0x400) as u32;
-        if rem == SMC_HEADER_SIZE {
+        let size = data.len() % 0x400;
+        if size == SMC_HEADER_SIZE {
             Ok(true)
-        } else if rem == 0 {
+        } else if size == 0 {
             Ok(false)
         } else {
-            Err(RomSizeError { size: rem as usize })
+            Err(RomParseError::BadSize(size))
         }
     }
 }

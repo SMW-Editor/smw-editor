@@ -1,13 +1,14 @@
 use crate::{
-    addr::AddressSNES,
-    error::RomAddressError,
+    addr::AddressSnes,
     graphics::color::{
         read_bgr16_as_rgba,
         Rgba,
     },
 };
 
-pub const PALETTE_PTR_TABLE: AddressSNES = 0x0EF600;
+use nom::IResult;
+
+pub const PALETTE_PTR_TABLE: AddressSnes = 0x0EF600;
 pub const COLORS_IN_PALETTE: usize = 16 * 16;
 pub const PALETTE_DATA_SIZE: usize = 0x202;
 
@@ -17,16 +18,17 @@ pub struct Palette {
 }
 
 impl Palette {
-    pub fn from_data(data: &[u8]) -> Result<Self, RomAddressError> {
+    pub fn parse(data: &[u8]) -> IResult<&[u8], Palette> {
         assert_eq!(PALETTE_DATA_SIZE, data.len());
 
-        let back_area_color = read_bgr16_as_rgba(data, 0)?;
+        let (_, back_area_color) = read_bgr16_as_rgba(&data[0..=1])?;
 
         let mut actual_palette = [[0.; 4]; COLORS_IN_PALETTE];
-        for (i, color) in actual_palette.iter_mut().enumerate() {
-            *color = read_bgr16_as_rgba(data, 2 * (i + 1))?;
+        for color in actual_palette.iter_mut() {
+            let (_, read_color) = read_bgr16_as_rgba(&data)?;
+            *color = read_color;
         }
 
-        Ok(Palette { back_area_color, actual_palette })
+        Ok((data, Palette { back_area_color, actual_palette }))
     }
 }
