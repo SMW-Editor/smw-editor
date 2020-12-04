@@ -273,8 +273,8 @@ impl RomInternalHeader {
         let hirom_complmnt_idx = hirom_header_start + offsets::COMPLEMENT_CHECK;
         let hirom_checksum_idx = hirom_header_start + offsets::CHECKSUM;
 
-        let lorom_input = &rom_data[lorom_complmnt_idx..=lorom_checksum_idx+2];
-        let hirom_input = &rom_data[hirom_complmnt_idx..=hirom_checksum_idx+2];
+        let lorom_input = &rom_data[lorom_complmnt_idx..=lorom_checksum_idx + 2];
+        let hirom_input = &rom_data[hirom_complmnt_idx..=hirom_checksum_idx + 2];
 
         let (_, (lorom_complement, lorom_checksum)) = tuple((le_u16, le_u16))(lorom_input)?;
         let (_, (hirom_complement, hirom_checksum)) = tuple((le_u16, le_u16))(hirom_input)?;
@@ -295,16 +295,16 @@ impl RomInternalHeader {
         named!(take_rom_type<&[u8], RomType>, into!(take_one));
         named!(take_destination_code<&[u8], DestinationCode>, into!(take_one));
         named!(do_parse_header<&[u8], RomInternalHeader>, do_parse!(
-            rom_name: take_internal_rom_name        >>
-            map_mode: take_map_mode                 >>
-            rom_type: take_rom_type                 >>
-            rom_size: le_u8                         >>
-            sram_size: le_u8                        >>
-            destination_code: take_destination_code >>
-            developer_id: le_u8                     >>
-            version_number: le_u8                   >>
+            internal_rom_name: take_internal_rom_name >>
+            map_mode:          take_map_mode          >>
+            rom_type:          take_rom_type          >>
+            rom_size:          le_u8                  >>
+            sram_size:         le_u8                  >>
+            destination_code:  take_destination_code  >>
+            developer_id:      le_u8                  >>
+            version_number:    le_u8                  >>
             (RomInternalHeader {
-                internal_rom_name: String::from(rom_name),
+                internal_rom_name: String::from(internal_rom_name),
                 map_mode,
                 rom_type,
                 rom_size,

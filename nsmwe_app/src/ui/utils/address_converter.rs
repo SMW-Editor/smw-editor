@@ -43,6 +43,12 @@ impl UiTool for UiAddressConverter {
     }
 }
 
+impl Default for UiAddressConverter {
+    fn default() -> Self {
+        UiAddressConverter::new()
+    }
+}
+
 impl UiAddressConverter {
     pub fn new() -> Self {
         UiAddressConverter {

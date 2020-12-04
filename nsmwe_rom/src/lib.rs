@@ -1,3 +1,5 @@
+#![allow(clippy::identity_op)]
+
 extern crate nom;
 extern crate num_enum;
 extern crate polyerror;
