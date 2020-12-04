@@ -3,6 +3,7 @@ pub use self::address_spaces::*;
 use crate::addr::AddressPc;
 
 use nom::{
+    do_parse,
     Err as NomErr,
     error::{
         Error as NomError,
@@ -234,12 +235,12 @@ pub mod address_spaces {
     pub const HEADER_HIROM: AddressSpace = 0x00FFC0..=0x010000;
 }
 
-pub mod offset {
+pub mod offsets {
     pub const COMPLEMENT_CHECK: usize = 0x1C;
     pub const CHECKSUM:         usize = 0x1E;
 }
 
-pub mod length {
+pub mod sizes {
     pub const INTERNAL_HEADER:   usize = 32;
     pub const INTERNAL_ROM_NAME: usize = 21;
 }
@@ -258,7 +259,7 @@ pub struct RomInternalHeader {
 impl RomInternalHeader {
     pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
         match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
-            Some(begin) => RomInternalHeader::parse(&rom_data[begin..begin + length::INTERNAL_HEADER]),
+            Some(begin) => RomInternalHeader::parse(&rom_data[begin..begin + sizes::INTERNAL_HEADER]),
             None => Err(NomErr::Error(NomError::new(rom_data, ErrorKind::Satisfy))),
         }
     }
@@ -267,10 +268,10 @@ impl RomInternalHeader {
         let lorom_header_start = smc_header_offset + *HEADER_LOROM.start();
         let hirom_header_start = smc_header_offset + *HEADER_HIROM.start();
 
-        let lorom_complmnt_idx = lorom_header_start + offset::COMPLEMENT_CHECK;
-        let lorom_checksum_idx = lorom_header_start + offset::CHECKSUM;
-        let hirom_complmnt_idx = hirom_header_start + offset::COMPLEMENT_CHECK;
-        let hirom_checksum_idx = hirom_header_start + offset::CHECKSUM;
+        let lorom_complmnt_idx = lorom_header_start + offsets::COMPLEMENT_CHECK;
+        let lorom_checksum_idx = lorom_header_start + offsets::CHECKSUM;
+        let hirom_complmnt_idx = hirom_header_start + offsets::COMPLEMENT_CHECK;
+        let hirom_checksum_idx = hirom_header_start + offsets::CHECKSUM;
 
         let lorom_input = &rom_data[lorom_complmnt_idx..=lorom_checksum_idx+2];
         let hirom_input = &rom_data[hirom_complmnt_idx..=hirom_checksum_idx+2];
@@ -288,43 +289,32 @@ impl RomInternalHeader {
     }
 
     fn parse(input: &[u8]) -> IResult<&[u8], RomInternalHeader> {
-        named!(take_internal_rom_name<&[u8], &str>, take_str!(length::INTERNAL_ROM_NAME));
-        named!(take_one<&[u8], &[u8]>, take!(1));
+        named!(take_internal_rom_name<&[u8], &str>, take_str!(sizes::INTERNAL_ROM_NAME));
+        named!(take_one, take!(1));
         named!(take_map_mode<&[u8], MapMode>, into!(take_one));
         named!(take_rom_type<&[u8], RomType>, into!(take_one));
         named!(take_destination_code<&[u8], DestinationCode>, into!(take_one));
-
-        let (input, (
-            internal_rom_name,
-            map_mode,
-            rom_type,
-            rom_size,
-            sram_size,
-            destination_code,
-            developer_id,
-            version_number)
-        ) = tuple((
-            take_internal_rom_name,
-            take_map_mode,
-            take_rom_type,
-            le_u8,
-            le_u8,
-            take_destination_code,
-            le_u8,
-            le_u8))(input)?;
-
-        let internal_rom_name = String::from(internal_rom_name);
-
-        Ok((input, RomInternalHeader {
-            internal_rom_name,
-            map_mode,
-            rom_type,
-            rom_size,
-            sram_size,
-            destination_code,
-            developer_id,
-            version_number,
-        }))
+        named!(do_parse_header<&[u8], RomInternalHeader>, do_parse!(
+            rom_name: take_internal_rom_name        >>
+            map_mode: take_map_mode                 >>
+            rom_type: take_rom_type                 >>
+            rom_size: le_u8                         >>
+            sram_size: le_u8                        >>
+            destination_code: take_destination_code >>
+            developer_id: le_u8                     >>
+            version_number: le_u8                   >>
+            (RomInternalHeader {
+                internal_rom_name: String::from(rom_name),
+                map_mode,
+                rom_type,
+                rom_size,
+                sram_size,
+                destination_code,
+                developer_id,
+                version_number,
+            })
+        ));
+        Ok(do_parse_header(input)?)
     }
 
     pub fn rom_size_in_kb(&self) -> u32 {
