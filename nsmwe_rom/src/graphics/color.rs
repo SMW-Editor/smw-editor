@@ -1,8 +1,3 @@
-use nom::{
-    IResult,
-    number::complete::le_u16,
-};
-
 pub type Bgr16 = u16;
 pub type Rgba = [f32; 4];
 
@@ -24,9 +19,4 @@ pub fn rgba_to_bgr16(color: Rgba) -> Bgr16 {
     let g = (color[1] * cmf).round() as u16;
     let b = (color[2] * cmf).round() as u16;
     (r << 0x0) | (g << 0x5) | (b << 0xA)
-}
-
-pub fn read_bgr16_as_rgba(input: &[u8]) -> IResult<&[u8], Rgba> {
-    let (input, color) = le_u16(input)?;
-    Ok((input, bgr16_to_rgba(color)))
 }

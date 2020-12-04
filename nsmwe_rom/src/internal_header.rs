@@ -4,20 +4,15 @@ use crate::addr::AddressPc;
 
 use nom::{
     do_parse,
-    Err as NomErr,
-    error::{
-        Error as NomError,
-        ErrorKind,
-    },
-    into,
     IResult,
+    map,
+    map_res,
     named,
     number::complete::{
         le_u8,
         le_u16,
     },
     sequence::tuple,
-    take,
     take_str,
 };
 
@@ -46,14 +41,6 @@ pub enum MapMode {
     FastHiRom   = 0b110001,
     FastExHiRom = 0b110010,
     FastExLoRom = 0b110100,
-
-    Error,
-}
-
-impl From<&[u8]> for MapMode {
-    fn from(input: &[u8]) -> Self {
-        MapMode::try_from(input[0]).unwrap_or(MapMode::Error)
-    }
 }
 
 impl fmt::Display for MapMode {
@@ -68,7 +55,6 @@ impl fmt::Display for MapMode {
             FastHiRom   => "Fast HiROM",
             FastExLoRom => "Fast ExLoROM",
             FastExHiRom => "Fast ExHiROM",
-            Error       => "ERROR",
         })
     }
 }
@@ -115,27 +101,16 @@ pub enum RomType {
     RomSRtcSram    = 0x56,
     RomOtherSram   = 0xE6,
     RomCustomSram  = 0xF6,
-
-    Error,
-}
-
-impl From<&[u8]> for RomType {
-    fn from(input: &[u8]) -> Self {
-        RomType::try_from(input[0]).unwrap_or(RomType::Error)
-    }
 }
 
 impl fmt::Display for RomType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use RomType::*;
-
         let self_as_byte: u8 = (*self).into();
-
         write!(f, "{}", match self {
             Rom => String::from("ROM"),
             RomRam => String::from("ROM + RAM"),
             RomRamSram => String::from("ROM + RAM + SRAM"),
-            Error => String::from("ERROR"),
             _ => format!("ROM + {}", {
                 let coprocessor = match self_as_byte & 0xF0 {
                     0x00 => "DSP",
@@ -149,7 +124,6 @@ impl fmt::Display for RomType {
                     _ => "Unknown expansion chip",
                 };
                 let memory = self_as_byte & 0xF;
-
                 if memory == 0x3 {
                     coprocessor.to_string()
                 } else {
@@ -167,7 +141,7 @@ impl fmt::Display for RomType {
 
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
-pub enum DestinationCode {
+pub enum RegionCode {
     Japan        = 0x00,
     NorthAmerica = 0x01,
     Europe       = 0x02,
@@ -189,19 +163,11 @@ pub enum DestinationCode {
     Other1       = 0x12,
     Other2       = 0x13,
     Other3       = 0x14,
-
-    Error,
 }
 
-impl From<&[u8]> for DestinationCode {
-    fn from(input: &[u8]) -> Self {
-        DestinationCode::try_from(input[0]).unwrap_or(DestinationCode::Error)
-    }
-}
-
-impl fmt::Display for DestinationCode {
+impl fmt::Display for RegionCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use DestinationCode::*;
+        use RegionCode::*;
         write!(f, "{}", match self {
             Japan        => "Japan",
             NorthAmerica => "North America",
@@ -224,7 +190,6 @@ impl fmt::Display for DestinationCode {
             Other1       => "Other (1)",
             Other2       => "Other (2)",
             Other3       => "Other (3)",
-            Error        => "ERROR",
         })
     }
 }
@@ -251,15 +216,19 @@ pub struct RomInternalHeader {
     pub rom_type: RomType,
     pub rom_size: u8,
     pub sram_size: u8,
-    pub destination_code: DestinationCode,
+    pub region_code: RegionCode,
     pub developer_id: u8,
     pub version_number: u8,
 }
 
 impl RomInternalHeader {
     pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
+        use nom::{ Err as NomErr, error::{ Error as NomError, ErrorKind } };
         match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
-            Some(begin) => RomInternalHeader::parse(&rom_data[begin..begin + sizes::INTERNAL_HEADER]),
+            Some(begin) => {
+                let end = begin + sizes::INTERNAL_HEADER;
+                RomInternalHeader::parse(&rom_data[begin..end])
+            }
             None => Err(NomErr::Error(NomError::new(rom_data, ErrorKind::Satisfy))),
         }
     }
@@ -290,26 +259,25 @@ impl RomInternalHeader {
 
     fn parse(input: &[u8]) -> IResult<&[u8], RomInternalHeader> {
         named!(take_internal_rom_name<&[u8], &str>, take_str!(sizes::INTERNAL_ROM_NAME));
-        named!(take_one, take!(1));
-        named!(take_map_mode<&[u8], MapMode>, into!(take_one));
-        named!(take_rom_type<&[u8], RomType>, into!(take_one));
-        named!(take_destination_code<&[u8], DestinationCode>, into!(take_one));
+        named!(take_map_mode<&[u8], MapMode>, map_res!(le_u8, MapMode::try_from));
+        named!(take_rom_type<&[u8], RomType>, map_res!(le_u8, RomType::try_from));
+        named!(take_region_code<&[u8], RegionCode>, map_res!(le_u8, RegionCode::try_from));
         named!(do_parse_header<&[u8], RomInternalHeader>, do_parse!(
-            internal_rom_name: take_internal_rom_name >>
-            map_mode:          take_map_mode          >>
-            rom_type:          take_rom_type          >>
-            rom_size:          le_u8                  >>
-            sram_size:         le_u8                  >>
-            destination_code:  take_destination_code  >>
-            developer_id:      le_u8                  >>
-            version_number:    le_u8                  >>
+            internal_rom_name: map!(take_internal_rom_name, String::from) >>
+            map_mode:          take_map_mode                              >>
+            rom_type:          take_rom_type                              >>
+            rom_size:          le_u8                                      >>
+            sram_size:         le_u8                                      >>
+            region_code:       take_region_code                           >>
+            developer_id:      le_u8                                      >>
+            version_number:    le_u8                                      >>
             (RomInternalHeader {
-                internal_rom_name: String::from(internal_rom_name),
+                internal_rom_name,
                 map_mode,
                 rom_type,
                 rom_size,
                 sram_size,
-                destination_code,
+                region_code,
                 developer_id,
                 version_number,
             })

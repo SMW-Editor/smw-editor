@@ -40,7 +40,7 @@ impl UiRomInfo {
                 ImString::new(format!("ROM type:          {}",    header.rom_type)),
                 ImString::new(format!("ROM size:          {} kB", header.rom_size_in_kb())),
                 ImString::new(format!("SRAM size:         {} kB", header.sram_size_in_kb())),
-                ImString::new(format!("Region:            {}",    header.destination_code)),
+                ImString::new(format!("Region:            {}",    header.region_code)),
                 ImString::new(format!("Developer ID:      ${:x}", header.developer_id)),
                 ImString::new(format!("Version:           1.{}",  header.version_number)),
             ]
