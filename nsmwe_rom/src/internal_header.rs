@@ -71,6 +71,7 @@ pub enum MapMode {
     FastExHiRom = 0b110010,
     FastExLoRom = 0b110100,
 }
+
 #[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RomType {
@@ -182,33 +183,26 @@ impl RomInternalHeader {
         }
     }
 
-    fn parse(input: &[u8]) -> IResult<&[u8], RomInternalHeader> {
-        named!(take_internal_rom_name<&[u8], &str>, take_str!(sizes::INTERNAL_ROM_NAME));
-        named!(take_map_mode<&[u8], MapMode>,       map_res!(le_u8, MapMode::try_from));
-        named!(take_rom_type<&[u8], RomType>,       map_res!(le_u8, RomType::try_from));
-        named!(take_region_code<&[u8], RegionCode>, map_res!(le_u8, RegionCode::try_from));
-        named!(do_parse_header<&[u8], RomInternalHeader>, do_parse!(
-            internal_rom_name: map!(take_internal_rom_name, String::from) >>
-            map_mode:          take_map_mode                              >>
-            rom_type:          take_rom_type                              >>
-            rom_size:          le_u8                                      >>
-            sram_size:         le_u8                                      >>
-            region_code:       take_region_code                           >>
-            developer_id:      le_u8                                      >>
-            version_number:    le_u8                                      >>
-            (RomInternalHeader {
-                internal_rom_name,
-                map_mode,
-                rom_type,
-                rom_size,
-                sram_size,
-                region_code,
-                developer_id,
-                version_number,
-            })
-        ));
-        Ok(do_parse_header(input)?)
-    }
+    named!(parse<&[u8], RomInternalHeader>, do_parse!(
+        internal_rom_name: map!(take_str!(sizes::INTERNAL_ROM_NAME), String::from) >>
+        map_mode:          map_res!(le_u8, MapMode::try_from)                      >>
+        rom_type:          map_res!(le_u8, RomType::try_from)                      >>
+        rom_size:          le_u8                                                   >>
+        sram_size:         le_u8                                                   >>
+        region_code:       map_res!(le_u8, RegionCode::try_from)                   >>
+        developer_id:      le_u8                                                   >>
+        version_number:    le_u8                                                   >>
+        (RomInternalHeader {
+            internal_rom_name,
+            map_mode,
+            rom_type,
+            rom_size,
+            sram_size,
+            region_code,
+            developer_id,
+            version_number,
+        })
+    ));
 
     pub fn rom_size_in_kb(&self) -> u32 {
         let exponent = self.rom_size as u32;
