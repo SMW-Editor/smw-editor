@@ -30,6 +30,35 @@ use std::{
     fmt,
 };
 
+pub mod address_spaces {
+    use crate::addr::AddressSpace;
+    pub const HEADER_LOROM: AddressSpace = 0x007FC0..=0x008000;
+    pub const HEADER_HIROM: AddressSpace = 0x00FFC0..=0x010000;
+}
+
+pub mod offsets {
+    pub const COMPLEMENT_CHECK: usize = 0x1C;
+    pub const CHECKSUM:         usize = 0x1E;
+}
+
+pub mod sizes {
+    pub const INTERNAL_HEADER:   usize = 32;
+    pub const INTERNAL_ROM_NAME: usize = 21;
+}
+
+// Types -------------------------------------------------------------------------------------------
+
+pub struct RomInternalHeader {
+    pub internal_rom_name: String,
+    pub map_mode: MapMode,
+    pub rom_type: RomType,
+    pub rom_size: u8,
+    pub sram_size: u8,
+    pub region_code: RegionCode,
+    pub developer_id: u8,
+    pub version_number: u8,
+}
+
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
 pub enum MapMode {
@@ -42,23 +71,6 @@ pub enum MapMode {
     FastExHiRom = 0b110010,
     FastExLoRom = 0b110100,
 }
-
-impl fmt::Display for MapMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use MapMode::*;
-        write!(f, "{}", match self {
-            LoRom       => "LoROM",
-            HiRom       => "HiROM",
-            ExLoRom     => "ExLoROM",
-            ExHiRom     => "ExHiROM",
-            FastLoRom   => "Fast LoROM",
-            FastHiRom   => "Fast HiROM",
-            FastExLoRom => "Fast ExLoROM",
-            FastExHiRom => "Fast ExHiROM",
-        })
-    }
-}
-
 #[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RomType {
@@ -103,42 +115,6 @@ pub enum RomType {
     RomCustomSram  = 0xF6,
 }
 
-impl fmt::Display for RomType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use RomType::*;
-        let self_as_byte: u8 = (*self).into();
-        write!(f, "{}", match self {
-            Rom => String::from("ROM"),
-            RomRam => String::from("ROM + RAM"),
-            RomRamSram => String::from("ROM + RAM + SRAM"),
-            _ => format!("ROM + {}", {
-                let coprocessor = match self_as_byte & 0xF0 {
-                    0x00 => "DSP",
-                    0x10 => "SuperFX",
-                    0x20 => "OBC-1",
-                    0x30 => "SA-1",
-                    0x40 => "SDD-1",
-                    0x50 => "S-RTC",
-                    0xE0 => "Other expansion chip",
-                    0xF0 => "Custom expansion chip",
-                    _ => "Unknown expansion chip",
-                };
-                let memory = self_as_byte & 0xF;
-                if memory == 0x3 {
-                    coprocessor.to_string()
-                } else {
-                    format!("{} + {}", coprocessor, match memory {
-                        0x4 => "RAM",
-                        0x5 => "RAM + SRAM",
-                        0x6 => "SRAM",
-                        _ => "Unknown memory chip",
-                    })
-                }
-            })
-        })
-    }
-}
-
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
 pub enum RegionCode {
@@ -165,61 +141,7 @@ pub enum RegionCode {
     Other3       = 0x14,
 }
 
-impl fmt::Display for RegionCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use RegionCode::*;
-        write!(f, "{}", match self {
-            Japan        => "Japan",
-            NorthAmerica => "North America",
-            Europe       => "Europe",
-            Sweden       => "Sweden",
-            Finland      => "Finland",
-            Denmark      => "Denmark",
-            France       => "France",
-            Netherlands  => "Netherlands",
-            Spain        => "Spain",
-            Germany      => "Germany",
-            Italy        => "Italy",
-            China        => "China",
-            Indonesia    => "Indonesia",
-            Korea        => "Korea",
-            Global       => "Global",
-            Canada       => "Canada",
-            Brazil       => "Brazil",
-            Australia    => "Australia",
-            Other1       => "Other (1)",
-            Other2       => "Other (2)",
-            Other3       => "Other (3)",
-        })
-    }
-}
-
-pub mod address_spaces {
-    use crate::addr::AddressSpace;
-    pub const HEADER_LOROM: AddressSpace = 0x007FC0..=0x008000;
-    pub const HEADER_HIROM: AddressSpace = 0x00FFC0..=0x010000;
-}
-
-pub mod offsets {
-    pub const COMPLEMENT_CHECK: usize = 0x1C;
-    pub const CHECKSUM:         usize = 0x1E;
-}
-
-pub mod sizes {
-    pub const INTERNAL_HEADER:   usize = 32;
-    pub const INTERNAL_ROM_NAME: usize = 21;
-}
-
-pub struct RomInternalHeader {
-    pub internal_rom_name: String,
-    pub map_mode: MapMode,
-    pub rom_type: RomType,
-    pub rom_size: u8,
-    pub sram_size: u8,
-    pub region_code: RegionCode,
-    pub developer_id: u8,
-    pub version_number: u8,
-}
+// Implementations ---------------------------------------------------------------------------------
 
 impl RomInternalHeader {
     pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
@@ -298,5 +220,86 @@ impl RomInternalHeader {
             0 => 0,
             exponent => 2u32.pow(exponent),
         }
+    }
+}
+
+impl fmt::Display for MapMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use MapMode::*;
+        write!(f, "{}", match self {
+            LoRom       => "LoROM",
+            HiRom       => "HiROM",
+            ExLoRom     => "ExLoROM",
+            ExHiRom     => "ExHiROM",
+            FastLoRom   => "Fast LoROM",
+            FastHiRom   => "Fast HiROM",
+            FastExLoRom => "Fast ExLoROM",
+            FastExHiRom => "Fast ExHiROM",
+        })
+    }
+}
+
+impl fmt::Display for RomType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use RomType::*;
+        let self_as_byte: u8 = (*self).into();
+        write!(f, "{}", match self {
+            Rom => String::from("ROM"),
+            RomRam => String::from("ROM + RAM"),
+            RomRamSram => String::from("ROM + RAM + SRAM"),
+            _ => format!("ROM + {}", {
+                let coprocessor = match self_as_byte & 0xF0 {
+                    0x00 => "DSP",
+                    0x10 => "SuperFX",
+                    0x20 => "OBC-1",
+                    0x30 => "SA-1",
+                    0x40 => "SDD-1",
+                    0x50 => "S-RTC",
+                    0xE0 => "Other expansion chip",
+                    0xF0 => "Custom expansion chip",
+                    _ => "Unknown expansion chip",
+                };
+                let memory = self_as_byte & 0xF;
+                if memory == 0x3 {
+                    coprocessor.to_string()
+                } else {
+                    format!("{} + {}", coprocessor, match memory {
+                        0x4 => "RAM",
+                        0x5 => "RAM + SRAM",
+                        0x6 => "SRAM",
+                        _ => "Unknown memory chip",
+                    })
+                }
+            })
+        })
+    }
+}
+
+impl fmt::Display for RegionCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use RegionCode::*;
+        write!(f, "{}", match self {
+            Japan        => "Japan",
+            NorthAmerica => "North America",
+            Europe       => "Europe",
+            Sweden       => "Sweden",
+            Finland      => "Finland",
+            Denmark      => "Denmark",
+            France       => "France",
+            Netherlands  => "Netherlands",
+            Spain        => "Spain",
+            Germany      => "Germany",
+            Italy        => "Italy",
+            China        => "China",
+            Indonesia    => "Indonesia",
+            Korea        => "Korea",
+            Global       => "Global",
+            Canada       => "Canada",
+            Brazil       => "Brazil",
+            Australia    => "Australia",
+            Other1       => "Other (1)",
+            Other2       => "Other (2)",
+            Other3       => "Other (3)",
+        })
     }
 }
