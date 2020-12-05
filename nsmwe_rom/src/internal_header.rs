@@ -1,6 +1,9 @@
 pub use self::address_spaces::*;
 
-use crate::addr::AddressPc;
+use crate::{
+    addr::AddressPc,
+    error::nom_error,
+};
 
 use nom::{
     do_parse,
@@ -23,10 +26,7 @@ use num_enum::{
 
 use std::{
     clone::Clone,
-    convert::{
-        From,
-        TryFrom,
-    },
+    convert::TryFrom,
     fmt,
 };
 
@@ -223,13 +223,16 @@ pub struct RomInternalHeader {
 
 impl RomInternalHeader {
     pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
-        use nom::{ Err as NomErr, error::{ Error as NomError, ErrorKind } };
+        use nom::error::ErrorKind;
         match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
             Some(begin) => {
                 let end = begin + sizes::INTERNAL_HEADER;
-                RomInternalHeader::parse(&rom_data[begin..end])
+                match rom_data.get(begin..end) {
+                    Some(header_slice) => RomInternalHeader::parse(header_slice),
+                    None => Err(nom_error(rom_data, ErrorKind::Eof)),
+                }
             }
-            None => Err(NomErr::Error(NomError::new(rom_data, ErrorKind::Satisfy))),
+            None => Err(nom_error(rom_data, ErrorKind::Satisfy)),
         }
     }
 
@@ -259,8 +262,8 @@ impl RomInternalHeader {
 
     fn parse(input: &[u8]) -> IResult<&[u8], RomInternalHeader> {
         named!(take_internal_rom_name<&[u8], &str>, take_str!(sizes::INTERNAL_ROM_NAME));
-        named!(take_map_mode<&[u8], MapMode>, map_res!(le_u8, MapMode::try_from));
-        named!(take_rom_type<&[u8], RomType>, map_res!(le_u8, RomType::try_from));
+        named!(take_map_mode<&[u8], MapMode>,       map_res!(le_u8, MapMode::try_from));
+        named!(take_rom_type<&[u8], RomType>,       map_res!(le_u8, RomType::try_from));
         named!(take_region_code<&[u8], RegionCode>, map_res!(le_u8, RegionCode::try_from));
         named!(do_parse_header<&[u8], RomInternalHeader>, do_parse!(
             internal_rom_name: map!(take_internal_rom_name, String::from) >>

@@ -1,11 +1,18 @@
 use crate::addr::AddressPc;
+
+use nom::{
+    Err as NomErr,
+    error::{
+        Error as NomError,
+        ErrorKind,
+    },
+};
+use polyerror::create_error;
 use std::{
     error::Error,
     fmt,
     io::Error as IoError,
 };
-
-use polyerror::create_error;
 
 // Types -------------------------------------------------------------------------------------------
 
@@ -32,3 +39,9 @@ impl fmt::Display for RomParseError {
 }
 
 impl Error for RomParseError {}
+
+// Implementations ---------------------------------------------------------------------------------
+
+pub fn nom_error(input: &[u8], kind: ErrorKind) -> NomErr<NomError<&[u8]>> {
+    NomErr::Error(NomError::new(input, kind))
+}
