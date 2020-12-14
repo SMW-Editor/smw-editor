@@ -46,7 +46,7 @@ pub mod sizes {
     pub const INTERNAL_ROM_NAME: usize = 21;
 }
 
-// Types -------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 pub struct RomInternalHeader {
     pub internal_rom_name: String,
@@ -142,7 +142,7 @@ pub enum RegionCode {
     Other3       = 0x14,
 }
 
-// Implementations ---------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 impl RomInternalHeader {
     pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
