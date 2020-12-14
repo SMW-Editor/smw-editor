@@ -59,17 +59,17 @@ pub struct RomInternalHeader {
     pub version_number: u8,
 }
 
-#[derive(TryFromPrimitive)]
+#[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum MapMode {
-    LoRom       = 0b100000,
-    HiRom       = 0b100001,
-    ExHiRom     = 0b100010,
-    ExLoRom     = 0b100100,
+    SlowLoRom   = 0b100000,
+    SlowHiRom   = 0b100001,
+    SlowExLoRom = 0b100010,
+    SlowExHiRom = 0b100100,
     FastLoRom   = 0b110000,
     FastHiRom   = 0b110001,
-    FastExHiRom = 0b110010,
-    FastExLoRom = 0b110100,
+    FastExLoRom = 0b110010,
+    FastExHiRom = 0b110100,
 }
 
 #[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
@@ -221,16 +221,26 @@ impl fmt::Display for MapMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use MapMode::*;
         write!(f, "{}", match self {
-            LoRom       => "LoROM",
-            HiRom       => "HiROM",
-            ExLoRom     => "ExLoROM",
-            ExHiRom     => "ExHiROM",
+            SlowLoRom   => "LoROM",
+            SlowHiRom   => "HiROM",
+            SlowExLoRom => "ExLoROM",
+            SlowExHiRom => "ExHiROM",
             FastLoRom   => "Fast LoROM",
             FastHiRom   => "Fast HiROM",
             FastExLoRom => "Fast ExLoROM",
             FastExHiRom => "Fast ExHiROM",
         })
     }
+}
+
+impl MapMode {
+    pub fn as_u8(&self) -> u8 { (*self).into() }
+    pub fn is_slow(&self)    -> bool { (self.as_u8() & 0b010000) == 0 }
+    pub fn is_fast(&self)    -> bool { !self.is_slow() }
+    pub fn is_lorom(&self)   -> bool { (self.as_u8() & 0b000001) == 0 }
+    pub fn is_hirom(&self)   -> bool { (self.as_u8() & 0b000001) != 0 }
+    pub fn is_exlorom(&self) -> bool { (self.as_u8() & 0b000010) != 0 }
+    pub fn is_exhirom(&self) -> bool { (self.as_u8() & 0b000100) != 0 }
 }
 
 impl fmt::Display for RomType {

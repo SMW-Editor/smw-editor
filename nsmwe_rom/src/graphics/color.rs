@@ -1,5 +1,9 @@
+use std::mem::size_of;
+
 pub type Bgr16 = u16;
 pub type Rgba = [f32; 4];
+
+pub const BGR16_SIZE: usize = size_of::<Bgr16>();
 
 const SNES_BGR_CHANNEL_MAX: u16 = 0b11111;
 
