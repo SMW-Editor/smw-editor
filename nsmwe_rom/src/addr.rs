@@ -52,11 +52,14 @@ pub mod helpers {
 
 pub mod conversions {
     pub mod pc_to_snes {
-        use crate::addr::{
-            address_spaces::*,
-            aliases::*,
-            helpers::*,
-            masks::*,
+        use crate::{
+            addr::{
+                address_spaces::*,
+                aliases::*,
+                helpers::*,
+                masks::*,
+            },
+            internal_header::MapMode,
         };
 
         pub fn lorom(addr: AddressPc) -> Result<AddressSnes, String> {
@@ -74,14 +77,22 @@ pub mod conversions {
             let (bb, hhdd) = get_bb_hhdd(addr);
             Ok(((bb + *HIROM_BB.start()) | hhdd) & BBHHDD)
         }
+
+        pub type ConvFn = fn(AddressPc) -> Result<AddressSnes, String>;
+        pub fn decide(map_mode: MapMode) -> ConvFn {
+            if map_mode.is_lorom() || map_mode.is_exlorom() { lorom } else { hirom }
+        }
     }
 
     pub mod snes_to_pc {
-        use crate::addr::{
-            address_spaces::*,
-            aliases::*,
-            helpers::*,
-            masks::*,
+        use crate::{
+            addr::{
+                address_spaces::*,
+                aliases::*,
+                helpers::*,
+                masks::*,
+            },
+            internal_header::MapMode,
         };
 
         pub fn lorom(addr: AddressSnes) -> Result<AddressPc, String> {
@@ -100,6 +111,11 @@ pub mod conversions {
             } else {
                 Err(format!("Invalid HiROM address: ${:x}.", addr))
             }
+        }
+
+        pub type ConvFn = fn(AddressSnes) -> Result<AddressPc, String>;
+        pub fn decide(map_mode: MapMode) -> ConvFn {
+            if map_mode.is_lorom() || map_mode.is_exlorom() { lorom } else { hirom }
         }
     }
 }

@@ -94,14 +94,8 @@ impl VanillaPalette {
         map_mode: MapMode,
     ) -> IResult<&'a [u8], VanillaPalette>
     {
-        let to_pc_addr = if map_mode.is_lorom() || map_mode.is_exlorom() {
-            snes_to_pc::lorom
-        } else {
-            snes_to_pc::hirom
-        };
-
         let parse_colors = |pos, n| {
-            let pos = to_pc_addr(pos).unwrap();
+            let pos = snes_to_pc::decide(map_mode)(pos).unwrap();
             let input = &rom_data[pos..pos + (2 * n)];
             count!(input, le_u16, n)
         };
