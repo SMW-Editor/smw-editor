@@ -41,4 +41,5 @@ for contributions.
 
 Since this project is in such an early stage of development, I think creating a small team
 of developers would make the most sense. So if you're willing to join me, and are
-experienced in Rust and SMW romhacking, please contact me, and we'll sort things out. 
+experienced in Rust and SMW romhacking, please
+[contact me](mailto:a.gasior@newcastle.ac.uk), and we'll sort things out. 
