@@ -1,7 +1,6 @@
 use nom::{
-    count,
     IResult,
-    number::complete::le_u8,
+    take,
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
@@ -24,7 +23,7 @@ pub struct PrimaryHeader {
 
 impl PrimaryHeader {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = count!(input, le_u8, PRIMARY_HEADER_SIZE)?;
+        let (input, bytes) = take!(input, PRIMARY_HEADER_SIZE)?;
         Ok((input, PrimaryHeader {
             palette_bg:      ((bytes[0] & 0b11100000) >> 5),
             level_length:    ((bytes[0] & 0b00011111) >> 0),

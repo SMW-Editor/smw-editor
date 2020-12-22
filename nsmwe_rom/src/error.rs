@@ -14,7 +14,7 @@ use std::{
     io::Error as IoError,
 };
 
-// Types -------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
 pub enum RomParseError {
@@ -25,7 +25,7 @@ pub enum RomParseError {
 
 create_error!(pub RomReadError: IoError, RomParseError);
 
-// Implementations ---------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 impl fmt::Display for RomParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -40,7 +40,7 @@ impl fmt::Display for RomParseError {
 
 impl Error for RomParseError {}
 
-// Implementations ---------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 pub fn nom_error(input: &[u8], kind: ErrorKind) -> NomErr<NomError<&[u8]>> {
     NomErr::Error(NomError::new(input, kind))

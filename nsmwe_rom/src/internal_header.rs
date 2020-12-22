@@ -15,7 +15,9 @@ use nom::{
         le_u8,
         le_u16,
     },
-    sequence::tuple,
+    pair,
+    preceded,
+    take,
     take_str,
 };
 
@@ -160,24 +162,19 @@ impl RomInternalHeader {
     }
 
     fn find(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Option<AddressPc>> {
-        let lorom_header_start = smc_header_offset + *HEADER_LOROM.start();
-        let hirom_header_start = smc_header_offset + *HEADER_HIROM.start();
+        let lo_header_start = smc_header_offset + *HEADER_LOROM.start();
+        let hi_header_start = smc_header_offset + *HEADER_HIROM.start();
 
-        let lorom_complmnt_idx = lorom_header_start + offsets::COMPLEMENT_CHECK;
-        let lorom_checksum_idx = lorom_header_start + offsets::CHECKSUM;
-        let hirom_complmnt_idx = hirom_header_start + offsets::COMPLEMENT_CHECK;
-        let hirom_checksum_idx = hirom_header_start + offsets::CHECKSUM;
+        let lo_cpl_idx = lo_header_start + offsets::COMPLEMENT_CHECK;
+        let hi_cpl_idx = hi_header_start + offsets::COMPLEMENT_CHECK;
 
-        let lorom_input = &rom_data[lorom_complmnt_idx..=lorom_checksum_idx + 2];
-        let hirom_input = &rom_data[hirom_complmnt_idx..=hirom_checksum_idx + 2];
+        let (_, (lo_cpl, lo_csm)) = preceded!(rom_data, take!(lo_cpl_idx), pair!(le_u16, le_u16))?;
+        let (_, (hi_cpl, hi_csm)) = preceded!(rom_data, take!(hi_cpl_idx), pair!(le_u16, le_u16))?;
 
-        let (_, (lorom_complement, lorom_checksum)) = tuple((le_u16, le_u16))(lorom_input)?;
-        let (_, (hirom_complement, hirom_checksum)) = tuple((le_u16, le_u16))(hirom_input)?;
-
-        if (lorom_checksum ^ lorom_complement) == 0xFFFF {
-            Ok((rom_data, Some(lorom_header_start)))
-        } else if (hirom_checksum ^ hirom_complement) == 0xFFFF {
-            Ok((rom_data, Some(hirom_header_start)))
+        if (lo_csm ^ lo_cpl) == 0xFFFF {
+            Ok((rom_data, Some(lo_header_start)))
+        } else if (hi_csm ^ hi_cpl) == 0xFFFF {
+            Ok((rom_data, Some(hi_header_start)))
         } else {
             Ok((rom_data, None))
         }

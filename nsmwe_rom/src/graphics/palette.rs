@@ -15,6 +15,8 @@ use nom::{
     map,
     named,
     number::complete::le_u16,
+    preceded,
+    take,
     IResult,
 };
 
@@ -95,12 +97,10 @@ impl VanillaPalette {
         rom_data: &'a [u8],
         header: &PrimaryHeader,
         map_mode: MapMode,
-    ) -> IResult<&'a [u8], VanillaPalette>
-    {
+    ) -> IResult<&'a [u8], VanillaPalette> {
         let parse_colors = |pos, n| {
             let pos = snes_to_pc::decide(map_mode)(pos).unwrap();
-            let input = &rom_data[pos..pos + (2 * n)];
-            count!(input, le_bgr16, n)
+            preceded!(rom_data, take!(pos), count!(le_bgr16, n))
         };
 
         let (_, back_area_color) = parse_colors(

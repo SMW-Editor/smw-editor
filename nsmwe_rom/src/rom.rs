@@ -6,6 +6,7 @@ use crate::{
         RomReadError,
     },
     internal_header::RomInternalHeader,
+    level::level::Level,
 };
 use self::{
     helpers::*,
@@ -18,6 +19,7 @@ use std::{
 
 pub struct Rom {
     pub internal_header: RomInternalHeader,
+    pub levels: Vec<Level>,
 }
 
 impl Rom {
@@ -41,6 +43,7 @@ impl Rom {
 
         Ok(Rom {
             internal_header,
+            levels: Vec::new(),
         })
     }
 }
@@ -52,10 +55,10 @@ pub mod constants {
 mod helpers {
     use crate::error::RomParseError;
 
-    pub fn data_has_smc_header(data: &[u8]) -> Result<bool, RomParseError> {
+    pub fn data_has_smc_header(rom_data: &[u8]) -> Result<bool, RomParseError> {
         use crate::SMC_HEADER_SIZE;
 
-        let size = data.len() % 0x400;
+        let size = rom_data.len() % 0x400;
         if size == SMC_HEADER_SIZE {
             Ok(true)
         } else if size == 0 {
