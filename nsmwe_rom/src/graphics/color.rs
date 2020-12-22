@@ -37,8 +37,8 @@ impl From<Bgr16> for Rgba {
     }
 }
 
-impl Rgba {
-    pub fn arr(&self) -> [f32; 4] {
+impl Into<[f32; 4]> for Rgba {
+    fn into(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
     }
 }

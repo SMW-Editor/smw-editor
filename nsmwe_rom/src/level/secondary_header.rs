@@ -1,20 +1,4 @@
-pub struct PrimaryLevelHeader {
-    pub palette_bg: u8,
-    pub palette_fg: u8,
-    pub palette_sprite: u8,
-    pub back_area_color: u8,
-    pub sprite_gfx: u8,
-    pub timer: u8,
-    pub item_memory: u8,
-    pub vertical_scroll: u8,
-    pub fg_bg_gfx: u8,
-    pub level_length: u8,
-    pub level_mode: u8,
-    pub layer3_priority: bool,
-    pub music: u8,
-}
-
-pub struct SecondaryLevelHeader {
+pub struct SecondaryHeader {
     pub layer2_scroll: u8,
     pub main_entrance_pos: (u8, u8),
     pub layer3: u8,

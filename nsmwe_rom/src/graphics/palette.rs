@@ -5,7 +5,7 @@ use crate::{
         BGR16_SIZE,
     },
     internal_header::MapMode,
-    level::header::PrimaryLevelHeader,
+    level::primary_header::PrimaryHeader,
 };
 use self::constants::*;
 
@@ -59,20 +59,20 @@ mod constants {
 // -------------------------------------------------------------------------------------------------
 
 pub struct CustomPalette {
-    back_area_color: Bgr16,
-    colors: [Bgr16; PALETTE_CUSTOM_LENGTH],
+    _back_area_color: Bgr16,
+    _colors: [Bgr16; PALETTE_CUSTOM_LENGTH],
 }
 
 pub struct VanillaPalette {
-    back_area_color: Bgr16,
-    bg:             [Bgr16; PALETTE_BG_LENGTH],
-    fg:             [Bgr16; PALETTE_FG_LENGTH],
-    sprite:         [Bgr16; PALETTE_SPRITE_LENGTH],
-    wtf:            [Bgr16; PALETTE_WTF_LENGTH],
-    players:        [Bgr16; PALETTE_PLAYER_LENGTH],
-    layer3:         [Bgr16; PALETTE_LAYER3_LENGTH],
-    berry:          [Bgr16; PALETTE_BERRY_LENGTH],
-    animated_color: [Bgr16; PALETTE_ANIMATED_LENGTH],
+    _back_area_color: Bgr16,
+    _bg:             [Bgr16; PALETTE_BG_LENGTH],
+    _fg:             [Bgr16; PALETTE_FG_LENGTH],
+    _sprite:         [Bgr16; PALETTE_SPRITE_LENGTH],
+    _wtf:            [Bgr16; PALETTE_WTF_LENGTH],
+    _players:        [Bgr16; PALETTE_PLAYER_LENGTH],
+    _layer3:         [Bgr16; PALETTE_LAYER3_LENGTH],
+    _berry:          [Bgr16; PALETTE_BERRY_LENGTH],
+    _animated_color: [Bgr16; PALETTE_ANIMATED_LENGTH],
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -84,8 +84,8 @@ impl CustomPalette {
         back_area_color: le_bgr16 >>
         colors: count!(le_bgr16, PALETTE_CUSTOM_LENGTH) >>
         (CustomPalette {
-            back_area_color,
-            colors: colors.try_into().unwrap()
+            _back_area_color: back_area_color,
+            _colors: colors.try_into().unwrap(),
         })
     ));
 }
@@ -93,7 +93,7 @@ impl CustomPalette {
 impl VanillaPalette {
     pub fn from_primary_level_header<'a>(
         rom_data: &'a [u8],
-        header: &PrimaryLevelHeader,
+        header: &PrimaryHeader,
         map_mode: MapMode,
     ) -> IResult<&'a [u8], VanillaPalette>
     {
@@ -120,15 +120,15 @@ impl VanillaPalette {
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR,  PALETTE_ANIMATED_LENGTH)?;
 
         Ok((rom_data, VanillaPalette {
-            back_area_color: back_area_color[0],
-            bg:              bg      .try_into().unwrap(),
-            fg:              fg      .try_into().unwrap(),
-            sprite:          sprite  .try_into().unwrap(),
-            wtf:             wtf     .try_into().unwrap(),
-            players:         players .try_into().unwrap(),
-            layer3:          layer3  .try_into().unwrap(),
-            berry:           berry   .try_into().unwrap(),
-            animated_color:  animated.try_into().unwrap(),
+            _back_area_color: back_area_color[0],
+            _bg:              bg      .try_into().unwrap(),
+            _fg:              fg      .try_into().unwrap(),
+            _sprite:          sprite  .try_into().unwrap(),
+            _wtf:             wtf     .try_into().unwrap(),
+            _players:         players .try_into().unwrap(),
+            _layer3:          layer3  .try_into().unwrap(),
+            _berry:           berry   .try_into().unwrap(),
+            _animated_color:  animated.try_into().unwrap(),
         }))
     }
 }
