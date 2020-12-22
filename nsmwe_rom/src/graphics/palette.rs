@@ -12,6 +12,7 @@ use self::constants::*;
 use nom::{
     count,
     do_parse,
+    map,
     named,
     number::complete::le_u16,
     IResult,
@@ -76,10 +77,12 @@ pub struct VanillaPalette {
 
 // -------------------------------------------------------------------------------------------------
 
+named!(le_bgr16<Bgr16>, map!(le_u16, Bgr16));
+
 impl CustomPalette {
     named!(parse<&[u8], Self>, do_parse!(
-        back_area_color: le_u16 >>
-        colors: count!(le_u16, PALETTE_CUSTOM_LENGTH) >>
+        back_area_color: le_bgr16 >>
+        colors: count!(le_bgr16, PALETTE_CUSTOM_LENGTH) >>
         (CustomPalette {
             back_area_color,
             colors: colors.try_into().unwrap()
@@ -97,7 +100,7 @@ impl VanillaPalette {
         let parse_colors = |pos, n| {
             let pos = snes_to_pc::decide(map_mode)(pos).unwrap();
             let input = &rom_data[pos..pos + (2 * n)];
-            count!(input, le_u16, n)
+            count!(input, le_bgr16, n)
         };
 
         let (_, back_area_color) = parse_colors(
