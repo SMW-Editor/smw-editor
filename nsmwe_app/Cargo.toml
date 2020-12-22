@@ -3,6 +3,7 @@ name = "nsmwe_app"
 version = "0.1.0"
 authors = ["Adam Gąsior (Adanos020)"]
 edition = "2018"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,8 +11,8 @@ edition = "2018"
 nsmwe_rom = { path = "../nsmwe_rom" }
 
 glium = "0.28.0"
-imgui = "0.6.0"
-imgui-glium-renderer = "0.6.0"
-imgui-winit-support = "0.6.0"
+imgui = "0.6.1"
+imgui-glium-renderer = "0.6.1"
+imgui-winit-support = "0.6.1"
 inline_tweak = "1.0.8"
 nfd2 = "0.2.3"
