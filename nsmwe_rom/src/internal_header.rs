@@ -1,7 +1,7 @@
 pub use self::address_spaces::*;
 
 use crate::{
-    addr::AddressPc,
+    addr::AddrPc,
     error::nom_error,
 };
 
@@ -33,9 +33,9 @@ use std::{
 };
 
 pub mod address_spaces {
-    use crate::addr::AddressSpace;
-    pub const HEADER_LOROM: AddressSpace = 0x007FC0..=0x008000;
-    pub const HEADER_HIROM: AddressSpace = 0x00FFC0..=0x010000;
+    use crate::addr::{AddrPc, AddrSpacePc};
+    pub const HEADER_LOROM: AddrSpacePc = AddrPc(0x007FC0)..=AddrPc(0x008000);
+    pub const HEADER_HIROM: AddrSpacePc = AddrPc(0x00FFC0)..=AddrPc(0x010000);
 }
 
 pub mod offsets {
@@ -61,7 +61,7 @@ pub struct RomInternalHeader {
     pub version_number: u8,
 }
 
-#[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum MapMode {
     SlowLoRom   = 0b100000,
@@ -147,26 +147,24 @@ pub enum RegionCode {
 // -------------------------------------------------------------------------------------------------
 
 impl RomInternalHeader {
-    pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Self> {
+    pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddrPc) -> IResult<&[u8], Self> {
         use nom::error::ErrorKind;
         match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
             Some(begin) => {
                 let end = begin + sizes::INTERNAL_HEADER;
-                match rom_data.get(begin..end) {
-                    Some(header_slice) => RomInternalHeader::parse(header_slice),
-                    None => Err(nom_error(rom_data, ErrorKind::Eof)),
-                }
+                let (_, input) = preceded!(rom_data, take!(begin.0), take!((end - begin).0))?;
+                RomInternalHeader::parse(input)
             }
             None => Err(nom_error(rom_data, ErrorKind::Satisfy)),
         }
     }
 
-    fn find(rom_data: &[u8], smc_header_offset: AddressPc) -> IResult<&[u8], Option<AddressPc>> {
+    fn find(rom_data: &[u8], smc_header_offset: AddrPc) -> IResult<&[u8], Option<AddrPc>> {
         let lo_header_start = smc_header_offset + *HEADER_LOROM.start();
         let hi_header_start = smc_header_offset + *HEADER_HIROM.start();
 
-        let lo_cpl_idx = lo_header_start + offsets::COMPLEMENT_CHECK;
-        let hi_cpl_idx = hi_header_start + offsets::COMPLEMENT_CHECK;
+        let lo_cpl_idx: usize = (lo_header_start + offsets::COMPLEMENT_CHECK).into();
+        let hi_cpl_idx: usize = (hi_header_start + offsets::COMPLEMENT_CHECK).into();
 
         let (_, (lo_cpl, lo_csm)) = preceded!(rom_data, take!(lo_cpl_idx), pair!(le_u16, le_u16))?;
         let (_, (hi_cpl, hi_csm)) = preceded!(rom_data, take!(hi_cpl_idx), pair!(le_u16, le_u16))?;

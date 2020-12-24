@@ -1,3 +1,3 @@
-use crate::addr::AddressSnes;
+use crate::addr::AddrSnes;
 
-pub const LEVEL_PALETTES: AddressSnes = 0x0EF600;
+pub const LEVEL_PALETTES: AddrSnes = AddrSnes(0x0EF600);

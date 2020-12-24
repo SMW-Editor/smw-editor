@@ -37,6 +37,17 @@ impl From<Bgr16> for Rgba {
     }
 }
 
+impl From<[f32; 4]> for Rgba {
+    fn from(color: [f32; 4]) -> Self {
+        Rgba {
+            r: color[0],
+            g: color[1],
+            b: color[2],
+            a: color[3],
+        }
+    }
+}
+
 impl Into<[f32; 4]> for Rgba {
     fn into(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]

@@ -1,10 +1,9 @@
 use crate::{
-    addr::conversions::snes_to_pc,
+    addr::AddrPc,
     graphics::color::{
         Bgr16,
         BGR16_SIZE,
     },
-    internal_header::MapMode,
     level::primary_header::PrimaryHeader,
 };
 use self::constants::*;
@@ -20,22 +19,22 @@ use nom::{
     IResult,
 };
 
-use std::convert::TryInto;
+use std::convert::{TryInto, TryFrom};
 
 mod constants {
     use crate::graphics::color::BGR16_SIZE;
 
     pub mod addr {
-        use crate::addr::AddressSnes;
-        pub const BACK_AREA_COLORS: AddressSnes = 0x00B0A0;
-        pub const BG_PALETTES:      AddressSnes = 0x00B0B0;
-        pub const FG_PALETTES:      AddressSnes = 0x00B190;
-        pub const SPRITE_PALETTES:  AddressSnes = 0x00B318;
-        pub const WTF_PALETTES:     AddressSnes = 0x00B250;
-        pub const PLAYER_PALETTES:  AddressSnes = 0x00B2C8;
-        pub const LAYER3_PALETTES:  AddressSnes = 0x00B170;
-        pub const BERRY_PALETTES:   AddressSnes = 0x00B674;
-        pub const ANIMATED_COLOR:   AddressSnes = 0x00B60C;
+        use crate::addr::AddrSnes;
+        pub const BACK_AREA_COLORS: AddrSnes = AddrSnes(0x00B0A0);
+        pub const BG_PALETTES:      AddrSnes = AddrSnes(0x00B0B0);
+        pub const FG_PALETTES:      AddrSnes = AddrSnes(0x00B190);
+        pub const SPRITE_PALETTES:  AddrSnes = AddrSnes(0x00B318);
+        pub const WTF_PALETTES:     AddrSnes = AddrSnes(0x00B250);
+        pub const PLAYER_PALETTES:  AddrSnes = AddrSnes(0x00B2C8);
+        pub const LAYER3_PALETTES:  AddrSnes = AddrSnes(0x00B170);
+        pub const BERRY_PALETTES:   AddrSnes = AddrSnes(0x00B674);
+        pub const ANIMATED_COLOR:   AddrSnes = AddrSnes(0x00B60C);
     }
 
     pub const PALETTE_BG_SIZE:       usize = 0x18;
@@ -96,10 +95,9 @@ impl VanillaPalette {
     pub fn from_primary_level_header<'a>(
         rom_data: &'a [u8],
         header: &PrimaryHeader,
-        map_mode: MapMode,
     ) -> IResult<&'a [u8], VanillaPalette> {
         let parse_colors = |pos, n| {
-            let pos = snes_to_pc::decide(map_mode)(pos).unwrap();
+            let pos: usize = AddrPc::try_from(pos).unwrap().into();
             preceded!(rom_data, take!(pos), count!(le_bgr16, n))
         };
 

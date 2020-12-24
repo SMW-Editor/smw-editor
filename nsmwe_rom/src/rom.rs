@@ -1,6 +1,7 @@
 pub use constants::*;
 
 use crate::{
+    addr::AddrPc,
     error::{
         RomParseError,
         RomReadError,
@@ -35,8 +36,9 @@ impl Rom {
 
     pub fn from_raw(data: &[u8]) -> Result<Rom, RomParseError> {
         let smc_header_offset = if data_has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
+
         let (_input, internal_header) =
-            match RomInternalHeader::from_rom_data(data, smc_header_offset) {
+            match RomInternalHeader::from_rom_data(data, AddrPc(smc_header_offset)) {
                 Ok(res) => res,
                 Err(_) => return Err(RomParseError::InternalHeader),
             };

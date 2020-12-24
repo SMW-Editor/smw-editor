@@ -1,4 +1,7 @@
-use crate::addr::AddressPc;
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    internal_header::MapMode,
+};
 
 use nom::{
     Err as NomErr,
@@ -18,9 +21,15 @@ use std::{
 
 #[derive(Debug)]
 pub enum RomParseError {
-    BadAddress(AddressPc),
+    BadAddress(usize),
     BadSize(usize),
     InternalHeader,
+}
+
+#[derive(Debug)]
+pub enum AddressConversionError {
+    Pc(AddrPc),
+    Snes(AddrSnes, MapMode),
 }
 
 create_error!(pub RomReadError: IoError, RomParseError);
@@ -31,7 +40,7 @@ impl fmt::Display for RomParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RomParseError::*;
         write!(f, "{}", match self {
-            BadAddress(addr) => format!("ROM doesn't contain address {}", addr),
+            BadAddress(addr) => format!("ROM doesn't contain PC address {}", addr),
             BadSize(size) => format!("Invalid ROM size: {}", size),
             InternalHeader => String::from("Parsing internal header failed"),
         })
@@ -39,6 +48,19 @@ impl fmt::Display for RomParseError {
 }
 
 impl Error for RomParseError {}
+
+impl fmt::Display for AddressConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AddressConversionError::*;
+        write!(f, "{}", match self {
+            Pc(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
+            Snes(addr, map_mode) =>
+                format!("Invalid SNES {} address: ${:x}", map_mode, addr),
+        })
+    }
+}
+
+impl Error for AddressConversionError {}
 
 // -------------------------------------------------------------------------------------------------
 

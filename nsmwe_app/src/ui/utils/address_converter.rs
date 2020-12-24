@@ -13,7 +13,7 @@ use imgui::{
     im_str,
 };
 
-use nsmwe_rom::addr;
+use nsmwe_rom::addr::{AddrPc, AddrSnes};
 
 pub struct UiAddressConverter {
     conversion_mode: ConversionMode,
@@ -125,19 +125,31 @@ impl UiAddressConverter {
             }
         };
 
-        let addr_dst = match self.conversion_mode {
-            ConversionMode::LoRom => match direction {
-                ConvDir::PcToSnes => addr::pc_to_snes::lorom(addr_src),
-                ConvDir::SnesToPc => addr::snes_to_pc::lorom(addr_src),
+        let addr_dst = match direction {
+            ConvDir::PcToSnes => {
+                let res = match self.conversion_mode {
+                    ConversionMode::LoRom => AddrSnes::try_from_lorom(AddrPc(addr_src)),
+                    ConversionMode::HiRom => AddrSnes::try_from_hirom(AddrPc(addr_src)),
+                };
+                match res {
+                    Ok(addr) => Ok(addr.0),
+                    Err(err) => Err(err),
+                }
             }
-            ConversionMode::HiRom => match direction {
-                ConvDir::PcToSnes => addr::pc_to_snes::hirom(addr_src),
-                ConvDir::SnesToPc => addr::snes_to_pc::hirom(addr_src),
+            ConvDir::SnesToPc => {
+                let res = match self.conversion_mode {
+                    ConversionMode::LoRom => AddrPc::try_from_lorom(AddrSnes(addr_src)),
+                    ConversionMode::HiRom => AddrPc::try_from_hirom(AddrSnes(addr_src)),
+                };
+                match res {
+                    Ok(addr) => Ok(addr.0),
+                    Err(err) => Err(err),
+                }
             }
         };
 
         if let Err(msg) = addr_dst {
-            self.text_error = ImString::new(msg);
+            self.text_error = ImString::new(msg.to_string());
         } else {
             let addr_dst = addr_dst.unwrap();
             *buf_dst = ImString::new(format!("{:x}", addr_dst));
