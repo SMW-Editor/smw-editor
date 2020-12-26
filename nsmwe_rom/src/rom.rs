@@ -1,7 +1,6 @@
-pub use constants::*;
+pub use self::constants::*;
 
 use crate::{
-    addr::AddrPc,
     error::{
         RomParseError,
         RomReadError,
@@ -9,14 +8,15 @@ use crate::{
     internal_header::RomInternalHeader,
     level::level::Level,
 };
-use self::{
-    helpers::*,
-};
 
 use std::{
     fs,
     path::Path,
 };
+
+pub mod constants {
+    pub const SMC_HEADER_SIZE: usize = 0x200;
+}
 
 pub struct Rom {
     pub internal_header: RomInternalHeader,
@@ -34,12 +34,12 @@ impl Rom {
         }
     }
 
-    pub fn from_raw(data: &[u8]) -> Result<Rom, RomParseError> {
-        let smc_header_offset = if data_has_smc_header(data)? { SMC_HEADER_SIZE } else { 0 };
+    pub fn from_raw(rom_data: &[u8]) -> Result<Rom, RomParseError> {
+        let rom_data = Rom::trim_smc_header(rom_data)?;
 
-        let (_input, internal_header) =
-            match RomInternalHeader::from_rom_data(data, AddrPc(smc_header_offset)) {
-                Ok(res) => res,
+        let internal_header =
+            match RomInternalHeader::from_rom_data(rom_data) {
+                Ok((_, header)) => header,
                 Err(_) => return Err(RomParseError::InternalHeader),
             };
 
@@ -48,23 +48,13 @@ impl Rom {
             levels: Vec::new(),
         })
     }
-}
 
-pub mod constants {
-    pub const SMC_HEADER_SIZE: usize = 0x200;
-}
-
-mod helpers {
-    use crate::error::RomParseError;
-
-    pub fn data_has_smc_header(rom_data: &[u8]) -> Result<bool, RomParseError> {
-        use crate::SMC_HEADER_SIZE;
-
+    pub fn trim_smc_header(rom_data: &[u8]) -> Result<&[u8], RomParseError> {
         let size = rom_data.len() % 0x400;
         if size == SMC_HEADER_SIZE {
-            Ok(true)
+            Ok(&rom_data[SMC_HEADER_SIZE..])
         } else if size == 0 {
-            Ok(false)
+            Ok(&rom_data[..])
         } else {
             Err(RomParseError::BadSize(size))
         }

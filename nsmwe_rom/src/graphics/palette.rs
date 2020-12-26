@@ -104,42 +104,36 @@ impl ColorPalette {
         let (_, berry)    = parse_colors(addr::BERRY_PALETTES,  PALETTE_BERRY_LENGTH)?;
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR,  PALETTE_ANIMATED_LENGTH)?;
 
-        let berryc = berry.clone();
-
         let mut palette = ColorPalette {
             _back_area_color: back_area_color[0],
-            colors: [Bgr16(0); PALETTE_LENGTH]
+            colors: [Bgr16(0); PALETTE_LENGTH],
         };
 
-        palette.set_colors(bg,      |i| 0x0 + (i / 6), |i| 0x2 + (i % 6)); // rows: 0-1, cols: 2-7
-        palette.set_colors(fg,      |i| 0x2 + (i / 6), |i| 0x2 + (i % 6)); // rows: 2-3, cols: 2-7
-        palette.set_colors(sprite,  |i| 0xE + (i / 6), |i| 0x2 + (i % 6)); // rows: E-F, cols: 2-7
-        palette.set_colors(wtf,     |i| 0x4 + (i / 6), |i| 0x2 + (i % 6)); // rows: 4-D, cols: 2-7
-        palette.set_colors(players, |_| 0x8,           |i| 0x6 + i);       // rows: 8-8, cols: 6-F
-        palette.set_colors(layer3,  |i| 0x0 + (i / 8), |i| 0x8 + (i % 8)); // rows: 0-1, cols: 8-F
-        palette.set_colors(berry,   |i| 0x2 + (i / 7), |i| 0x2 + (i % 7)); // rows: 2-4, cols: 9-F
-        palette.set_colors(berryc,  |i| 0x9 + (i / 7), |i| 0x2 + (i % 7)); // rows: 9-B, cols: 9-F
-        palette.set_color_at(6, 4, animated[0]);
+        palette.set_colors(&bg,      |i| 0x0 + (i / 6), |i| 0x2 + (i % 6)); // rows: 0-1, cols: 2-7
+        palette.set_colors(&fg,      |i| 0x2 + (i / 6), |i| 0x2 + (i % 6)); // rows: 2-3, cols: 2-7
+        palette.set_colors(&sprite,  |i| 0xE + (i / 6), |i| 0x2 + (i % 6)); // rows: E-F, cols: 2-7
+        palette.set_colors(&wtf,     |i| 0x4 + (i / 6), |i| 0x2 + (i % 6)); // rows: 4-D, cols: 2-7
+        palette.set_colors(&players, |_| 0x8,           |i| 0x6 + i);       // rows: 8-8, cols: 6-F
+        palette.set_colors(&layer3,  |i| 0x0 + (i / 8), |i| 0x8 + (i % 8)); // rows: 0-1, cols: 8-F
+        palette.set_colors(&berry,   |i| 0x2 + (i / 7), |i| 0x2 + (i % 7)); // rows: 2-4, cols: 9-F
+        palette.set_colors(&berry,   |i| 0x9 + (i / 7), |i| 0x2 + (i % 7)); // rows: 9-B, cols: 9-F
+        palette.set_color_at(0x6, 0x4, animated[0]);
 
         Ok((rom_data, palette))
     }
 
-    pub fn get_color_at(&self, x: usize, y: usize) -> Option<Bgr16> {
+    pub fn get_color_at(&self, x: usize, y: usize) -> Option<&Bgr16> {
         let idx = Self::get_index_at(x, y);
-        if idx < PALETTE_LENGTH {
-            Some(self.colors[idx])
-        } else {
-            None
-        }
+        self.colors.get(idx)
     }
 
     pub fn set_color_at(&mut self, x: usize, y: usize, col: Bgr16) {
         self.colors[Self::get_index_at(x, y)] = col;
     }
 
-    fn set_colors<Fx, Fy>(&mut self, subpal: Vec<Bgr16>, calc_x: Fx, calc_y: Fy) where
-        Fx: Fn(usize) -> usize,
-        Fy: Fn(usize) -> usize,
+    fn set_colors<Fx, Fy>(&mut self, subpal: &[Bgr16], calc_x: Fx, calc_y: Fy)
+        where Fx: Fn(usize) -> usize,
+              Fy: Fn(usize) -> usize,
     {
         for (idx, &col) in subpal.iter().enumerate() {
             let x = calc_x(idx);

@@ -147,9 +147,9 @@ pub enum RegionCode {
 // -------------------------------------------------------------------------------------------------
 
 impl RomInternalHeader {
-    pub fn from_rom_data(rom_data: &[u8], smc_header_offset: AddrPc) -> IResult<&[u8], Self> {
+    pub fn from_rom_data(rom_data: &[u8]) -> IResult<&[u8], Self> {
         use nom::error::ErrorKind;
-        match RomInternalHeader::find(rom_data, smc_header_offset)?.1 {
+        match RomInternalHeader::find(rom_data)?.1 {
             Some(begin) => {
                 let end = begin + sizes::INTERNAL_HEADER;
                 let (_, input) = preceded!(rom_data, take!(begin.0), take!((end - begin).0))?;
@@ -159,20 +159,17 @@ impl RomInternalHeader {
         }
     }
 
-    fn find(rom_data: &[u8], smc_header_offset: AddrPc) -> IResult<&[u8], Option<AddrPc>> {
-        let lo_header_start = smc_header_offset + *HEADER_LOROM.start();
-        let hi_header_start = smc_header_offset + *HEADER_HIROM.start();
-
-        let lo_cpl_idx: usize = (lo_header_start + offsets::COMPLEMENT_CHECK).into();
-        let hi_cpl_idx: usize = (hi_header_start + offsets::COMPLEMENT_CHECK).into();
+    fn find(rom_data: &[u8]) -> IResult<&[u8], Option<AddrPc>> {
+        let lo_cpl_idx: usize = (*HEADER_LOROM.start() + offsets::COMPLEMENT_CHECK).into();
+        let hi_cpl_idx: usize = (*HEADER_HIROM.start() + offsets::COMPLEMENT_CHECK).into();
 
         let (_, (lo_cpl, lo_csm)) = preceded!(rom_data, take!(lo_cpl_idx), pair!(le_u16, le_u16))?;
         let (_, (hi_cpl, hi_csm)) = preceded!(rom_data, take!(hi_cpl_idx), pair!(le_u16, le_u16))?;
 
         if (lo_csm ^ lo_cpl) == 0xFFFF {
-            Ok((rom_data, Some(lo_header_start)))
+            Ok((rom_data, Some(*HEADER_LOROM.start())))
         } else if (hi_csm ^ hi_cpl) == 0xFFFF {
-            Ok((rom_data, Some(hi_header_start)))
+            Ok((rom_data, Some(*HEADER_HIROM.start())))
         } else {
             Ok((rom_data, None))
         }
