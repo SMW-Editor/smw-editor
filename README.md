@@ -22,7 +22,7 @@ and none of the main features are there yet.
 
 **Currently in progress:** parsing the ROM and generating project files from it
 ([To-do list](https://github.com/Adanos020/nsmwe/issues/2)). The internal ROM header
-is now being correctly parsed, now I'm working on extracting colour palettes and
+and colour palettes are now being correctly parsed. Now I'm working on extracting
 graphics.
 
 ## Building

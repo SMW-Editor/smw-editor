@@ -70,8 +70,8 @@ impl UiPaletteViewer {
         let [wx, wy] = ui.window_pos();
 
         for (idx, &color) in palette.colors.iter().enumerate() {
-            let x = wx + (idx / 16) as f32 * CELL_SIZE + PADDING_LEFT;
-            let y = wy + (idx % 16) as f32 * CELL_SIZE + PADDING_TOP;
+            let x = wx + ((idx / 16) as f32 * CELL_SIZE) + PADDING_LEFT;
+            let y = wy + ((idx % 16) as f32 * CELL_SIZE) + PADDING_TOP;
 
             let p1 = [x, y];
             let p2 = [x + CELL_SIZE, y + CELL_SIZE];
