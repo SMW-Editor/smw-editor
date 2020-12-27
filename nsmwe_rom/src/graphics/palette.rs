@@ -1,14 +1,12 @@
 use crate::{
-    addr::{
-        AddrPc,
-        AddrSnes,
-    },
+    addr::AddrPc,
     graphics::color::{
         Bgr16,
         BGR16_SIZE,
     },
     level::primary_header::PrimaryHeader,
 };
+
 use self::constants::*;
 
 use nom::{
@@ -62,9 +60,10 @@ mod constants {
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Clone)]
 pub struct ColorPalette {
-    _back_area_color: Bgr16,
-    colors: [Bgr16; PALETTE_LENGTH],
+    pub back_area_color: Bgr16,
+    pub colors: [Bgr16; PALETTE_LENGTH],
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -72,21 +71,23 @@ pub struct ColorPalette {
 named!(le_bgr16<Bgr16>, map!(le_u16, Bgr16));
 
 impl ColorPalette {
-    pub fn parse_level_palette<'a>(rom_data: &'a [u8], addr: AddrSnes, header: &PrimaryHeader)
+    pub fn parse_level_palette<'a>(rom_data: &'a [u8], _level_num: usize, header: &PrimaryHeader)
         -> IResult<&'a [u8], ColorPalette>
     {
-        if addr == AddrSnes(0x0) || addr == AddrSnes(0xFFFFFF) {
-            ColorPalette::parse_vanilla_level_palette(rom_data, header)
-        } else {
-            ColorPalette::parse_custom_level_palette(rom_data)
-        }
+        ColorPalette::parse_vanilla_level_palette(rom_data, header)
+        // let palette_addr = LEVEL_PALETTES + (3 * level_num);
+        // if palette_addr == AddrSnes(0x0) || palette_addr == AddrSnes(0xFFFFFF) {
+        //     ColorPalette::parse_vanilla_level_palette(rom_data, header)
+        // } else {
+        //     ColorPalette::parse_custom_level_palette(rom_data)
+        // }
     }
 
     named!(pub parse_custom_level_palette<&[u8], Self>, do_parse!(
         back_area_color: le_bgr16 >>
         colors: count!(le_bgr16, PALETTE_LENGTH) >>
         (ColorPalette {
-            _back_area_color: back_area_color,
+            back_area_color: back_area_color,
             colors: colors.try_into().unwrap(),
         })
     ));
@@ -118,7 +119,7 @@ impl ColorPalette {
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR,  PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = ColorPalette {
-            _back_area_color: back_area_color[0],
+            back_area_color: back_area_color[0],
             colors: [Bgr16(0); PALETTE_LENGTH],
         };
 
@@ -126,7 +127,7 @@ impl ColorPalette {
         palette.set_colors(&fg,      |i| 0x2 + (i / 6), |i| 0x2 + (i % 6)); // rows: 2-3, cols: 2-7
         palette.set_colors(&sprite,  |i| 0xE + (i / 6), |i| 0x2 + (i % 6)); // rows: E-F, cols: 2-7
         palette.set_colors(&wtf,     |i| 0x4 + (i / 6), |i| 0x2 + (i % 6)); // rows: 4-D, cols: 2-7
-        palette.set_colors(&players, |_| 0x8,           |i| 0x6 + i);       // rows: 8-8, cols: 6-F
+        palette.set_colors(&players, |i| 0x8 + (i / 8), |i| 0x6 + (i % 8)); // rows: 8-8, cols: 6-F
         palette.set_colors(&layer3,  |i| 0x0 + (i / 8), |i| 0x8 + (i % 8)); // rows: 0-1, cols: 8-F
         palette.set_colors(&berry,   |i| 0x2 + (i / 7), |i| 0x2 + (i % 7)); // rows: 2-4, cols: 9-F
         palette.set_colors(&berry,   |i| 0x9 + (i / 7), |i| 0x2 + (i % 7)); // rows: 9-B, cols: 9-F

@@ -2,10 +2,7 @@ pub use self::constants::*;
 
 use crate::{
     error::{RomParseError, RomReadError},
-    graphics::{
-        palette::ColorPalette,
-        pointer_tables::LEVEL_PALETTES,
-    },
+    graphics::palette::ColorPalette,
     internal_header::RomInternalHeader,
     level::{
         level::Level,
@@ -87,8 +84,7 @@ impl Rom {
     fn get_color_palettes(rom_data: &[u8], levels: &[Level]) -> RpResult<Vec<ColorPalette>> {
         let mut palettes = Vec::with_capacity(LEVEL_COUNT);
         for (level_num, level) in levels.iter().enumerate() {
-            let palette_addr = LEVEL_PALETTES + (3 * level_num);
-            match ColorPalette::parse_level_palette(rom_data, palette_addr, &level.primary_header) {
+            match ColorPalette::parse_level_palette(rom_data, level_num, &level.primary_header) {
                 Ok((_, palette)) => palettes.push(palette),
                 Err(_) => return Err(RomParseError::PaletteLevel(level_num)),
             }

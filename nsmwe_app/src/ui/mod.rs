@@ -10,6 +10,7 @@ pub use self::{
     tool::UiTool,
     utils::{
         address_converter::UiAddressConverter,
+        palette_viewer::UiPaletteViewer,
         rom_info::UiRomInfo,
     },
 };

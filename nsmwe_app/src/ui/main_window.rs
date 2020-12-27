@@ -2,6 +2,7 @@ use crate::{
     OptProjectRef,
     ui::{
         UiAddressConverter,
+        UiPaletteViewer,
         UiProjectCreator,
         UiRomInfo,
         UiTool,
@@ -78,6 +79,10 @@ impl UiMainWindow {
     }
 
     fn menu_tools(&mut self, ui: &Ui) {
+        let project = Rc::clone(&self.project_ref);
+        let project = project.borrow();
+        let project = project.as_ref().unwrap();
+
         ui.menu(im_str!("Tools"), true, || {
             if MenuItem::new(im_str!("Address converter"))
                 .build(ui)
@@ -88,10 +93,13 @@ impl UiMainWindow {
                 .enabled(self.project_ref.borrow().is_some())
                 .build(ui)
             {
-                let project = Rc::clone(&self.project_ref);
-                let project = project.borrow();
-                let project = project.as_ref().unwrap();
                 self.open_tool(|| UiRomInfo::new(&project.rom_data.internal_header));
+            }
+            if MenuItem::new(im_str!("Color palettes"))
+                .enabled(self.project_ref.borrow().is_some())
+                .build(ui)
+            {
+                self.open_tool(|| UiPaletteViewer::new(&project.rom_data.color_palettes));
             }
         });
     }

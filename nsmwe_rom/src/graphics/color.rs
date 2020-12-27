@@ -1,3 +1,5 @@
+use imgui::ImColor;
+
 use std::mem::size_of;
 
 pub const BGR16_SIZE: usize = size_of::<Bgr16>();
@@ -51,5 +53,12 @@ impl From<[f32; 4]> for Rgba {
 impl Into<[f32; 4]> for Rgba {
     fn into(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
+    }
+}
+
+impl Into<ImColor> for Rgba {
+    fn into(self) -> ImColor {
+        let color: [f32; 4] = self.into();
+        color.into()
     }
 }
