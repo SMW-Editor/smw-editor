@@ -12,7 +12,6 @@ pub mod masks {
 
 pub mod types {
     use crate::{
-        addr::masks::*,
         error::AddressConversionError,
         internal_header::MapMode,
     };
