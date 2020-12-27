@@ -106,6 +106,14 @@ pub mod types {
                 Err(AddressConversionError::Snes(addr, MapMode::SlowHiRom))
             }
         }
+
+        pub fn is_valid_lorom(self) -> bool {
+            self.0 < 0x400000
+        }
+
+        pub fn is_valid_hirom(self) -> bool {
+            self.0 < 0x400000
+        }
     }
 
     impl TryFrom<AddrSnes> for AddrPc {
@@ -117,7 +125,7 @@ pub mod types {
 
     impl AddrSnes {
         pub fn try_from_lorom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
-            if addr < AddrPc(0x400000) {
+            if addr.is_valid_lorom() {
                 Ok(AddrSnes((((addr << 1) & 0x7F0000) | (addr & 0x7FFF) | 0x8000).into()))
             } else {
                 Err(AddressConversionError::Pc(addr))
@@ -125,7 +133,7 @@ pub mod types {
         }
 
         pub fn try_from_hirom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
-            if addr < AddrPc(0x400000) {
+            if addr.is_valid_hirom() {
                 Ok(AddrSnes(addr.0 | 0xC00000))
             } else {
                 Err(AddressConversionError::Pc(addr))
