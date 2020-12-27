@@ -24,6 +24,8 @@ pub enum RomParseError {
     BadAddress(usize),
     BadSize(usize),
     InternalHeader,
+    Level(usize),
+    PaletteLevel(usize),
 }
 
 #[derive(Debug)]
@@ -43,6 +45,8 @@ impl fmt::Display for RomParseError {
             BadAddress(addr) => format!("ROM doesn't contain PC address {}", addr),
             BadSize(size) => format!("Invalid ROM size: {}", size),
             InternalHeader => String::from("Parsing internal header failed"),
+            Level(level_num) => format!("Invalid level: {:#x}", level_num),
+            PaletteLevel(level_num) => format!("Invalid level color palette: {:#x}", level_num),
         })
     }
 }

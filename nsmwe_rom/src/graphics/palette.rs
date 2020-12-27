@@ -1,5 +1,8 @@
 use crate::{
-    addr::AddrPc,
+    addr::{
+        AddrPc,
+        AddrSnes,
+    },
     graphics::color::{
         Bgr16,
         BGR16_SIZE,
@@ -69,7 +72,17 @@ pub struct ColorPalette {
 named!(le_bgr16<Bgr16>, map!(le_u16, Bgr16));
 
 impl ColorPalette {
-    named!(pub parse_custom<&[u8], Self>, do_parse!(
+    pub fn parse_level_palette<'a>(rom_data: &'a [u8], addr: AddrSnes, header: &PrimaryHeader)
+        -> IResult<&'a [u8], ColorPalette>
+    {
+        if addr == AddrSnes(0x0) || addr == AddrSnes(0xFFFFFF) {
+            ColorPalette::parse_vanilla_level_palette(rom_data, header)
+        } else {
+            ColorPalette::parse_custom_level_palette(rom_data)
+        }
+    }
+
+    named!(pub parse_custom_level_palette<&[u8], Self>, do_parse!(
         back_area_color: le_bgr16 >>
         colors: count!(le_bgr16, PALETTE_LENGTH) >>
         (ColorPalette {
@@ -78,7 +91,7 @@ impl ColorPalette {
         })
     ));
 
-    pub fn parse_vanilla<'a>(rom_data: &'a [u8], header: &PrimaryHeader)
+    pub fn parse_vanilla_level_palette<'a>(rom_data: &'a [u8], header: &PrimaryHeader)
         -> IResult<&'a [u8], ColorPalette>
     {
         let parse_colors = |pos, n| {

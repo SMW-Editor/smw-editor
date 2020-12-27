@@ -20,15 +20,12 @@ use nom::{
 use std::convert::TryFrom;
 
 pub struct Level {
-    _primary_header: PrimaryHeader,
-    _layer1: Layer1,
+    pub primary_header: PrimaryHeader,
+    pub _layer1: Layer1,
 }
 
 impl Level {
-    pub fn from_rom_data(
-        rom_data: &[u8],
-        level_num: usize,
-    ) -> IResult<&[u8], Self> {
+    pub fn from_rom_data(rom_data: &[u8], level_num: usize) -> IResult<&[u8], Self> {
         let (_layer1, ph) = {
             let l1_ptr_addr = AddrPc::try_from(pointer_tables::LAYER1_DATA + (3 * level_num))
                 .unwrap();
@@ -42,7 +39,7 @@ impl Level {
         let (_, primary_header) = PrimaryHeader::parse(ph)?;
 
         Ok((rom_data, Level {
-            _primary_header: primary_header,
+            primary_header,
             _layer1: Layer1 {}
         }))
     }

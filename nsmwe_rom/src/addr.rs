@@ -1,5 +1,3 @@
-pub use self::address_spaces::*;
-pub use self::helpers::*;
 pub use self::masks::*;
 pub use self::types::*;
 
@@ -12,17 +10,9 @@ pub mod masks {
     pub const BBHHDD: Mask = BB | HH | DD; // Long address
 }
 
-pub mod address_spaces {
-    use super::types::{AddrSnes, AddrSpaceSnes};
-    pub const LOROM_BB:   AddrSpaceSnes = AddrSnes(0x000000)..=AddrSnes(0x6F0000);
-    pub const LOROM_HHDD: AddrSpaceSnes = AddrSnes(0x008000)..=AddrSnes(0x00FFFF);
-    pub const HIROM_BB:   AddrSpaceSnes = AddrSnes(0xC00000)..=AddrSnes(0xFF0000);
-    pub const HIROM_HHDD: AddrSpaceSnes = AddrSnes(0x000000)..=AddrSnes(0x00FFFF);
-}
-
 pub mod types {
     use crate::{
-        addr::{address_spaces::*, helpers::*, masks::*},
+        addr::masks::*,
         error::AddressConversionError,
         internal_header::MapMode,
     };
@@ -102,18 +92,16 @@ pub mod types {
 
     impl AddrPc {
         pub fn try_from_lorom(addr: AddrSnes) -> Result<Self, AddressConversionError> {
-            if is_valid_lorom_address(addr) {
-                let (bb, hhdd) = get_bb_hhdd(addr.into());
-                Ok(Self(((((bb & 0x7F0000) | hhdd) - 0x8000) & BBHHDD).into()))
+            if addr.is_valid_lorom() {
+                Ok(Self((((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)) & BBHHDD))
             } else {
                 Err(AddressConversionError::Snes(addr, MapMode::SlowLoRom))
             }
         }
 
         pub fn try_from_hirom(addr: AddrSnes) -> Result<Self, AddressConversionError> {
-            if is_valid_hirom_address(addr) {
-                let (bb, hhdd) = get_bb_hhdd(addr.into());
-                Ok(Self((((bb - *HIROM_BB.start()) | hhdd) & BBHHDD).into()))
+            if addr.is_valid_hirom() {
+                Ok(Self(addr.0 & 0x3FFFFF))
             } else {
                 Err(AddressConversionError::Snes(addr, MapMode::SlowHiRom))
             }
@@ -130,18 +118,31 @@ pub mod types {
     impl AddrSnes {
         pub fn try_from_lorom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
             if addr < AddrPc(0x400000) {
-                let bb = (addr & BB) | if addr >= AddrPc(0x380000) { 0x800000 } else { 0 };
-                let hh = (addr & 0x7F00) + 0x8000;
-                let dd = addr & DD;
-                Ok(AddrSnes((bb | hh | dd).into()))
+                Ok(AddrSnes((((addr << 1) & 0x7F0000) | (addr & 0x7FFF) | 0x8000).into()))
             } else {
                 Err(AddressConversionError::Pc(addr))
             }
         }
 
         pub fn try_from_hirom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
-            let (bb, hhdd) = get_bb_hhdd(addr.into());
-            Ok(((bb + *HIROM_BB.start()) | hhdd) & BBHHDD)
+            if addr < AddrPc(0x400000) {
+                Ok(AddrSnes(addr.0 | 0xC00000))
+            } else {
+                Err(AddressConversionError::Pc(addr))
+            }
+        }
+
+        pub fn is_valid_lorom(self) -> bool {
+            let wram = (self.0 & 0xFE0000) == 0x7E0000;
+            let junk = (self.0 & 0x408000) == 0x000000;
+            let sram = (self.0 & 0x708000) == 0x700000;
+            !wram && !junk && !sram
+        }
+
+        pub fn is_valid_hirom(self) -> bool {
+            let wram = (self.0 & 0xFE0000) == 0x7E0000;
+            let junk = (self.0 & 0x408000) == 0x000000;
+            !wram && !junk
         }
     }
 
@@ -150,27 +151,5 @@ pub mod types {
         fn try_from(value: AddrPc) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)
         }
-    }
-}
-
-pub mod helpers {
-    use crate::addr::{
-        address_spaces::*,
-        types::AddrSnes,
-        masks::*,
-    };
-
-    pub fn get_bb_hhdd(addr: usize) -> (usize, usize) {
-        (addr & BB, addr & HHDD)
-    }
-
-    pub fn is_valid_lorom_address(addr: AddrSnes) -> bool {
-        let (bb, hhdd) = get_bb_hhdd(addr.into());
-        LOROM_BB.contains(&bb.into()) && LOROM_HHDD.contains(&hhdd.into())
-    }
-
-    pub fn is_valid_hirom_address(addr: AddrSnes) -> bool {
-        let (bb, hhdd) = get_bb_hhdd(addr.into());
-        HIROM_BB.contains(&bb.into()) && HIROM_HHDD.contains(&hhdd.into())
     }
 }
