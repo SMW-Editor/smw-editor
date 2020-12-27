@@ -93,7 +93,7 @@ pub mod types {
     impl AddrPc {
         pub fn try_from_lorom(addr: AddrSnes) -> Result<Self, AddressConversionError> {
             if addr.is_valid_lorom() {
-                Ok(Self((((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)) & BBHHDD))
+                Ok(Self(((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)))
             } else {
                 Err(AddressConversionError::Snes(addr, MapMode::SlowLoRom))
             }
@@ -126,7 +126,7 @@ pub mod types {
     impl AddrSnes {
         pub fn try_from_lorom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
             if addr.is_valid_lorom() {
-                Ok(AddrSnes((((addr << 1) & 0x7F0000) | (addr & 0x7FFF) | 0x8000).into()))
+                Ok(AddrSnes(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
             } else {
                 Err(AddressConversionError::Pc(addr))
             }
