@@ -30,8 +30,8 @@ pub enum RomParseError {
 
 #[derive(Debug)]
 pub enum AddressConversionError {
-    Pc(AddrPc),
-    Snes(AddrSnes, MapMode),
+    PcToSnes(AddrPc),
+    SnesToPc(AddrSnes, MapMode),
 }
 
 create_error!(pub RomReadError: IoError, RomParseError);
@@ -57,8 +57,8 @@ impl fmt::Display for AddressConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AddressConversionError::*;
         write!(f, "{}", match self {
-            Pc(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
-            Snes(addr, map_mode) =>
+            PcToSnes(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
+            SnesToPc(addr, map_mode) =>
                 format!("Invalid SNES {} address: ${:x}", map_mode, addr),
         })
     }

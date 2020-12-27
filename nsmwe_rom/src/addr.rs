@@ -94,7 +94,7 @@ pub mod types {
             if addr.is_valid_lorom() {
                 Ok(Self(((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)))
             } else {
-                Err(AddressConversionError::Snes(addr, MapMode::SlowLoRom))
+                Err(AddressConversionError::SnesToPc(addr, MapMode::SlowLoRom))
             }
         }
 
@@ -102,7 +102,7 @@ pub mod types {
             if addr.is_valid_hirom() {
                 Ok(Self(addr.0 & 0x3FFFFF))
             } else {
-                Err(AddressConversionError::Snes(addr, MapMode::SlowHiRom))
+                Err(AddressConversionError::SnesToPc(addr, MapMode::SlowHiRom))
             }
         }
 
@@ -127,7 +127,7 @@ pub mod types {
             if addr.is_valid_lorom() {
                 Ok(AddrSnes(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
             } else {
-                Err(AddressConversionError::Pc(addr))
+                Err(AddressConversionError::PcToSnes(addr))
             }
         }
 
@@ -135,7 +135,7 @@ pub mod types {
             if addr.is_valid_hirom() {
                 Ok(AddrSnes(addr.0 | 0xC00000))
             } else {
-                Err(AddressConversionError::Pc(addr))
+                Err(AddressConversionError::PcToSnes(addr))
             }
         }
 
