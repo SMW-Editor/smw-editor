@@ -80,7 +80,10 @@ pub trait ColorPalette {
 }
 
 macro_rules! impl_color_palette {
-    ($struct_name:ident { $($field_name:ident: [$rows:expr, $cols:expr]),+ $(,)? }) => {
+    ($struct_name:ident {
+        $([$rows:expr, $cols:expr] => $field_name:ident),+
+        $(, _ => $fallback:ident)? $(,)?
+    }) => {
         impl ColorPalette for $struct_name {
             fn set_color_at(&mut self, row: usize, col: usize, color: Bgr16) {
                 assert!(row <= 0xF);
@@ -93,8 +96,14 @@ macro_rules! impl_color_palette {
                         return;
                     }
                 )+
+                $(
+                    if let Some(fb) = Rc::get_mut(&mut self.$fallback) {
+                        fb.set_color_at(row, col, color);
+                    }
+                )?
             }
 
+            #[allow(unreachable_code)]
             fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr16> {
                 if row > 0xF || col > 0xF {
                     None
@@ -106,6 +115,7 @@ macro_rules! impl_color_palette {
                             return Some(&self.$field_name[(ci * $rows.count()) + ri]);
                         }
                     )+
+                    $(return self.$fallback.get_color_at(row, col);)?
                     Some(&Bgr16(0))
                 }
             }
@@ -214,11 +224,11 @@ impl GlobalLevelColorPalette {
 }
 
 impl_color_palette!(GlobalLevelColorPalette {
-    wtf:     [0x4..=0xD, 0x2..=0x7],
-    players: [0x8..=0x8, 0x6..=0xF],
-    layer3:  [0x0..=0x1, 0x8..=0xF],
-    berry:   [0x2..=0x4, 0x9..=0xF],
-    berry:   [0x9..=0xB, 0x9..=0xF],
+    [0x4..=0xD, 0x2..=0x7] => wtf,
+    [0x8..=0x8, 0x6..=0xF] => players,
+    [0x0..=0x1, 0x8..=0xF] => layer3,
+    [0x2..=0x4, 0x9..=0xF] => berry,
+    [0x9..=0xB, 0x9..=0xF] => berry,
 });
 
 impl LevelColorPalette {
@@ -259,7 +269,8 @@ impl LevelColorPalette {
 }
 
 impl_color_palette!(LevelColorPalette {
-    bg:     [0x0..=0x1, 0x2..=0x7],
-    fg:     [0x2..=0x3, 0x2..=0x7],
-    sprite: [0xE..=0xF, 0x2..=0x7],
+    [0x0..=0x1, 0x2..=0x7] => bg,
+    [0x2..=0x3, 0x2..=0x7] => fg,
+    [0xE..=0xF, 0x2..=0x7] => sprite,
+    _ => global_palette,
 });

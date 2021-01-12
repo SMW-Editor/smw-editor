@@ -94,7 +94,7 @@ impl Rom {
     fn get_global_level_color_palette(rom_data: &[u8]) -> RpResult<Rc<GlobalLevelColorPalette>> {
         match GlobalLevelColorPalette::parse(rom_data) {
             Ok((_, palette)) => Ok(Rc::new(palette)),
-            Err(_) => Err(RomParseError::PaletteGlobal)
+            Err(_) => Err(RomParseError::PaletteGlobal),
         }
     }
 
