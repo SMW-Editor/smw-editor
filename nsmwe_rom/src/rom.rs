@@ -2,7 +2,11 @@ pub use self::constants::*;
 
 use crate::{
     error::{RomParseError, RomReadError},
-    graphics::palette::ColorPalette,
+    graphics::palette::{
+        CustomColorPalette,
+        GlobalLevelColorPalette,
+        LevelColorPalette,
+    },
     internal_header::RomInternalHeader,
     level::{
         level::Level,
@@ -13,6 +17,7 @@ use crate::{
 use std::{
     fs,
     path::Path,
+    rc::Rc,
 };
 
 pub mod constants {
@@ -24,7 +29,9 @@ type RpResult<T> = Result<T, RomParseError>;
 pub struct Rom {
     pub internal_header: RomInternalHeader,
     pub levels: Vec<Level>,
-    pub color_palettes: Vec<ColorPalette>,
+    pub custom_color_palettes: Vec<CustomColorPalette>,
+    pub global_level_color_palette: Rc<GlobalLevelColorPalette>,
+    pub level_color_palettes: Vec<LevelColorPalette>,
 }
 
 impl Rom {
@@ -43,12 +50,15 @@ impl Rom {
 
         let internal_header = Rom::get_internal_header(rom_data)?;
         let levels = Rom::get_levels(rom_data)?;
-        let color_palettes = Rom::get_color_palettes(rom_data, &levels)?;
+        let global_level_color_palette = Rom::get_global_level_color_palette(rom_data)?;
+        let level_color_palettes = Rom::get_level_color_palettes(rom_data, &global_level_color_palette, &levels)?;
 
         Ok(Rom {
             internal_header,
             levels,
-            color_palettes,
+            custom_color_palettes: Vec::new(),
+            global_level_color_palette,
+            level_color_palettes,
         })
     }
 
@@ -81,10 +91,19 @@ impl Rom {
         Ok(levels)
     }
 
-    fn get_color_palettes(rom_data: &[u8], levels: &[Level]) -> RpResult<Vec<ColorPalette>> {
+    fn get_global_level_color_palette(rom_data: &[u8]) -> RpResult<Rc<GlobalLevelColorPalette>> {
+        match GlobalLevelColorPalette::parse(rom_data) {
+            Ok((_, palette)) => Ok(Rc::new(palette)),
+            Err(_) => Err(RomParseError::PaletteGlobal)
+        }
+    }
+
+    fn get_level_color_palettes(rom_data: &[u8], gp: &Rc<GlobalLevelColorPalette>, levels: &[Level])
+        -> RpResult<Vec<LevelColorPalette>>
+    {
         let mut palettes = Vec::with_capacity(LEVEL_COUNT);
         for (level_num, level) in levels.iter().enumerate() {
-            match ColorPalette::parse_level_palette(rom_data, level_num, &level.primary_header) {
+            match LevelColorPalette::parse(rom_data, &level.primary_header, Rc::clone(gp)) {
                 Ok((_, palette)) => palettes.push(palette),
                 Err(_) => return Err(RomParseError::PaletteLevel(level_num)),
             }

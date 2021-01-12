@@ -99,20 +99,18 @@ impl UiMainWindow {
                 .enabled(self.project_ref.borrow().is_some())
                 .build(ui)
             {
-                self.open_tool(|| UiPaletteViewer::new(&project.rom_data.color_palettes));
+                self.open_tool(|| UiPaletteViewer::new(&project.rom_data.level_color_palettes));
             }
         });
     }
 
     fn handle_tools(&mut self, ui: &Ui) {
         let mut tools_to_close = Vec::new();
-        for tool in self.tools.iter_mut() {
-            if !tool.0.run(ui) {
-                tools_to_close.push(tool.1);
+        for (tool, id) in self.tools.iter_mut() {
+            if !tool.run(ui) {
+                tools_to_close.push(*id);
             }
         }
-        for id in tools_to_close {
-            self.close_tool(id);
-        }
+        tools_to_close.into_iter().for_each(|id| self.close_tool(id));
     }
 }

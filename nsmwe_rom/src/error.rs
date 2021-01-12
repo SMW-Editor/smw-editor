@@ -25,6 +25,7 @@ pub enum RomParseError {
     BadSize(usize),
     InternalHeader,
     Level(usize),
+    PaletteGlobal,
     PaletteLevel(usize),
 }
 
@@ -46,6 +47,7 @@ impl fmt::Display for RomParseError {
             BadSize(size) => format!("Invalid ROM size: {}", size),
             InternalHeader => String::from("Parsing internal header failed"),
             Level(level_num) => format!("Invalid level: {:#x}", level_num),
+            PaletteGlobal => String::from("Could not parse global level color palette"),
             PaletteLevel(level_num) => format!("Invalid level color palette: {:#x}", level_num),
         })
     }

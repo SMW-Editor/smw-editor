@@ -11,11 +11,11 @@ use inline_tweak::tweak;
 
 use nsmwe_rom::graphics::{
     color::Rgba,
-    palette::ColorPalette,
+    palette::{ColorPalette, LevelColorPalette},
 };
 
 pub struct UiPaletteViewer {
-    palettes: Vec<ColorPalette>,
+    palettes: Vec<LevelColorPalette>,
     level_num: i32,
 }
 
@@ -45,7 +45,7 @@ impl UiTool for UiPaletteViewer {
 }
 
 impl UiPaletteViewer {
-    pub fn new(palettes: &[ColorPalette]) -> Self {
+    pub fn new(palettes: &[LevelColorPalette]) -> Self {
         UiPaletteViewer {
             palettes: palettes.clone().to_vec(),
             level_num: 0,
@@ -69,15 +69,19 @@ impl UiPaletteViewer {
         let draw_list = ui.get_window_draw_list();
         let [wx, wy] = ui.window_pos();
 
-        for (idx, &color) in palette.colors.iter().enumerate() {
-            let x = wx + ((idx / 16) as f32 * CELL_SIZE) + PADDING_LEFT;
-            let y = wy + ((idx % 16) as f32 * CELL_SIZE) + PADDING_TOP;
+        for row in 0..=0xF {
+            for col in 0..=0xF {
+                let color = palette.get_color_at(row, col).unwrap();
 
-            let p1 = [x, y];
-            let p2 = [x + CELL_SIZE, y + CELL_SIZE];
-            let c: ImColor = Rgba::from(color).into();
+                let y = wy + (row as f32 * CELL_SIZE) + PADDING_TOP;
+                let x = wx + (col as f32 * CELL_SIZE) + PADDING_LEFT;
 
-            draw_list.add_rect(p1, p2, c).filled(true).build();
+                let p1 = [x, y];
+                let p2 = [x + CELL_SIZE, y + CELL_SIZE];
+                let c: ImColor = Rgba::from(*color).into();
+
+                draw_list.add_rect(p1, p2, c).filled(true).build();
+            }
         }
     }
 }
