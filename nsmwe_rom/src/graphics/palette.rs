@@ -45,7 +45,7 @@ mod constants {
     pub const PALETTE_BG_SIZE:       usize = 0x18;
     pub const PALETTE_FG_SIZE:       usize = 0x18;
     pub const PALETTE_SPRITE_SIZE:   usize = 0x18;
-    pub const PALETTE_WTF_SIZE:      usize = 11 * 0x0C;
+    pub const PALETTE_WTF_SIZE:      usize = BGR16_SIZE * ((0xD - 0x4 + 1) * (0x7 - 0x2 + 1));
     pub const PALETTE_PLAYER_SIZE:   usize = 4 * 0x14;
     pub const PALETTE_LAYER3_SIZE:   usize = 0x20;
     pub const PALETTE_BERRY_SIZE:    usize = 3 * 0x0E;
@@ -68,9 +68,12 @@ pub trait ColorPalette {
     fn set_colors(&mut self, subpalette: &[Bgr16],
                   rows: RangeInclusive<usize>, cols: RangeInclusive<usize>)
     {
+        let n_cols = *cols.end() - *cols.start() + 1;
         for (idx, &color) in subpalette.iter().enumerate() {
-            let row = *rows.start() + (idx / cols.clone().count());
-            let col = *cols.start() + (idx % cols.clone().count());
+            let row = *rows.start() + (idx / n_cols);
+            let col = *cols.start() + (idx % n_cols);
+            debug_assert!(rows.contains(&row), "Row {} not between {}-{}", row, *rows.start(), *rows.end());
+            debug_assert!(cols.contains(&col), "Col {} not between {}-{}", col, *cols.start(), *cols.end());
             self.set_color_at(row, col, color);
         }
     }
@@ -175,18 +178,19 @@ impl CustomColorPalette {
         })
     ));
 
-    fn get_index_at(row: usize, col: usize) -> usize {
+    fn index_at(row: usize, col: usize) -> usize {
         (row * 16) + col
     }
 }
 
 impl ColorPalette for CustomColorPalette {
-    fn set_color_at(&mut self, x: usize, y: usize, col: Bgr16) {
-        self.colors[Self::get_index_at(x, y)] = col;
+    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr16) {
+        let index = Self::index_at(row, col);
+        self.colors[index] = color;
     }
 
-    fn get_color_at(&self, x: usize, y: usize) -> Option<&Bgr16> {
-        let index = Self::get_index_at(x, y);
+    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr16> {
+        let index = Self::index_at(row, col);
         self.colors.get(index)
     }
 }
@@ -213,22 +217,26 @@ impl GlobalLevelColorPalette {
         };
 
         palette.set_colors(&wtf,     0x4..=0xD, 0x2..=0x7);
-        palette.set_colors(&players, 0x8..=0x8, 0x6..=0xF);
+        palette.players = players.try_into().unwrap(); // 0x8..=0x8, 0x6..=0xF
         palette.set_colors(&layer3,  0x0..=0x1, 0x8..=0xF);
         palette.set_colors(&berry,   0x2..=0x4, 0x9..=0xF);
         palette.set_colors(&berry,   0x9..=0xB, 0x9..=0xF);
-        palette.set_color_at(0x6, 0x4, animated[0]);
+        palette.animated = animated.try_into().unwrap(); // 0x6, 0x4
 
         Ok((rom_data, palette))
+    }
+
+    pub fn is_color_animated_at(&self, row: usize, col: usize) -> bool {
+        (row == 0x6) && (col == 0x4)
     }
 }
 
 impl_color_palette!(GlobalLevelColorPalette {
-    [0x4..=0xD, 0x2..=0x7] => wtf,
     [0x8..=0x8, 0x6..=0xF] => players,
     [0x0..=0x1, 0x8..=0xF] => layer3,
     [0x2..=0x4, 0x9..=0xF] => berry,
     [0x9..=0xB, 0x9..=0xF] => berry,
+    [0x4..=0xD, 0x2..=0x7] => wtf,
 });
 
 impl LevelColorPalette {
@@ -241,7 +249,8 @@ impl LevelColorPalette {
         };
 
         let (_, back_area_color) = parse_colors(
-            addr::BACK_AREA_COLORS + (BGR16_SIZE * header.back_area_color as usize), 1)?;
+            addr::BACK_AREA_COLORS + (BGR16_SIZE * header.back_area_color as usize),
+            1)?;
         let (_, bg) = parse_colors(
             addr::BG_PALETTES + (PALETTE_BG_SIZE * header.palette_bg as usize),
             PALETTE_BG_LENGTH)?;
