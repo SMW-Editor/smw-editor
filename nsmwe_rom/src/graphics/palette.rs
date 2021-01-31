@@ -1,8 +1,8 @@
 use crate::{
     addr::AddrPc,
     graphics::color::{
-        Bgr16,
-        BGR16_SIZE,
+        Bgr555,
+        BGR555_SIZE,
     },
     level::primary_header::PrimaryHeader,
 };
@@ -27,7 +27,7 @@ use std::{
 };
 
 mod constants {
-    use crate::graphics::color::BGR16_SIZE;
+    use crate::graphics::color::BGR555_SIZE;
 
     pub mod addr {
         use crate::addr::AddrSnes;
@@ -45,27 +45,27 @@ mod constants {
     pub const PALETTE_BG_SIZE:       usize = 0x18;
     pub const PALETTE_FG_SIZE:       usize = 0x18;
     pub const PALETTE_SPRITE_SIZE:   usize = 0x18;
-    pub const PALETTE_WTF_SIZE:      usize = BGR16_SIZE * ((0xD - 0x4 + 1) * (0x7 - 0x2 + 1));
+    pub const PALETTE_WTF_SIZE:      usize = BGR555_SIZE * ((0xD - 0x4 + 1) * (0x7 - 0x2 + 1));
     pub const PALETTE_PLAYER_SIZE:   usize = 4 * 0x14;
     pub const PALETTE_LAYER3_SIZE:   usize = 0x20;
     pub const PALETTE_BERRY_SIZE:    usize = 3 * 0x0E;
-    pub const PALETTE_ANIMATED_SIZE: usize = 8 * BGR16_SIZE;
+    pub const PALETTE_ANIMATED_SIZE: usize = 8 * BGR555_SIZE;
 
     pub const PALETTE_LENGTH:          usize = 16 * 16;
-    pub const PALETTE_BG_LENGTH:       usize = PALETTE_BG_SIZE / BGR16_SIZE;
-    pub const PALETTE_FG_LENGTH:       usize = PALETTE_FG_SIZE / BGR16_SIZE;
-    pub const PALETTE_SPRITE_LENGTH:   usize = PALETTE_SPRITE_SIZE / BGR16_SIZE;
-    pub const PALETTE_WTF_LENGTH:      usize = PALETTE_WTF_SIZE / BGR16_SIZE;
-    pub const PALETTE_PLAYER_LENGTH:   usize = PALETTE_PLAYER_SIZE / BGR16_SIZE;
-    pub const PALETTE_LAYER3_LENGTH:   usize = PALETTE_LAYER3_SIZE / BGR16_SIZE;
-    pub const PALETTE_BERRY_LENGTH:    usize = PALETTE_BERRY_SIZE / BGR16_SIZE;
-    pub const PALETTE_ANIMATED_LENGTH: usize = PALETTE_ANIMATED_SIZE / BGR16_SIZE;
+    pub const PALETTE_BG_LENGTH:       usize = PALETTE_BG_SIZE / BGR555_SIZE;
+    pub const PALETTE_FG_LENGTH:       usize = PALETTE_FG_SIZE / BGR555_SIZE;
+    pub const PALETTE_SPRITE_LENGTH:   usize = PALETTE_SPRITE_SIZE / BGR555_SIZE;
+    pub const PALETTE_WTF_LENGTH:      usize = PALETTE_WTF_SIZE / BGR555_SIZE;
+    pub const PALETTE_PLAYER_LENGTH:   usize = PALETTE_PLAYER_SIZE / BGR555_SIZE;
+    pub const PALETTE_LAYER3_LENGTH:   usize = PALETTE_LAYER3_SIZE / BGR555_SIZE;
+    pub const PALETTE_BERRY_LENGTH:    usize = PALETTE_BERRY_SIZE / BGR555_SIZE;
+    pub const PALETTE_ANIMATED_LENGTH: usize = PALETTE_ANIMATED_SIZE / BGR555_SIZE;
 }
 
 // -------------------------------------------------------------------------------------------------
 
 pub trait ColorPalette {
-    fn set_colors(&mut self, subpalette: &[Bgr16],
+    fn set_colors(&mut self, subpalette: &[Bgr555],
                   rows: RangeInclusive<usize>, cols: RangeInclusive<usize>)
     {
         let n_cols = *cols.end() - *cols.start() + 1;
@@ -78,8 +78,8 @@ pub trait ColorPalette {
         }
     }
 
-    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr16);
-    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr16>;
+    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555);
+    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555>;
 }
 
 macro_rules! impl_color_palette {
@@ -88,7 +88,7 @@ macro_rules! impl_color_palette {
         $(, _ => $fallback:ident)? $(,)?
     }) => {
         impl ColorPalette for $struct_name {
-            fn set_color_at(&mut self, row: usize, col: usize, color: Bgr16) {
+            fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555) {
                 assert!(row <= 0xF);
                 assert!(col <= 0xF);
                 $(
@@ -107,7 +107,7 @@ macro_rules! impl_color_palette {
             }
 
             #[allow(unreachable_code)]
-            fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr16> {
+            fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555> {
                 if row > 0xF || col > 0xF {
                     None
                 } else {
@@ -119,7 +119,7 @@ macro_rules! impl_color_palette {
                         }
                     )+
                     $(return self.$fallback.get_color_at(row, col);)?
-                    Some(&Bgr16(0))
+                    Some(&Bgr555(0))
                 }
             }
         }
@@ -130,31 +130,31 @@ macro_rules! impl_color_palette {
 
 #[derive(Clone)]
 pub struct CustomColorPalette {
-    pub back_area_color: Bgr16,
-    pub colors: [Bgr16; PALETTE_LENGTH],
+    pub back_area_color: Bgr555,
+    pub colors: [Bgr555; PALETTE_LENGTH],
 }
 
 #[derive(Clone)]
 pub struct GlobalLevelColorPalette {
-    pub wtf:      [Bgr16; PALETTE_WTF_LENGTH],
-    pub players:  [Bgr16; PALETTE_PLAYER_LENGTH],
-    pub layer3:   [Bgr16; PALETTE_LAYER3_LENGTH],
-    pub berry:    [Bgr16; PALETTE_BERRY_LENGTH],
-    pub animated: [Bgr16; PALETTE_ANIMATED_LENGTH],
+    pub wtf:      [Bgr555; PALETTE_WTF_LENGTH],
+    pub players:  [Bgr555; PALETTE_PLAYER_LENGTH],
+    pub layer3:   [Bgr555; PALETTE_LAYER3_LENGTH],
+    pub berry:    [Bgr555; PALETTE_BERRY_LENGTH],
+    pub animated: [Bgr555; PALETTE_ANIMATED_LENGTH],
 }
 
 #[derive(Clone)]
 pub struct LevelColorPalette {
     pub global_palette: Rc<GlobalLevelColorPalette>,
-    pub back_area_color: Bgr16,
-    pub bg:     [Bgr16; PALETTE_BG_LENGTH],
-    pub fg:     [Bgr16; PALETTE_FG_LENGTH],
-    pub sprite: [Bgr16; PALETTE_SPRITE_LENGTH],
+    pub back_area_color: Bgr555,
+    pub bg:     [Bgr555; PALETTE_BG_LENGTH],
+    pub fg:     [Bgr555; PALETTE_FG_LENGTH],
+    pub sprite: [Bgr555; PALETTE_SPRITE_LENGTH],
 }
 
 // -------------------------------------------------------------------------------------------------
 
-named!(le_bgr16<Bgr16>, map!(le_u16, Bgr16));
+named!(le_bgr16<Bgr555>, map!(le_u16, Bgr555));
 
 impl CustomColorPalette {
     // pub fn from_level_header<'a>(rom_data: &'a [u8], level_num: usize, header: &PrimaryHeader)
@@ -184,12 +184,12 @@ impl CustomColorPalette {
 }
 
 impl ColorPalette for CustomColorPalette {
-    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr16) {
+    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555) {
         let index = Self::index_at(row, col);
         self.colors[index] = color;
     }
 
-    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr16> {
+    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555> {
         let index = Self::index_at(row, col);
         self.colors.get(index)
     }
@@ -209,11 +209,11 @@ impl GlobalLevelColorPalette {
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR,  PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = GlobalLevelColorPalette {
-            wtf:      [Bgr16(0); PALETTE_WTF_LENGTH],
-            players:  [Bgr16(0); PALETTE_PLAYER_LENGTH],
-            layer3:   [Bgr16(0); PALETTE_LAYER3_LENGTH],
-            berry:    [Bgr16(0); PALETTE_BERRY_LENGTH],
-            animated: [Bgr16(0); PALETTE_ANIMATED_LENGTH],
+            wtf:      [Bgr555(0); PALETTE_WTF_LENGTH],
+            players:  [Bgr555(0); PALETTE_PLAYER_LENGTH],
+            layer3:   [Bgr555(0); PALETTE_LAYER3_LENGTH],
+            berry:    [Bgr555(0); PALETTE_BERRY_LENGTH],
+            animated: [Bgr555(0); PALETTE_ANIMATED_LENGTH],
         };
 
         palette.set_colors(&wtf,     0x4..=0xD, 0x2..=0x7);
@@ -249,7 +249,7 @@ impl LevelColorPalette {
         };
 
         let (_, back_area_color) = parse_colors(
-            addr::BACK_AREA_COLORS + (BGR16_SIZE * header.back_area_color as usize),
+            addr::BACK_AREA_COLORS + (BGR555_SIZE * header.back_area_color as usize),
             1)?;
         let (_, bg) = parse_colors(
             addr::BG_PALETTES + (PALETTE_BG_SIZE * header.palette_bg as usize),
@@ -264,9 +264,9 @@ impl LevelColorPalette {
         let mut palette = LevelColorPalette {
             global_palette: gp,
             back_area_color: back_area_color[0],
-            bg:     [Bgr16(0); PALETTE_BG_LENGTH],
-            fg:     [Bgr16(0); PALETTE_FG_LENGTH],
-            sprite: [Bgr16(0); PALETTE_SPRITE_LENGTH],
+            bg:     [Bgr555(0); PALETTE_BG_LENGTH],
+            fg:     [Bgr555(0); PALETTE_FG_LENGTH],
+            sprite: [Bgr555(0); PALETTE_SPRITE_LENGTH],
         };
 
         palette.set_colors(&bg,     0x0..=0x1, 0x2..=0x7);
