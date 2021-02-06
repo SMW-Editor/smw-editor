@@ -47,7 +47,7 @@ impl UiTool for UiPaletteViewer {
 impl UiPaletteViewer {
     pub fn new(palettes: &[LevelColorPalette]) -> Self {
         UiPaletteViewer {
-            palettes: palettes.clone().to_vec(),
+            palettes: palettes.to_vec(),
             level_num: 0,
         }
     }

@@ -1,12 +1,24 @@
-use crate::addr::AddrSnes;
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    compression::lc_lz2_decompress,
+};
 
 use nom::{
+    bytes::complete::take,
+    combinator::map_parser,
+    count,
     IResult,
+    preceded,
     take,
 };
 
-use std::convert::TryInto;
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+    fmt::{Display, Formatter},
+};
 
+#[derive(Copy, Clone, Debug)]
 pub enum TileFormat {
     Tile2bpp,
     Tile4bpp,
@@ -20,11 +32,22 @@ pub struct Tile {
 
 pub struct GfxFile {
     pub tile_format: TileFormat,
-    pub size: usize,
     pub tiles: Vec<Tile>,
 }
 
 // -------------------------------------------------------------------------------------------------
+
+impl Display for TileFormat {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use TileFormat::*;
+        f.write_str(match self {
+            Tile2bpp => "2BPP",
+            Tile4bpp => "4BPP",
+            Tile8bpp => "8BPP",
+            TileMode7 => "Mode7",
+        })
+    }
+}
 
 impl Tile {
     pub fn from_2bpp(input: &[u8]) -> IResult<&[u8], Self> {
@@ -40,7 +63,7 @@ impl Tile {
     }
 
     fn from_xbpp(input: &[u8], x: usize) -> IResult<&[u8], Self> {
-        debug_assert!((x & 0b1110).count_ones() == 1); // can only be 2, 4, or 8
+        debug_assert!([2, 4, 8].contains(&x));
         let (input, bytes) = take!(input, x * 8)?;
         let mut tile = Tile { color_indices: [0; N_INDICES_IN_TILE] };
 
@@ -65,10 +88,44 @@ impl Tile {
     }
 }
 
+impl GfxFile {
+    pub fn new(
+        rom_data: &[u8],
+        tile_format: TileFormat,
+        addr: AddrSnes,
+        size_bytes: usize)
+    -> IResult<&[u8], Self>
+    {
+        debug_assert_ne!(0, size_bytes);
+        use TileFormat::*;
+
+        type ParserFn = fn(&[u8]) -> IResult<&[u8], Tile>;
+
+        let addr = AddrPc::try_from(addr).unwrap();
+        let (_, bytes) = preceded!(rom_data, take!(addr.0), take!(size_bytes))?;
+        let (parser, tile_size_bytes): (ParserFn, _) = match tile_format {
+            Tile2bpp  => (Tile::from_2bpp, 2 * 8),
+            Tile4bpp  => (Tile::from_4bpp, 4 * 8),
+            Tile8bpp  => (Tile::from_8bpp, 8 * 8),
+            TileMode7 => (Tile::from_mode7, 8 * 8),
+        };
+
+        // TODO - change to error
+        let decomp_bytes = lc_lz2_decompress(bytes).expect("Decompression error in GFX file");
+        assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
+        let tile_count = decomp_bytes.len() / tile_size_bytes;
+        let le_tile = map_parser(take(tile_size_bytes), parser);
+        let (_, tiles) = count!(&decomp_bytes, le_tile, tile_count).map_err(
+            |e| e.map(|e| nom::error::Error::new(bytes, e.code)))?;
+
+        Ok((rom_data, GfxFile { tile_format, tiles }))
+    }
+}
+
 // -------------------------------------------------------------------------------------------------
 
 const N_INDICES_IN_TILE: usize = 8 * 8;
-const GFX_FILES_META: [(TileFormat, AddrSnes, usize); 0x34] = [
+pub(crate) static GFX_FILES_META: [(TileFormat, AddrSnes, usize); 0x34] = [
     (TileFormat::Tile4bpp,  AddrSnes(0x08D9F9), 2104),
     (TileFormat::Tile4bpp,  AddrSnes(0x08E231), 2698),
     (TileFormat::Tile4bpp,  AddrSnes(0x08ECBB), 2199),

@@ -2,14 +2,20 @@ pub use self::constants::*;
 
 use crate::{
     error::{RomParseError, RomReadError},
-    graphics::palette::{
-        CustomColorPalette,
-        GlobalLevelColorPalette,
-        LevelColorPalette,
+    graphics::{
+        gfx_file::{
+            GfxFile,
+            GFX_FILES_META,
+        },
+        palette::{
+            CustomColorPalette,
+            GlobalLevelColorPalette,
+            LevelColorPalette,
+        },
     },
     internal_header::RomInternalHeader,
     level::{
-        level::Level,
+        Level,
         LEVEL_COUNT,
     },
 };
@@ -32,6 +38,7 @@ pub struct Rom {
     pub custom_color_palettes: Vec<CustomColorPalette>,
     pub global_level_color_palette: Rc<GlobalLevelColorPalette>,
     pub level_color_palettes: Vec<LevelColorPalette>,
+    pub gfx_files: Vec<GfxFile>,
 }
 
 impl Rom {
@@ -52,6 +59,7 @@ impl Rom {
         let levels = Rom::get_levels(rom_data)?;
         let global_level_color_palette = Rom::get_global_level_color_palette(rom_data)?;
         let level_color_palettes = Rom::get_level_color_palettes(rom_data, &global_level_color_palette, &levels)?;
+        let gfx_files = Rom::get_gfx_files(rom_data)?;
 
         Ok(Rom {
             internal_header,
@@ -59,6 +67,7 @@ impl Rom {
             custom_color_palettes: Vec::new(),
             global_level_color_palette,
             level_color_palettes,
+            gfx_files,
         })
     }
 
@@ -76,7 +85,7 @@ impl Rom {
     fn get_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
         match RomInternalHeader::from_rom_data(rom_data) {
             Ok((_, header)) => Ok(header),
-            Err(_) => return Err(RomParseError::InternalHeader),
+            Err(_) => Err(RomParseError::InternalHeader),
         }
     }
 
@@ -109,5 +118,16 @@ impl Rom {
             }
         }
         Ok(palettes)
+    }
+
+    fn get_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {
+        let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
+        for &(tile_format, addr, size_bytes) in GFX_FILES_META.iter() {
+            match GfxFile::new(rom_data, tile_format, addr, size_bytes) {
+                Ok((_, file)) => gfx_files.push(file),
+                Err(_) => return Err(RomParseError::GfxFile(tile_format, addr, size_bytes)),
+            }
+        }
+        Ok(gfx_files)
     }
 }

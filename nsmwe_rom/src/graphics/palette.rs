@@ -173,7 +173,7 @@ impl CustomColorPalette {
         back_area_color: le_bgr16 >>
         colors: count!(le_bgr16, PALETTE_LENGTH) >>
         (CustomColorPalette {
-            back_area_color: back_area_color,
+            back_area_color,
             colors: colors.try_into().unwrap(),
         })
     ));
