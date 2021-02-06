@@ -2,7 +2,6 @@
 
 extern crate nom;
 extern crate num_enum;
-extern crate polyerror;
 
 pub mod addr;
 pub mod compression;

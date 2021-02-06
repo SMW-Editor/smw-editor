@@ -2,7 +2,6 @@ use crate::UiTool;
 
 use imgui::{
     im_str,
-    ImColor,
     Ui,
     Window,
 };
@@ -78,7 +77,7 @@ impl UiPaletteViewer {
 
                 let p1 = [x, y];
                 let p2 = [x + CELL_SIZE, y + CELL_SIZE];
-                let c: ImColor = Rgba::from(*color).into();
+                let c: [f32; 4] = Rgba::from(*color).into();
 
                 draw_list.add_rect(p1, p2, c).filled(true).build();
             }

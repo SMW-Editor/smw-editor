@@ -1,7 +1,7 @@
 pub use self::constants::*;
 
 use crate::{
-    error::{RomParseError, RomReadError},
+    error::RomParseError,
     graphics::{
         gfx_file::{
             GfxFile,
@@ -42,13 +42,13 @@ pub struct Rom {
 }
 
 impl Rom {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Rom, RomReadError> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Rom, RomParseError> {
         match fs::read(path) {
             Ok(rom_data) => match Rom::from_raw(&rom_data) {
                 Ok(rom) => Ok(rom),
-                Err(err) => Err(err.into()),
+                Err(err) => Err(err),
             },
-            Err(err) => Err(err.into()),
+            Err(_) => Err(RomParseError::IoError),
         }
     }
 

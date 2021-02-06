@@ -11,11 +11,9 @@ use nom::{
         ErrorKind,
     },
 };
-use polyerror::create_error;
 use std::{
     error::Error,
     fmt,
-    io::Error as IoError,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -26,6 +24,7 @@ pub enum RomParseError {
     BadSize(usize),
     GfxFile(TileFormat, AddrSnes, usize),
     InternalHeader,
+    IoError,
     Level(usize),
     PaletteGlobal,
     PaletteLevel(usize),
@@ -40,8 +39,6 @@ pub enum AddressConversionError {
 #[derive(Debug)]
 pub struct DecompressionError(pub &'static str);
 
-create_error!(pub RomReadError: IoError, RomParseError);
-
 // -------------------------------------------------------------------------------------------------
 
 impl fmt::Display for RomParseError {
@@ -54,6 +51,8 @@ impl fmt::Display for RomParseError {
                 format!("Invalid ROM size: {}", size),
             InternalHeader =>
                 String::from("Parsing internal header failed"),
+            IoError =>
+                String::from("File IO Error"),
             Level(level_num) =>
                 format!("Invalid level: {:#x}", level_num),
             PaletteGlobal =>

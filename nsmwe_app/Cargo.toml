@@ -10,9 +10,9 @@ readme = "../README.md"
 [dependencies]
 nsmwe_rom = { path = "../nsmwe_rom" }
 
-glium = "0.28.0"
-imgui = "0.6.1"
-imgui-glium-renderer = "0.6.1"
-imgui-winit-support = "0.6.1"
+glium = "0.29.0"
+imgui = "0.7.0"
+imgui-glium-renderer = "0.7.0"
+imgui-winit-support = "0.7.0"
 inline_tweak = "1.0.8"
 nfd2 = "0.2.3"
