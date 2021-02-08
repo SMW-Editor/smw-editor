@@ -81,7 +81,7 @@ impl UiMainWindow {
     fn menu_tools(&mut self, ui: &Ui) {
         let project = Rc::clone(&self.project_ref);
         let project = project.borrow();
-        let project = project.as_ref().unwrap();
+        let project = project.as_ref();
 
         ui.menu(im_str!("Tools"), true, || {
             if MenuItem::new(im_str!("Address converter"))
@@ -90,16 +90,18 @@ impl UiMainWindow {
                 self.open_tool(UiAddressConverter::new);
             }
             if MenuItem::new(im_str!("ROM info"))
-                .enabled(self.project_ref.borrow().is_some())
+                .enabled(project.is_some())
                 .build(ui)
             {
-                self.open_tool(|| UiRomInfo::new(&project.rom_data.internal_header));
+                let internal_header = &project.unwrap().rom_data.internal_header;
+                self.open_tool(|| UiRomInfo::new(internal_header));
             }
             if MenuItem::new(im_str!("Color palettes"))
-                .enabled(self.project_ref.borrow().is_some())
+                .enabled(project.is_some())
                 .build(ui)
             {
-                self.open_tool(|| UiPaletteViewer::new(&project.rom_data.level_color_palettes));
+                let level_color_palettes = &project.unwrap().rom_data.level_color_palettes;
+                self.open_tool(|| UiPaletteViewer::new(level_color_palettes));
             }
         });
     }
