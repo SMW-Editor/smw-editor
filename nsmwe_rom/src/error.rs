@@ -27,7 +27,7 @@ pub enum RomParseError {
     IoError,
     Level(usize),
     PaletteGlobal,
-    PaletteLevel(usize),
+    PaletteSetLevel(usize),
 }
 
 #[derive(Debug)]
@@ -57,8 +57,8 @@ impl fmt::Display for RomParseError {
                 format!("Invalid level: {:#x}", level_num),
             PaletteGlobal =>
                 String::from("Could not parse global level color palette"),
-            PaletteLevel(level_num) =>
-                format!("Invalid level color palette: {:#x}", level_num),
+            PaletteSetLevel(level_num) =>
+                format!("Invalid color palette in level {:#x}", level_num),
             GfxFile(tile_format, addr, size_bytes) =>
                 format!("Invalid GFX file - tile format: {}, addr: {}, size: {}B",
                     tile_format, addr, size_bytes),

@@ -100,8 +100,11 @@ impl UiMainWindow {
                 .enabled(project.is_some())
                 .build(ui)
             {
-                let level_color_palettes = &project.unwrap().rom_data.level_color_palettes;
-                self.open_tool(|| UiPaletteViewer::new(level_color_palettes));
+                let rom = &project.unwrap().rom_data;
+                let level_color_palette_set = &rom.level_color_palette_set;
+                let gp = &rom.global_level_color_palette;
+                let levels = &rom.levels;
+                self.open_tool(|| UiPaletteViewer::new(level_color_palette_set, levels, gp));
             }
         });
     }

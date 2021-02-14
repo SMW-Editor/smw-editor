@@ -1,17 +1,20 @@
 use crate::{
     addr::AddrPc,
+    error::RomParseError,
     graphics::color::{
         Bgr555,
         BGR555_SIZE,
     },
-    level::primary_header::PrimaryHeader,
+    level::{
+        Level,
+        primary_header::PrimaryHeader,
+    },
 };
 
 use self::constants::*;
 
 use nom::{
     count,
-    do_parse,
     map,
     named,
     number::complete::le_u16,
@@ -26,7 +29,7 @@ use std::{
     rc::Rc,
 };
 
-mod constants {
+pub mod constants {
     use crate::graphics::color::BGR555_SIZE;
 
     pub mod addr {
@@ -35,10 +38,10 @@ mod constants {
         pub const BG_PALETTES:      AddrSnes = AddrSnes(0x00B0B0);
         pub const FG_PALETTES:      AddrSnes = AddrSnes(0x00B190);
         pub const SPRITE_PALETTES:  AddrSnes = AddrSnes(0x00B318);
-        pub const WTF_PALETTES:     AddrSnes = AddrSnes(0x00B250);
-        pub const PLAYER_PALETTES:  AddrSnes = AddrSnes(0x00B2C8);
-        pub const LAYER3_PALETTES:  AddrSnes = AddrSnes(0x00B170);
-        pub const BERRY_PALETTES:   AddrSnes = AddrSnes(0x00B674);
+        pub const WTF_PALETTE:      AddrSnes = AddrSnes(0x00B250);
+        pub const PLAYER_PALETTE:   AddrSnes = AddrSnes(0x00B2C8);
+        pub const LAYER3_PALETTE:   AddrSnes = AddrSnes(0x00B170);
+        pub const BERRY_PALETTE:    AddrSnes = AddrSnes(0x00B674);
         pub const ANIMATED_COLOR:   AddrSnes = AddrSnes(0x00B60C);
     }
 
@@ -95,7 +98,7 @@ macro_rules! impl_color_palette {
                     if $rows.contains(&row) && $cols.contains(&col) {
                         let ri = row - *$rows.start();
                         let ci = col - *$cols.start();
-                        self.$field_name[(ci * $rows.count()) + ri] = color;
+                        self.$field_name[(ri * $cols.count()) + ci] = color;
                         return;
                     }
                 )+
@@ -115,7 +118,7 @@ macro_rules! impl_color_palette {
                         if $rows.contains(&row) && $cols.contains(&col) {
                             let ri = row - *$rows.start();
                             let ci = col - *$cols.start();
-                            return Some(&self.$field_name[(ci * $rows.count()) + ri]);
+                            return Some(&self.$field_name[(ri * $cols.count()) + ci]);
                         }
                     )+
                     $(return self.$fallback.get_color_at(row, col);)?
@@ -128,11 +131,6 @@ macro_rules! impl_color_palette {
 
 // -------------------------------------------------------------------------------------------------
 
-#[derive(Clone)]
-pub struct CustomColorPalette {
-    pub back_area_color: Bgr555,
-    pub colors: [Bgr555; PALETTE_LENGTH],
-}
 
 #[derive(Clone)]
 pub struct GlobalLevelColorPalette {
@@ -147,53 +145,22 @@ pub struct GlobalLevelColorPalette {
 pub struct LevelColorPalette {
     pub global_palette: Rc<GlobalLevelColorPalette>,
     pub back_area_color: Bgr555,
-    pub bg:     [Bgr555; PALETTE_BG_LENGTH],
-    pub fg:     [Bgr555; PALETTE_FG_LENGTH],
-    pub sprite: [Bgr555; PALETTE_SPRITE_LENGTH],
+    pub background: Box<[Bgr555]>,
+    pub foreground: Box<[Bgr555]>,
+    pub sprite: Box<[Bgr555]>,
+}
+
+#[derive(Clone)]
+pub struct LevelColorPaletteSet {
+    pub back_area_colors: Vec<Bgr555>,
+    pub bg_palettes:      Vec<Box<[Bgr555]>>,
+    pub fg_palettes:      Vec<Box<[Bgr555]>>,
+    pub sprite_palettes:  Vec<Box<[Bgr555]>>,
 }
 
 // -------------------------------------------------------------------------------------------------
 
 named!(le_bgr16<Bgr555>, map!(le_u16, Bgr555));
-
-impl CustomColorPalette {
-    // pub fn from_level_header<'a>(rom_data: &'a [u8], level_num: usize, header: &PrimaryHeader)
-    //     -> IResult<&'a [u8], CustomColorPalette>
-    // {
-    //     CustomColorPalette::parse_vanilla_level_palette(rom_data, header);
-    //     let palette_addr = LEVEL_PALETTES + (3 * level_num);
-    //     if palette_addr == AddrSnes(0x0) || palette_addr == AddrSnes(0xFFFFFF) {
-    //         CustomColorPalette::parse_vanilla_level_palette(rom_data, header)
-    //     } else {
-    //         CustomColorPalette::parse(rom_data)
-    //     }
-    // }
-
-    named!(pub parse<&[u8], Self>, do_parse!(
-        back_area_color: le_bgr16 >>
-        colors: count!(le_bgr16, PALETTE_LENGTH) >>
-        (CustomColorPalette {
-            back_area_color,
-            colors: colors.try_into().unwrap(),
-        })
-    ));
-
-    fn index_at(row: usize, col: usize) -> usize {
-        (row * 16) + col
-    }
-}
-
-impl ColorPalette for CustomColorPalette {
-    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555) {
-        let index = Self::index_at(row, col);
-        self.colors[index] = color;
-    }
-
-    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555> {
-        let index = Self::index_at(row, col);
-        self.colors.get(index)
-    }
-}
 
 impl GlobalLevelColorPalette {
     pub fn parse(rom_data: &[u8]) -> IResult<&[u8], GlobalLevelColorPalette> {
@@ -202,11 +169,11 @@ impl GlobalLevelColorPalette {
             preceded!(rom_data, take!(pos), count!(le_bgr16, n))
         };
 
-        let (_, wtf)      = parse_colors(addr::WTF_PALETTES,    PALETTE_WTF_LENGTH)?;
-        let (_, players)  = parse_colors(addr::PLAYER_PALETTES, PALETTE_PLAYER_LENGTH)?;
-        let (_, layer3)   = parse_colors(addr::LAYER3_PALETTES, PALETTE_LAYER3_LENGTH)?;
-        let (_, berry)    = parse_colors(addr::BERRY_PALETTES,  PALETTE_BERRY_LENGTH)?;
-        let (_, animated) = parse_colors(addr::ANIMATED_COLOR,  PALETTE_ANIMATED_LENGTH)?;
+        let (_, wtf)      = parse_colors(addr::WTF_PALETTE,    PALETTE_WTF_LENGTH)?;
+        let (_, players)  = parse_colors(addr::PLAYER_PALETTE, PALETTE_PLAYER_LENGTH)?;
+        let (_, layer3)   = parse_colors(addr::LAYER3_PALETTE, PALETTE_LAYER3_LENGTH)?;
+        let (_, berry)    = parse_colors(addr::BERRY_PALETTE,  PALETTE_BERRY_LENGTH)?;
+        let (_, animated) = parse_colors(addr::ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = GlobalLevelColorPalette {
             wtf:      [Bgr555(0); PALETTE_WTF_LENGTH],
@@ -231,6 +198,94 @@ impl GlobalLevelColorPalette {
     }
 }
 
+impl LevelColorPaletteSet {
+    pub fn parse(rom_data: &[u8], levels: &[Level]) -> Result<LevelColorPaletteSet, RomParseError> {
+        let mut lvl_num = 0;
+        match Self::parse_impl(rom_data, levels, &mut lvl_num) {
+            Ok((_, palette_set)) => Ok(palette_set),
+            Err(_) => Err(RomParseError::PaletteSetLevel(lvl_num)),
+        }
+    }
+
+    fn parse_impl<'a>(rom_data: &'a [u8], levels: &[Level], lvl_num: &mut usize)
+        -> IResult<&'a [u8], LevelColorPaletteSet>
+    {
+        let parse_colors = |pos, n| {
+            let pos: usize = AddrPc::try_from(pos).unwrap().into();
+            preceded!(rom_data, take!(pos), count!(le_bgr16, n))
+        };
+
+        let mut palette_set = LevelColorPaletteSet {
+            back_area_colors: Vec::with_capacity(8),
+            bg_palettes:      Vec::with_capacity(8),
+            fg_palettes:      Vec::with_capacity(8),
+            sprite_palettes:  Vec::with_capacity(8),
+        };
+
+        *lvl_num = 0;
+        for level in levels {
+            let header = &level.primary_header;
+
+            let idx_bc = header.back_area_color as usize;
+            let idx_bg = header.palette_bg as usize;
+            let idx_fg = header.palette_fg as usize;
+            let idx_sp = header.palette_sprite as usize;
+
+            let (_, bc) = parse_colors(
+                addr::BACK_AREA_COLORS + (BGR555_SIZE * idx_bc), 1)?;
+            let (_, bg) = parse_colors(
+                addr::BG_PALETTES + (PALETTE_BG_SIZE * idx_bg), PALETTE_BG_LENGTH)?;
+            let (_, fg) = parse_colors(
+                addr::FG_PALETTES + (PALETTE_FG_SIZE * idx_fg), PALETTE_FG_LENGTH)?;
+            let (_, sp) = parse_colors(
+                addr::SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp), PALETTE_SPRITE_LENGTH)?;
+
+            if palette_set.back_area_colors.len() < idx_bc + 1 {
+                let value = Bgr555(0);
+                palette_set.back_area_colors.resize(idx_bc + 1, value);
+            }
+            if palette_set.bg_palettes.len() < idx_bg + 1 {
+                let value: Box<[Bgr555]> = [Bgr555(0); PALETTE_BG_LENGTH].into();
+                palette_set.bg_palettes.resize(idx_bg + 1, value);
+            }
+            if palette_set.fg_palettes.len() < idx_fg + 1 {
+                let value: Box<[Bgr555]> = [Bgr555(0); PALETTE_FG_LENGTH].into();
+                palette_set.fg_palettes.resize(idx_fg + 1, value);
+            }
+            if palette_set.sprite_palettes.len() < idx_sp + 1 {
+                let value: Box<[Bgr555]> = [Bgr555(0); PALETTE_SPRITE_LENGTH].into();
+                palette_set.sprite_palettes.resize(idx_sp + 1, value);
+            }
+
+            palette_set.back_area_colors[idx_bc] = bc[0];
+            palette_set.bg_palettes[idx_bg] = bg.try_into().unwrap();
+            palette_set.fg_palettes[idx_fg] = fg.try_into().unwrap();
+            palette_set.sprite_palettes[idx_sp] = sp.try_into().unwrap();
+
+            *lvl_num += 1;
+        }
+
+        Ok((rom_data, palette_set))
+    }
+
+    pub fn get_level_palette(&self, header: &PrimaryHeader, gp: &Rc<GlobalLevelColorPalette>)
+        -> Result<LevelColorPalette, ()>
+    {
+        let i_bc = header.back_area_color as usize;
+        let i_bg = header.palette_bg as usize;
+        let i_fg = header.palette_fg as usize;
+        let i_sp = header.palette_sprite as usize;
+
+        Ok(LevelColorPalette {
+            global_palette: Rc::clone(gp),
+            back_area_color: self.back_area_colors.get(i_bc).cloned().ok_or(())?,
+            background: self.bg_palettes.get(i_bg).cloned().ok_or(())?,
+            foreground: self.fg_palettes.get(i_fg).cloned().ok_or(())?,
+            sprite: self.sprite_palettes.get(i_sp).cloned().ok_or(())?,
+        })
+    }
+}
+
 impl_color_palette!(GlobalLevelColorPalette {
     [0x8..=0x8, 0x6..=0xF] => players,
     [0x0..=0x1, 0x8..=0xF] => layer3,
@@ -239,47 +294,9 @@ impl_color_palette!(GlobalLevelColorPalette {
     [0x4..=0xD, 0x2..=0x7] => wtf,
 });
 
-impl LevelColorPalette {
-    pub fn parse<'a>(rom_data: &'a [u8], header: &PrimaryHeader, gp: Rc<GlobalLevelColorPalette>)
-        -> IResult<&'a [u8], LevelColorPalette>
-    {
-        let parse_colors = |pos, n| {
-            let pos: usize = AddrPc::try_from(pos).unwrap().into();
-            preceded!(rom_data, take!(pos), count!(le_bgr16, n))
-        };
-
-        let (_, back_area_color) = parse_colors(
-            addr::BACK_AREA_COLORS + (BGR555_SIZE * header.back_area_color as usize),
-            1)?;
-        let (_, bg) = parse_colors(
-            addr::BG_PALETTES + (PALETTE_BG_SIZE * header.palette_bg as usize),
-            PALETTE_BG_LENGTH)?;
-        let (_, fg) = parse_colors(
-            addr::FG_PALETTES + (PALETTE_FG_SIZE * header.palette_fg as usize),
-            PALETTE_FG_LENGTH)?;
-        let (_, sprite) = parse_colors(
-            addr::SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * header.palette_sprite as usize),
-            PALETTE_SPRITE_LENGTH)?;
-
-        let mut palette = LevelColorPalette {
-            global_palette: gp,
-            back_area_color: back_area_color[0],
-            bg:     [Bgr555(0); PALETTE_BG_LENGTH],
-            fg:     [Bgr555(0); PALETTE_FG_LENGTH],
-            sprite: [Bgr555(0); PALETTE_SPRITE_LENGTH],
-        };
-
-        palette.set_colors(&bg,     0x0..=0x1, 0x2..=0x7);
-        palette.set_colors(&fg,     0x2..=0x3, 0x2..=0x7);
-        palette.set_colors(&sprite, 0xE..=0xF, 0x2..=0x7);
-
-        Ok((rom_data, palette))
-    }
-}
-
 impl_color_palette!(LevelColorPalette {
-    [0x0..=0x1, 0x2..=0x7] => bg,
-    [0x2..=0x3, 0x2..=0x7] => fg,
+    [0x0..=0x1, 0x2..=0x7] => background,
+    [0x2..=0x3, 0x2..=0x7] => foreground,
     [0xE..=0xF, 0x2..=0x7] => sprite,
     _ => global_palette,
 });

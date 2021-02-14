@@ -25,6 +25,7 @@ use std::convert::TryFrom;
 
 pub const LEVEL_COUNT: usize = 0x200;
 
+#[derive(Clone)]
 pub struct Level {
     pub primary_header: PrimaryHeader,
     pub _layer1: Layer1,

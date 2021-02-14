@@ -5,6 +5,7 @@ use nom::{
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
 
+#[derive(Clone)]
 pub struct PrimaryHeader {
     pub palette_bg: u8,
     pub level_length: u8,

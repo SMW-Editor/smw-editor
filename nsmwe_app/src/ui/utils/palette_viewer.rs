@@ -8,13 +8,24 @@ use imgui::{
 
 use inline_tweak::tweak;
 
-use nsmwe_rom::graphics::{
-    color::Rgba,
-    palette::{ColorPalette, LevelColorPalette},
+use nsmwe_rom::{
+    graphics::{
+        color::Rgba,
+        palette::{
+            ColorPalette,
+            GlobalLevelColorPalette,
+            LevelColorPaletteSet,
+        },
+    },
+    level::Level,
 };
 
+use std::rc::Rc;
+
 pub struct UiPaletteViewer {
-    palettes: Vec<LevelColorPalette>,
+    palettes: LevelColorPaletteSet,
+    global_palette: Rc<GlobalLevelColorPalette>,
+    levels: Vec<Level>,
     level_num: i32,
 }
 
@@ -44,9 +55,11 @@ impl UiTool for UiPaletteViewer {
 }
 
 impl UiPaletteViewer {
-    pub fn new(palettes: &[LevelColorPalette]) -> Self {
+    pub fn new(palettes: &LevelColorPaletteSet, levels: &[Level], gp: &Rc<GlobalLevelColorPalette>) -> Self {
         UiPaletteViewer {
-            palettes: palettes.to_vec(),
+            palettes: palettes.clone(),
+            global_palette: Rc::clone(gp),
+            levels: levels.to_vec(),
             level_num: 0,
         }
     }
@@ -64,7 +77,8 @@ impl UiPaletteViewer {
         const PADDING_TOP: f32 = 60.0;
         const PADDING_LEFT: f32 = 10.0;
 
-        let palette = &self.palettes[self.level_num as usize];
+        let header = &self.levels[self.level_num as usize].primary_header;
+        let palette = &self.palettes.get_level_palette(header, &self.global_palette).unwrap();
         let draw_list = ui.get_window_draw_list();
         let [wx, wy] = ui.window_pos();
 

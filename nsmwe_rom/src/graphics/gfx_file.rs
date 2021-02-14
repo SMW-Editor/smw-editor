@@ -93,8 +93,8 @@ impl GfxFile {
         rom_data: &[u8],
         tile_format: TileFormat,
         addr: AddrSnes,
-        size_bytes: usize)
-    -> IResult<&[u8], Self>
+        size_bytes: usize,
+    ) -> IResult<&[u8], Self>
     {
         debug_assert_ne!(0, size_bytes);
         use TileFormat::*;
