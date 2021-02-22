@@ -1,6 +1,4 @@
 use crate::{
-    OptProjectRef,
-    Project,
     UiTool,
     color,
 };
@@ -13,6 +11,11 @@ use imgui::{
 };
 
 use inline_tweak::tweak;
+
+use nsmwe_project::{
+    OptProjectRef,
+    Project,
+};
 
 use nsmwe_rom::Rom;
 

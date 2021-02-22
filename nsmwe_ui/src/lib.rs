@@ -1,3 +1,9 @@
+extern crate imgui;
+extern crate inline_tweak;
+extern crate nfd2;
+extern crate nsmwe_project;
+extern crate nsmwe_rom;
+
 pub mod color;
 pub mod main_window;
 pub mod project_creator;

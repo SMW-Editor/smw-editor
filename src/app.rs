@@ -1,15 +1,10 @@
-use crate::{
-    backend::Backend,
-    project::{
-        OptProjectRef,
-        Project
-    },
-    ui::{
-        UiMainWindow,
-    },
-};
+use crate::backend::Backend;
+
+use nsmwe_project::{OptProjectRef, Project};
 
 use nsmwe_rom::Rom;
+
+use nsmwe_ui::UiMainWindow;
 
 use std::{
     cell::RefCell,

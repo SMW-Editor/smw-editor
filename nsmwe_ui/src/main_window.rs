@@ -1,12 +1,9 @@
 use crate::{
-    OptProjectRef,
-    ui::{
-        UiAddressConverter,
-        UiPaletteViewer,
-        UiProjectCreator,
-        UiRomInfo,
-        UiTool,
-    },
+    UiAddressConverter,
+    UiPaletteViewer,
+    UiProjectCreator,
+    UiRomInfo,
+    UiTool,
 };
 
 use imgui::{
@@ -14,6 +11,8 @@ use imgui::{
     Ui,
     im_str,
 };
+
+use nsmwe_project::OptProjectRef;
 
 use std::{
     any::TypeId,
@@ -101,10 +100,10 @@ impl UiMainWindow {
                 .build(ui)
             {
                 let rom = &project.unwrap().rom_data;
-                let level_color_palette_set = &rom.level_color_palette_set;
-                let gp = &rom.global_level_color_palette;
+                let palettes = &rom.level_color_palette_set;
                 let levels = &rom.levels;
-                self.open_tool(|| UiPaletteViewer::new(level_color_palette_set, levels, gp));
+                let gp = &rom.global_level_color_palette;
+                self.open_tool(|| UiPaletteViewer::new(palettes, levels, gp));
             }
         });
     }

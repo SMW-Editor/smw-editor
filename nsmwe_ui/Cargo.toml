@@ -1,5 +1,5 @@
 [package]
-name = "nsmwe_app"
+name = "nsmwe_ui"
 version = "0.1.0"
 authors = ["Adam Gąsior (Adanos020)"]
 edition = "2018"
@@ -8,11 +8,9 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+nsmwe_project = { path = "../nsmwe_project" }
 nsmwe_rom = { path = "../nsmwe_rom" }
 
-glium = "0.29.0"
 imgui = "0.7.0"
-imgui-glium-renderer = "0.7.0"
-imgui-winit-support = "0.7.0"
 inline_tweak = "1.0.8"
 nfd2 = "0.2.3"

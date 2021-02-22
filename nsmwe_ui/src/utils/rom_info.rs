@@ -1,4 +1,4 @@
-use crate::ui::UiTool;
+use crate::UiTool;
 
 use imgui::{
     ImString,

@@ -1,0 +1,10 @@
+[package]
+name = "nsmwe_project"
+version = "0.1.0"
+authors = ["Adanos020 <adanos020@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nsmwe_rom = { path = "../nsmwe_rom" }

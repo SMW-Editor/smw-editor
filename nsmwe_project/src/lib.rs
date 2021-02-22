@@ -1,3 +1,5 @@
+extern crate nsmwe_rom;
+
 use nsmwe_rom::Rom;
 
 use std::cell::RefCell;

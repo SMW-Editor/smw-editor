@@ -1,6 +1,26 @@
 [workspace]
 
 members = [
-    "nsmwe_app",
+    "nsmwe_project",
     "nsmwe_rom",
+    "nsmwe_ui",
 ]
+
+[package]
+name = "nsmwe"
+version = "0.1.0"
+authors = ["Adam Gąsior (Adanos020)"]
+license = "MIT"
+edition = "2018"
+readme = "README.md"
+
+[dependencies]
+nsmwe_project = { path = "nsmwe_project" }
+nsmwe_rom = { path = "nsmwe_rom" }
+nsmwe_ui = { path = "nsmwe_ui" }
+
+imgui = "0.7.0"
+imgui-glium-renderer = "0.7.0"
+imgui-winit-support = "0.7.0"
+glium = "0.29.0"
+log4rs = "1.0.0"

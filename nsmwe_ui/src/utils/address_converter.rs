@@ -1,4 +1,4 @@
-use crate::ui::{
+use crate::{
     color,
     tool::UiTool,
 };
