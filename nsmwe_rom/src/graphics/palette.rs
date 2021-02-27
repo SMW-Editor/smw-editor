@@ -134,11 +134,11 @@ macro_rules! impl_color_palette {
 
 #[derive(Clone)]
 pub struct GlobalLevelColorPalette {
-    pub wtf:      [Bgr555; PALETTE_WTF_LENGTH],
-    pub players:  [Bgr555; PALETTE_PLAYER_LENGTH],
-    pub layer3:   [Bgr555; PALETTE_LAYER3_LENGTH],
-    pub berry:    [Bgr555; PALETTE_BERRY_LENGTH],
-    pub animated: [Bgr555; PALETTE_ANIMATED_LENGTH],
+    pub wtf:      Box<[Bgr555]>,
+    pub players:  Box<[Bgr555]>,
+    pub layer3:   Box<[Bgr555]>,
+    pub berry:    Box<[Bgr555]>,
+    pub animated: Box<[Bgr555]>,
 }
 
 #[derive(Clone)]
@@ -176,11 +176,11 @@ impl GlobalLevelColorPalette {
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = GlobalLevelColorPalette {
-            wtf:      [Bgr555(0); PALETTE_WTF_LENGTH],
-            players:  [Bgr555(0); PALETTE_PLAYER_LENGTH],
-            layer3:   [Bgr555(0); PALETTE_LAYER3_LENGTH],
-            berry:    [Bgr555(0); PALETTE_BERRY_LENGTH],
-            animated: [Bgr555(0); PALETTE_ANIMATED_LENGTH],
+            wtf:      [Bgr555(0); PALETTE_WTF_LENGTH].into(),
+            players:  [Bgr555(0); PALETTE_PLAYER_LENGTH].into(),
+            layer3:   [Bgr555(0); PALETTE_LAYER3_LENGTH].into(),
+            berry:    [Bgr555(0); PALETTE_BERRY_LENGTH].into(),
+            animated: [Bgr555(0); PALETTE_ANIMATED_LENGTH].into(),
         };
 
         palette.set_colors(&wtf,     0x4..=0xD, 0x2..=0x7);
@@ -193,7 +193,7 @@ impl GlobalLevelColorPalette {
         Ok((rom_data, palette))
     }
 
-    pub fn is_color_animated_at(&self, row: usize, col: usize) -> bool {
+    pub fn is_animated_color_at(&self, row: usize, col: usize) -> bool {
         (row == 0x6) && (col == 0x4)
     }
 }

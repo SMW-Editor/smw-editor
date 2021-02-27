@@ -167,10 +167,14 @@ impl RomInternalHeader {
         let (_, (hi_cpl, hi_csm)) = preceded!(rom_data, take!(hi_cpl_idx), pair!(le_u16, le_u16))?;
 
         if (lo_csm ^ lo_cpl) == 0xFFFF {
+            log::info!("Internal ROM header found at LoROM location: {:#X}", *HEADER_LOROM.start());
             Ok((rom_data, Some(*HEADER_LOROM.start())))
         } else if (hi_csm ^ hi_cpl) == 0xFFFF {
+            log::info!("Internal ROM header found at HiROM location: {:#X}", *HEADER_HIROM.start());
             Ok((rom_data, Some(*HEADER_HIROM.start())))
         } else {
+            log::error!("Couldn't find internal ROM header due to invalid checksums");
+            log::error!("(LoROM: {:X}^{:X}, HiROM: {:X}^{:X})", lo_cpl, lo_csm, hi_cpl, hi_csm);
             Ok((rom_data, None))
         }
     }

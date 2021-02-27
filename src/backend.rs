@@ -1,30 +1,18 @@
 use glium::{
     glutin,
+    glutin::{
+        dpi::LogicalSize,
+        event::{Event, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        window::WindowBuilder,
+    },
     Display,
     Surface,
 };
-use glium::glutin::{
-    dpi::LogicalSize,
-    event::{
-        Event,
-        WindowEvent,
-    },
-    event_loop::{
-        ControlFlow,
-        EventLoop,
-    },
-    window::WindowBuilder,
-};
 
-use imgui::{
-    Context,
-    Ui,
-};
+use imgui::{Context, Ui};
 use imgui_glium_renderer::Renderer;
-use imgui_winit_support::{
-    HiDpiMode,
-    WinitPlatform,
-};
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
 use std::time::Instant;
 
@@ -38,6 +26,8 @@ pub struct Backend {
 
 impl Backend {
     pub fn new(width: u32, height: u32, title: &str) -> Self {
+        log::info!("Setting up the rendering backend");
+
         let event_loop = EventLoop::new();
 
         let glutin_context = glutin::ContextBuilder::new()
@@ -87,6 +77,7 @@ impl Backend {
         } = self;
         let mut last_frame = Instant::now();
 
+        log::info!("Starting the main loop");
         event_loop.run(move |event, _, control_flow| match event {
             Event::NewEvents(_) => {
                 let now = Instant::now();
@@ -114,10 +105,12 @@ impl Backend {
                         .expect("Failed to render a frame.");
                     target.finish().expect("Failed to swap buffers.");
                 } else {
+                    log::info!("Exiting");
                     *control_flow = ControlFlow::Exit;
                 }
             }
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                log::info!("Exiting");
                 *control_flow = ControlFlow::Exit;
             }
             event => {

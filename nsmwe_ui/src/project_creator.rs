@@ -16,7 +16,6 @@ use nsmwe_project::{
     OptProjectRef,
     Project,
 };
-
 use nsmwe_rom::Rom;
 
 use std::{
@@ -52,12 +51,17 @@ impl UiTool for UiProjectCreator {
                 self.project_error_popup(ui);
             });
 
-        opened && !created_or_cancelled
+        let running = opened && !created_or_cancelled;
+        if !running {
+            log::info!("Closed Project Creator");
+        }
+        running
     }
 }
 
 impl UiProjectCreator {
     pub fn new(project_ref: Rc<OptProjectRef>) -> Self {
+        log::info!("Opened Project Creator");
         let mut myself = UiProjectCreator {
             project_title: ImString::new("My SMW hack"),
             base_rom_path: ImString::new(""),
@@ -124,6 +128,7 @@ impl UiProjectCreator {
     }
 
     fn open_file_selector(&mut self) {
+        log::info!("Opened File Selector");
         use nfd2::Response;
         if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None)
             .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
@@ -136,6 +141,7 @@ impl UiProjectCreator {
     fn create_or_cancel(&mut self, ui: &Ui, created_or_cancelled: &mut bool) {
         if self.no_creation_errors() {
             if ui.small_button(im_str!("Create")) {
+                log::info!("Attempting to create a new project");
                 self.handle_project_creation(ui, created_or_cancelled);
             }
         } else {
@@ -143,6 +149,7 @@ impl UiProjectCreator {
         }
         ui.same_line(0.0);
         if ui.small_button(im_str!("Cancel")) {
+            log::info!("Cancelled project creation");
             *created_or_cancelled = true;
         }
     }
@@ -150,6 +157,7 @@ impl UiProjectCreator {
     fn handle_project_creation(&mut self, ui: &Ui, created_or_cancelled: &mut bool) {
         match Rom::from_file(self.base_rom_path.to_str()) {
             Ok(rom_data) => {
+                log::info!("Success creating a new project");
                 let project = Project {
                     title: self.project_title.to_string(),
                     rom_data,
@@ -159,6 +167,7 @@ impl UiProjectCreator {
                 self.err_project_creation.clear();
             }
             Err(err) => {
+                log::info!("Failed to create a new project: {}", err);
                 self.err_project_creation = ImString::from(err.to_string());
                 ui.open_popup(im_str!("Error!##project_error"));
             }

@@ -22,7 +22,7 @@ use std::{
 pub enum RomParseError {
     BadAddress(usize),
     BadSize(usize),
-    GfxFile(TileFormat, AddrSnes, usize),
+    GfxFile(TileFormat, usize, usize),
     InternalHeader,
     IoError,
     Level(usize),
@@ -44,7 +44,7 @@ pub struct DecompressionError(pub &'static str);
 impl fmt::Display for RomParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RomParseError::*;
-        write!(f, "{}", match self {
+        let msg = match self {
             BadAddress(addr) =>
                 format!("ROM doesn't contain PC address {}", addr),
             BadSize(size) =>
@@ -54,15 +54,16 @@ impl fmt::Display for RomParseError {
             IoError =>
                 String::from("File IO Error"),
             Level(level_num) =>
-                format!("Invalid level: {:#x}", level_num),
+                format!("Invalid level: {:#X}", level_num),
             PaletteGlobal =>
                 String::from("Could not parse global level color palette"),
             PaletteSetLevel(level_num) =>
-                format!("Invalid color palette in level {:#x}", level_num),
-            GfxFile(tile_format, addr, size_bytes) =>
-                format!("Invalid GFX file - tile format: {}, addr: {}, size: {}B",
-                    tile_format, addr, size_bytes),
-        })
+                format!("Invalid color palette in level {:#X}", level_num),
+            GfxFile(tile_format, num, size_bytes) =>
+                format!("Invalid GFX file - tile format: {}, file num: {:X}, size: {}B",
+                        tile_format, num, size_bytes),
+        };
+        f.write_str(msg.as_str())
     }
 }
 
@@ -71,11 +72,12 @@ impl Error for RomParseError {}
 impl fmt::Display for AddressConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AddressConversionError::*;
-        write!(f, "{}", match self {
+        let msg = match self {
             PcToSnes(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
             SnesToPc(addr, map_mode) =>
                 format!("Invalid SNES {} address: ${:x}", map_mode, addr),
-        })
+        };
+        f.write_str(msg.as_str())
     }
 }
 

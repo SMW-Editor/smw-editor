@@ -52,10 +52,6 @@ pub mod types {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
             }
 
-            impl fmt::LowerHex for $name {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{:x}", self.0) }
-            }
-
             macro_rules! gen_address_bin_op {
                 ($op_name: ident, $op_fn_name: ident, $op: tt) => {
                     impl $op_name<$name> for $name {
@@ -122,6 +118,14 @@ pub mod types {
         }
     }
 
+    impl fmt::LowerHex for AddrPc {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "PC {:#x}", self.0) }
+    }
+
+    impl fmt::UpperHex for AddrPc {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "PC {:#X}", self.0) }
+    }
+
     impl AddrSnes {
         pub fn try_from_lorom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
             if addr.is_valid_lorom() {
@@ -158,5 +162,13 @@ pub mod types {
         fn try_from(value: AddrPc) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)
         }
+    }
+
+    impl fmt::LowerHex for AddrSnes {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "SNES ${:x}", self.0) }
+    }
+
+    impl fmt::UpperHex for AddrSnes {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "SNES ${:X}", self.0) }
     }
 }

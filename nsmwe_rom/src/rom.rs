@@ -41,12 +41,22 @@ pub struct Rom {
 
 impl Rom {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Rom, RomParseError> {
+        log::info!("Reading ROM from file: {}", path.as_ref().display());
         match fs::read(path) {
             Ok(rom_data) => match Rom::from_raw(&rom_data) {
-                Ok(rom) => Ok(rom),
-                Err(err) => Err(err),
+                Ok(rom) => {
+                    log::info!("Success parsing ROM");
+                    Ok(rom)
+                },
+                Err(err) => {
+                    log::error!("Failed to parse ROM: {}", err);
+                    Err(err)
+                },
             },
-            Err(_) => Err(RomParseError::IoError),
+            Err(err) => {
+                log::error!("Couldn't read ROM: {}", err);
+                Err(RomParseError::IoError)
+            },
         }
     }
 
@@ -80,6 +90,7 @@ impl Rom {
     }
 
     fn get_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
+        log::info!("Parsing internal ROM header");
         match RomInternalHeader::from_rom_data(rom_data) {
             Ok((_, header)) => Ok(header),
             Err(_) => Err(RomParseError::InternalHeader),
@@ -87,6 +98,7 @@ impl Rom {
     }
 
     fn get_levels(rom_data: &[u8]) -> RpResult<Vec<Level>> {
+        log::info!("Parsing level data");
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
             match Level::from_rom_data(rom_data, level_num) {
@@ -98,6 +110,7 @@ impl Rom {
     }
 
     fn get_global_level_color_palette(rom_data: &[u8]) -> RpResult<Rc<GlobalLevelColorPalette>> {
+        log::info!("Parsing global color palette");
         match GlobalLevelColorPalette::parse(rom_data) {
             Ok((_, palette)) => Ok(Rc::new(palette)),
             Err(_) => Err(RomParseError::PaletteGlobal),
@@ -105,11 +118,12 @@ impl Rom {
     }
 
     fn get_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {
+        log::info!("Parsing GFX files");
         let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
-        for &(tile_format, addr, size_bytes) in GFX_FILES_META.iter() {
+        for (i, &(tile_format, addr, size_bytes)) in GFX_FILES_META.iter().enumerate() {
             match GfxFile::new(rom_data, tile_format, addr, size_bytes) {
                 Ok((_, file)) => gfx_files.push(file),
-                Err(_) => return Err(RomParseError::GfxFile(tile_format, addr, size_bytes)),
+                Err(_) => return Err(RomParseError::GfxFile(tile_format, i, size_bytes)),
             }
         }
         Ok(gfx_files)

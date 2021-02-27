@@ -27,12 +27,16 @@ impl UiTool for UiRomInfo {
                 self.display_data.iter().for_each(|t| ui.text(t));
             });
 
+        if !running {
+            log::info!("Closed ROM Info");
+        }
         running
     }
 }
 
 impl UiRomInfo {
     pub fn new(header: &RomInternalHeader) -> Self {
+        log::info!("Opened ROM Info");
         UiRomInfo {
             display_data: vec![
                 ImString::new(format!("Internal ROM name: {}",    header.internal_rom_name)),

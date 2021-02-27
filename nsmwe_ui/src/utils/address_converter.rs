@@ -39,6 +39,9 @@ impl UiTool for UiAddressConverter {
                 self.conversions(ui);
             });
 
+        if !running {
+            log::info!("Closed Address Converter");
+        }
         running
     }
 }
@@ -51,6 +54,7 @@ impl Default for UiAddressConverter {
 
 impl UiAddressConverter {
     pub fn new() -> Self {
+        log::info!("Opened Address Converter");
         UiAddressConverter {
             conversion_mode: ConversionMode::LoRom,
             include_header: false,
@@ -70,10 +74,13 @@ impl UiAddressConverter {
             &mut self.conversion_mode,
             ConversionMode::HiRom);
         if lorom_changed || hirom_changed {
+            log::info!("Conversion mode changed to {}", self.conversion_mode);
             self.update_addresses(ConvDir::PcToSnes);
         }
 
         if ui.checkbox(im_str!("Include header"), &mut self.include_header) {
+            log::info!("Inclusion of SMC header: {}",
+                       if self.include_header { "ON" } else { "OFF" });
             let addr_pc = usize::from_str_radix(self.text_pc.to_str(), 16)
                 .unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
@@ -102,6 +109,7 @@ impl UiAddressConverter {
             .auto_select_all(true)
             .build()
         {
+            log::info!("Changed input '{}' to: {}", direction, buf);
             self.update_addresses(direction);
         }
     }
@@ -160,8 +168,9 @@ impl UiAddressConverter {
 
 mod modes {
     use std::cmp::PartialEq;
+    use std::fmt;
 
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum ConversionMode {
         LoRom,
         HiRom,
@@ -170,6 +179,24 @@ mod modes {
     pub enum ConvDir {
         PcToSnes,
         SnesToPc,
+    }
+
+    impl fmt::Display for ConversionMode {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(match self {
+                ConversionMode::LoRom => "PC ↔ LoRom",
+                ConversionMode::HiRom => "PC ↔ HiRom",
+            })
+        }
+    }
+
+    impl fmt::Display for ConvDir {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str(match self {
+                ConvDir::PcToSnes => "PC → SNES",
+                ConvDir::SnesToPc => "SNES → PC",
+            })
+        }
     }
 }
 

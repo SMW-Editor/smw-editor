@@ -913,6 +913,7 @@ dependencies = [
  "imgui",
  "imgui-glium-renderer",
  "imgui-winit-support",
+ "log",
  "log4rs",
  "nsmwe_project",
  "nsmwe_rom",
@@ -930,6 +931,7 @@ dependencies = [
 name = "nsmwe_rom"
 version = "0.1.0"
 dependencies = [
+ "log",
  "nom",
  "num_enum 0.5.1",
 ]
@@ -940,6 +942,7 @@ version = "0.1.0"
 dependencies = [
  "imgui",
  "inline_tweak",
+ "log",
  "nfd2",
  "nsmwe_project",
  "nsmwe_rom",

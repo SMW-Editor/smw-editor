@@ -13,4 +13,5 @@ nsmwe_rom = { path = "../nsmwe_rom" }
 
 imgui = "0.7.0"
 inline_tweak = "1.0.8"
+log = "0.4.14"
 nfd2 = "0.2.3"
