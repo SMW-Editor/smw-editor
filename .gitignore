@@ -13,9 +13,7 @@
 .idea
 *.iml
 
-# Assets
-ROM
-imgui.ini
-
 # Misc
+imgui.ini
+ROM
 log

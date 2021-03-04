@@ -71,9 +71,9 @@ impl UiPaletteViewer {
 
     fn adjust_level_num(&mut self) {
         if self.level_num < 0 {
-            self.level_num = 0x1FF;
-        } else if self.level_num >= 0x200 {
-            self.level_num = 0x0;
+            self.level_num = self.levels.len() as i32 - 1;
+        } else if self.level_num >= self.levels.len() as i32 {
+            self.level_num = 0;
         }
     }
 

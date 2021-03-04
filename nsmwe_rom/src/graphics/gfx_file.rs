@@ -1,6 +1,8 @@
 use crate::{
     addr::{AddrPc, AddrSnes},
     compression::lc_lz2_decompress,
+    error::GfxTileError,
+    graphics::color::{Bgr555, Rgba},
 };
 
 use nom::{
@@ -26,10 +28,12 @@ pub enum TileFormat {
     TileMode7,
 }
 
+#[derive(Clone)]
 pub struct Tile {
-    color_indices: [u8; N_INDICES_IN_TILE],
+    color_indices: Box<[u8]>,
 }
 
+#[derive(Clone)]
 pub struct GfxFile {
     pub tile_format: TileFormat,
     pub tiles: Vec<Tile>,
@@ -65,7 +69,7 @@ impl Tile {
     fn from_xbpp(input: &[u8], x: usize) -> IResult<&[u8], Self> {
         debug_assert!([2, 4, 8].contains(&x));
         let (input, bytes) = take!(input, x * 8)?;
-        let mut tile = Tile { color_indices: [0; N_INDICES_IN_TILE] };
+        let mut tile = Tile { color_indices: [0; N_INDICES_IN_TILE].into() };
 
         for i in 0..N_INDICES_IN_TILE {
             let (row, col) = (i / 8, i % 8);
@@ -86,6 +90,27 @@ impl Tile {
         let tile = Tile { color_indices: bytes.try_into().unwrap() };
         Ok((input, tile))
     }
+
+    pub fn to_bgr555(&self, palette: &[Bgr555]) -> Result<Box<[Bgr555]>, GfxTileError> {
+        let mut bgr555_tile = [Bgr555::default(); N_INDICES_IN_TILE];
+        for (i, &color_index) in self.color_indices.iter().enumerate() {
+            let color = palette.get(color_index as usize).ok_or(GfxTileError::ToBgr555)?;
+            bgr555_tile[i] = *color;
+        }
+        Ok(bgr555_tile.into())
+    }
+
+    pub fn to_rgba(&self, palette: &[Bgr555]) -> Result<Box<[Rgba]>, GfxTileError> {
+        match self.to_bgr555(palette) {
+            Ok(bgr555_tile) => {
+                let rgba_tile: Box<[Rgba]> = bgr555_tile.iter()
+                    .map(|&color| Rgba::from(color))
+                    .collect();
+                Ok(rgba_tile)
+            }
+            Err(_) => Err(GfxTileError::ToRgba)
+        }
+    }
 }
 
 impl GfxFile {
@@ -94,8 +119,7 @@ impl GfxFile {
         tile_format: TileFormat,
         addr: AddrSnes,
         size_bytes: usize,
-    ) -> IResult<&[u8], Self>
-    {
+    ) -> IResult<&[u8], Self> {
         debug_assert_ne!(0, size_bytes);
         use TileFormat::*;
 

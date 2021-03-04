@@ -23,6 +23,12 @@ impl From<Rgba> for Bgr555 {
     }
 }
 
+impl Default for Bgr555 {
+    fn default() -> Self {
+        Bgr555(0)
+    }
+}
+
 impl From<Bgr555> for Rgba {
     fn from(color: Bgr555) -> Self {
         let cmf = SNES_BGR_CHANNEL_MAX as f32;
@@ -49,5 +55,16 @@ impl From<[f32; 4]> for Rgba {
 impl Into<[f32; 4]> for Rgba {
     fn into(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
+    }
+}
+
+impl Default for Rgba {
+    fn default() -> Self {
+        Rgba {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        }
     }
 }

@@ -19,6 +19,29 @@ use std::{
 // -------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
+pub enum AddressConversionError {
+    PcToSnes(AddrPc),
+    SnesToPc(AddrSnes, MapMode),
+}
+
+#[derive(Debug)]
+pub struct DecompressionError(pub &'static str);
+
+#[derive(Debug)]
+pub enum GfxTileError {
+    ToBgr555,
+    ToRgba,
+}
+
+#[derive(Debug)]
+pub enum LevelPaletteError {
+    BackAreaColor,
+    Background,
+    Foreground,
+    Sprite,
+}
+
+#[derive(Debug)]
 pub enum RomParseError {
     BadAddress(usize),
     BadSize(usize),
@@ -30,16 +53,51 @@ pub enum RomParseError {
     PaletteSetLevel(usize),
 }
 
-#[derive(Debug)]
-pub enum AddressConversionError {
-    PcToSnes(AddrPc),
-    SnesToPc(AddrSnes, MapMode),
+// -------------------------------------------------------------------------------------------------
+
+
+impl fmt::Display for AddressConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AddressConversionError::*;
+        let msg = match self {
+            PcToSnes(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
+            SnesToPc(addr, map_mode) =>
+                format!("Invalid SNES {} address: ${:x}", map_mode, addr),
+        };
+        f.write_str(msg.as_str())
+    }
 }
 
-#[derive(Debug)]
-pub struct DecompressionError(pub &'static str);
+impl fmt::Display for DecompressionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Failed to decompress data: ")?;
+        f.write_str(self.0)
+    }
+}
 
-// -------------------------------------------------------------------------------------------------
+impl fmt::Display for GfxTileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use GfxTileError::*;
+        let msg = format!("Failed to convert an indexed tile to {}", match self {
+            ToBgr555 => "BGR555",
+            ToRgba => "RGBA",
+        });
+        f.write_str(msg.as_str())
+    }
+}
+
+impl fmt::Display for LevelPaletteError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LevelPaletteError::*;
+        let msg = format!("Failed to construct a level palette: {}", match self {
+            BackAreaColor => "back area color",
+            Background => "background",
+            Foreground => "foreground",
+            Sprite => "sprite",
+        });
+        f.write_str(msg.as_str())
+    }
+}
 
 impl fmt::Display for RomParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -67,30 +125,10 @@ impl fmt::Display for RomParseError {
     }
 }
 
-impl Error for RomParseError {}
-
-impl fmt::Display for AddressConversionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use AddressConversionError::*;
-        let msg = match self {
-            PcToSnes(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
-            SnesToPc(addr, map_mode) =>
-                format!("Invalid SNES {} address: ${:x}", map_mode, addr),
-        };
-        f.write_str(msg.as_str())
-    }
-}
-
 impl Error for AddressConversionError {}
-
-impl fmt::Display for DecompressionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Decompressing data failed:")?;
-        f.write_str(self.0)
-    }
-}
-
 impl Error for DecompressionError {}
+impl Error for LevelPaletteError {}
+impl Error for RomParseError {}
 
 // -------------------------------------------------------------------------------------------------
 
