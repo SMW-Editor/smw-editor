@@ -1,10 +1,11 @@
-use crate::UiTool;
+use crate::ui::UiTool;
 
 use imgui::{
     im_str,
     Ui,
     Window,
 };
+use imgui_glium_renderer::Renderer;
 
 use inline_tweak::tweak;
 
@@ -30,7 +31,7 @@ pub struct UiPaletteViewer {
 }
 
 impl UiTool for UiPaletteViewer {
-    fn run(&mut self, ui: &Ui) -> bool {
+    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
         let mut running = true;
 
         Window::new(im_str!("Color palettes"))

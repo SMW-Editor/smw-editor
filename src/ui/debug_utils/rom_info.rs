@@ -1,4 +1,4 @@
-use crate::UiTool;
+use crate::ui::UiTool;
 
 use imgui::{
     ImString,
@@ -6,6 +6,7 @@ use imgui::{
     Window,
     im_str,
 };
+use imgui_glium_renderer::Renderer;
 
 use nsmwe_rom::RomInternalHeader;
 
@@ -14,7 +15,7 @@ pub struct UiRomInfo {
 }
 
 impl UiTool for UiRomInfo {
-    fn run(&mut self, ui: &Ui) -> bool {
+    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
         let mut running = true;
 
         Window::new(im_str!("ROM info"))

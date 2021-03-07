@@ -1,8 +1,5 @@
 #![allow(clippy::identity_op)]
 
-extern crate nom;
-extern crate num_enum;
-
 pub mod addr;
 pub mod compression;
 pub mod error;

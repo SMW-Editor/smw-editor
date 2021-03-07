@@ -913,11 +913,12 @@ dependencies = [
  "imgui",
  "imgui-glium-renderer",
  "imgui-winit-support",
+ "inline_tweak",
  "log",
  "log4rs",
+ "nfd2",
  "nsmwe_project",
  "nsmwe_rom",
- "nsmwe_ui",
 ]
 
 [[package]]
@@ -934,18 +935,6 @@ dependencies = [
  "log",
  "nom",
  "num_enum 0.5.1",
-]
-
-[[package]]
-name = "nsmwe_ui"
-version = "0.1.0"
-dependencies = [
- "imgui",
- "inline_tweak",
- "log",
- "nfd2",
- "nsmwe_project",
- "nsmwe_rom",
 ]
 
 [[package]]

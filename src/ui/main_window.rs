@@ -1,5 +1,6 @@
-use crate::{
+use crate::ui::{
     UiAddressConverter,
+    UiGfxViewer,
     UiPaletteViewer,
     UiProjectCreator,
     UiRomInfo,
@@ -11,6 +12,7 @@ use imgui::{
     Ui,
     im_str,
 };
+use imgui_glium_renderer::Renderer;
 
 use nsmwe_project::OptProjectRef;
 
@@ -36,9 +38,9 @@ impl UiMainWindow {
         }
     }
 
-    pub fn run(&mut self, ui: &Ui) -> bool {
+    pub fn tick(&mut self, ui: &Ui, renderer: &mut Renderer) -> bool {
         self.main_menu_bar(ui);
-        self.handle_tools(ui);
+        self.handle_tools(ui, renderer);
 
         self.running
     }
@@ -105,13 +107,20 @@ impl UiMainWindow {
                 let gp = &rom.global_level_color_palette;
                 self.open_tool(|| UiPaletteViewer::new(palettes, levels, gp));
             }
+            if MenuItem::new(im_str!("GFX"))
+                .enabled(project.is_some())
+                .build(ui)
+            {
+                let rom = &project.unwrap().rom_data;
+                self.open_tool(|| UiGfxViewer::new(&rom.gfx_files));
+            }
         });
     }
 
-    fn handle_tools(&mut self, ui: &Ui) {
+    fn handle_tools(&mut self, ui: &Ui, renderer: &mut Renderer) {
         let mut tools_to_close = Vec::new();
         for (tool, id) in self.tools.iter_mut() {
-            if !tool.run(ui) {
+            if !tool.tick(ui, renderer) {
                 tools_to_close.push(*id);
             }
         }

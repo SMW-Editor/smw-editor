@@ -1,4 +1,4 @@
-use crate::{
+use crate::ui::{
     UiTool,
     color,
 };
@@ -9,6 +9,7 @@ use imgui::{
     Ui,
     im_str,
 };
+use imgui_glium_renderer::Renderer;
 
 use inline_tweak::tweak;
 
@@ -35,7 +36,7 @@ pub struct UiProjectCreator {
 }
 
 impl UiTool for UiProjectCreator {
-    fn run(&mut self, ui: &Ui) -> bool {
+    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 

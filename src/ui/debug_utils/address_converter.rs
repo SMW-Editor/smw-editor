@@ -1,4 +1,4 @@
-use crate::{
+use crate::ui::{
     color,
     tool::UiTool,
 };
@@ -12,6 +12,7 @@ use imgui::{
     Ui,
     im_str,
 };
+use imgui_glium_renderer::Renderer;
 
 use nsmwe_rom::addr::{AddrPc, AddrSnes};
 
@@ -25,7 +26,7 @@ pub struct UiAddressConverter {
 }
 
 impl UiTool for UiAddressConverter {
-    fn run(&mut self, ui: &Ui) -> bool {
+    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
         let mut running = true;
 
         Window::new(im_str!("Address converter"))

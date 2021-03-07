@@ -65,7 +65,7 @@ impl Backend {
     }
 
     pub fn run<AppCode>(self, mut app_code: AppCode)
-        where AppCode: 'static + FnMut(&Ui) -> bool
+        where AppCode: 'static + FnMut(&Ui, &mut Renderer) -> bool
     {
         let Backend {
             event_loop,
@@ -94,7 +94,7 @@ impl Backend {
             }
             Event::RedrawRequested(_) => {
                 let ui = context.frame();
-                if app_code(&ui) {
+                if app_code(&ui, &mut renderer) {
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
                     target.clear_color(0.0, 0.0, 0.0, 1.0);
