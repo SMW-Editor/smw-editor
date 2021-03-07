@@ -1,6 +1,13 @@
-use crate::ui::{
-    color,
-    tool::UiTool,
+use crate::{
+    frame_context::FrameContext,
+    ui::{
+        color,
+        tool::{
+            title_with_id,
+            UiTool,
+            WindowId,
+        },
+    },
 };
 
 use self::helpers::*;
@@ -12,11 +19,12 @@ use imgui::{
     Ui,
     im_str,
 };
-use imgui_glium_renderer::Renderer;
 
 use nsmwe_rom::addr::{AddrPc, AddrSnes};
 
 pub struct UiAddressConverter {
+    title: ImString,
+
     conversion_mode: ConversionMode,
     include_header: bool,
 
@@ -26,19 +34,21 @@ pub struct UiAddressConverter {
 }
 
 impl UiTool for UiAddressConverter {
-    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
+    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        Window::new(im_str!("Address converter"))
+        let title = std::mem::take(&mut self.title);
+        Window::new(&title)
             .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
             .opened(&mut running)
-            .build(ui, || {
-                self.mode_selection(ui);
-                self.conversions(ui);
+            .build(ctx.ui, || {
+                self.mode_selection(ctx.ui);
+                self.conversions(ctx.ui);
             });
+        self.title = title;
 
         if !running {
             log::info!("Closed Address Converter");
@@ -47,16 +57,11 @@ impl UiTool for UiAddressConverter {
     }
 }
 
-impl Default for UiAddressConverter {
-    fn default() -> Self {
-        UiAddressConverter::new()
-    }
-}
-
 impl UiAddressConverter {
-    pub fn new() -> Self {
+    pub fn new(id: WindowId) -> Self {
         log::info!("Opened Address Converter");
         UiAddressConverter {
+            title: title_with_id("Address converter", id),
             conversion_mode: ConversionMode::LoRom,
             include_header: false,
             text_pc: ImString::new("0"),

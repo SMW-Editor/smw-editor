@@ -1,3 +1,5 @@
+use crate::frame_context::FrameContext;
+
 use glium::{
     glutin,
     glutin::{
@@ -10,9 +12,11 @@ use glium::{
     Surface,
 };
 
-use imgui::{Context, Ui};
+use imgui::Context;
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+
+use nsmwe_project::ProjectRef;
 
 use std::time::Instant;
 
@@ -64,8 +68,8 @@ impl Backend {
         }
     }
 
-    pub fn run<AppCode>(self, mut app_code: AppCode)
-        where AppCode: 'static + FnMut(&Ui, &mut Renderer) -> bool
+    pub fn run<AppCode>(self, mut app_code: AppCode, mut project_ref: Option<ProjectRef>)
+        where AppCode: 'static + FnMut(&mut FrameContext) -> bool
     {
         let Backend {
             event_loop,
@@ -94,7 +98,12 @@ impl Backend {
             }
             Event::RedrawRequested(_) => {
                 let ui = context.frame();
-                if app_code(&ui, &mut renderer) {
+                let mut ctx = FrameContext {
+                    project_ref: &mut project_ref,
+                    renderer: &mut renderer,
+                    ui: &ui,
+                };
+                if app_code(&mut ctx) {
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
                     target.clear_color(0.0, 0.0, 0.0, 1.0);

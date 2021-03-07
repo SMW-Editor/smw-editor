@@ -1,32 +1,39 @@
-use crate::ui::UiTool;
+use crate::{
+    frame_context::FrameContext,
+    ui::{
+        title_with_id,
+        UiTool,
+        WindowId,
+    },
+};
 
 use imgui::{
     ImString,
-    Ui,
     Window,
-    im_str,
 };
-use imgui_glium_renderer::Renderer;
 
 use nsmwe_rom::RomInternalHeader;
 
 pub struct UiRomInfo {
+    title: ImString,
     display_data: Vec<ImString>,
 }
 
 impl UiTool for UiRomInfo {
-    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
+    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        Window::new(im_str!("ROM info"))
+        let title = std::mem::take(&mut self.title);
+        Window::new(&title)
             .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
             .opened(&mut running)
-            .build(ui, || {
-                self.display_data.iter().for_each(|t| ui.text(t));
+            .build(ctx.ui, || {
+                self.display_data.iter().for_each(|t| ctx.ui.text(t));
             });
+        self.title = title;
 
         if !running {
             log::info!("Closed ROM Info");
@@ -36,9 +43,10 @@ impl UiTool for UiRomInfo {
 }
 
 impl UiRomInfo {
-    pub fn new(header: &RomInternalHeader) -> Self {
+    pub fn new(id: WindowId, header: &RomInternalHeader) -> Self {
         log::info!("Opened ROM Info");
         UiRomInfo {
+            title: title_with_id("ROM info", id),
             display_data: vec![
                 ImString::new(format!("Internal ROM name: {}",    header.internal_rom_name)),
                 ImString::new(format!("Map mode:          {}",    header.map_mode)),

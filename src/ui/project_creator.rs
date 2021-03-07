@@ -1,6 +1,11 @@
-use crate::ui::{
-    UiTool,
-    color,
+use crate::{
+    frame_context::FrameContext,
+    ui::{
+        color,
+        title_with_id,
+        UiTool,
+        WindowId,
+    },
 };
 
 use imgui::{
@@ -9,48 +14,47 @@ use imgui::{
     Ui,
     im_str,
 };
-use imgui_glium_renderer::Renderer;
 
 use inline_tweak::tweak;
 
-use nsmwe_project::{
-    OptProjectRef,
-    Project,
-};
+use nsmwe_project::Project;
 use nsmwe_rom::Rom;
 
 use std::{
+    cell::RefCell,
     path::Path,
     rc::Rc,
 };
 
 pub struct UiProjectCreator {
+    title: ImString,
+
     project_title: ImString,
     base_rom_path: ImString,
 
     err_project_title: ImString,
     err_base_rom_path: ImString,
     err_project_creation: ImString,
-
-    project_ref: Rc<OptProjectRef>,
 }
 
 impl UiTool for UiProjectCreator {
-    fn tick(&mut self, ui: &Ui, _: &mut Renderer) -> bool {
+    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
-        Window::new(im_str!("Create new project"))
+        let title = std::mem::take(&mut self.title);
+        Window::new(&title)
             .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
             .opened(&mut opened)
-            .build(ui, || {
-                self.input_project_title(ui);
-                self.input_rom_file_path(ui);
-                self.create_or_cancel(ui, &mut created_or_cancelled);
-                self.project_error_popup(ui);
+            .build(ctx.ui, || {
+                self.input_project_title(ctx.ui);
+                self.input_rom_file_path(ctx.ui);
+                self.create_or_cancel(ctx, &mut created_or_cancelled);
+                self.project_error_popup(ctx.ui);
             });
+        self.title = title;
 
         let running = opened && !created_or_cancelled;
         if !running {
@@ -61,17 +65,17 @@ impl UiTool for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn new(project_ref: Rc<OptProjectRef>) -> Self {
+    pub fn new(id: WindowId) -> Self {
         log::info!("Opened Project Creator");
         let mut myself = UiProjectCreator {
+            title: title_with_id("Create new project", id),
+
             project_title: ImString::new("My SMW hack"),
             base_rom_path: ImString::new(""),
 
             err_project_title: ImString::new(""),
             err_base_rom_path: ImString::new(""),
             err_project_creation: ImString::new(""),
-
-            project_ref,
         };
         myself.handle_rom_file_path();
         myself
@@ -139,23 +143,23 @@ impl UiProjectCreator {
         }
     }
 
-    fn create_or_cancel(&mut self, ui: &Ui, created_or_cancelled: &mut bool) {
+    fn create_or_cancel(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
         if self.no_creation_errors() {
-            if ui.small_button(im_str!("Create")) {
+            if ctx.ui.small_button(im_str!("Create")) {
                 log::info!("Attempting to create a new project");
-                self.handle_project_creation(ui, created_or_cancelled);
+                self.handle_project_creation(ctx, created_or_cancelled);
             }
         } else {
-            ui.text_disabled(im_str!("Create"));
+            ctx.ui.text_disabled(im_str!("Create"));
         }
-        ui.same_line(0.0);
-        if ui.small_button(im_str!("Cancel")) {
+        ctx.ui.same_line(0.0);
+        if ctx.ui.small_button(im_str!("Cancel")) {
             log::info!("Cancelled project creation");
             *created_or_cancelled = true;
         }
     }
 
-    fn handle_project_creation(&mut self, ui: &Ui, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
         match Rom::from_file(self.base_rom_path.to_str()) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
@@ -163,14 +167,14 @@ impl UiProjectCreator {
                     title: self.project_title.to_string(),
                     rom_data,
                 };
-                *self.project_ref.borrow_mut() = Some(project);
+                *ctx.project_ref = Some(Rc::new(RefCell::new(project)));
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
             }
             Err(err) => {
                 log::info!("Failed to create a new project: {}", err);
                 self.err_project_creation = ImString::from(err.to_string());
-                ui.open_popup(im_str!("Error!##project_error"));
+                ctx.ui.open_popup(im_str!("Error!##project_error"));
             }
         }
     }

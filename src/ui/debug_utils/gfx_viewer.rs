@@ -1,14 +1,18 @@
-use crate::ui::UiTool;
+use crate::{
+    frame_context::FrameContext,
+    ui::{
+        title_with_id,
+        UiTool,
+        WindowId,
+    },
+};
 
 use imgui::{
     im_str,
-    Ui,
+    ImString,
     Window,
 };
-use imgui_glium_renderer::{
-    Renderer,
-    Texture,
-};
+use imgui_glium_renderer::Texture;
 
 use nsmwe_rom::graphics::gfx_file::{
     GfxFile,
@@ -17,32 +21,35 @@ use nsmwe_rom::graphics::gfx_file::{
 };
 
 pub struct UiGfxViewer {
-    pub gfx_files: Vec<GfxFile>,
-    pub curr_gfx_file_num: i32,
-    pub texture_buffer: Option<Texture>,
-    pub file_in_tex: Option<i32>,
+    title: ImString,
+
+    curr_gfx_file_num: i32,
+    texture_buffer: Option<Texture>,
+    file_in_tex: Option<i32>,
 }
 
 impl UiTool for UiGfxViewer {
-    fn tick(&mut self, ui: &Ui, renderer: &mut Renderer) -> bool {
+    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        Window::new(im_str!("GFX Viewer"))
+        let title = std::mem::take(&mut self.title);
+        Window::new(&title)
             .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
             .opened(&mut running)
-            .build(ui, || {
-                if ui.input_int(im_str!("GFX file number"), &mut self.curr_gfx_file_num)
+            .build(ctx.ui, || {
+                if ctx.ui.input_int(im_str!("GFX file number"), &mut self.curr_gfx_file_num)
                     .chars_hexadecimal(true)
                     .build()
                 {
                     log::info!("Showing GFX file {:X}", self.curr_gfx_file_num);
-                    self.adjust_gfx_file_num();
+                    self.adjust_gfx_file_num(ctx);
                 }
-                self.display_curr_gfx_file(ui);
+                self.display_curr_gfx_file(ctx);
             });
+        self.title = title;
 
         if !running {
             log::info!("Closed GFX Viewer");
@@ -52,25 +59,23 @@ impl UiTool for UiGfxViewer {
 }
 
 impl UiGfxViewer {
-    pub fn new(gfx_files: &[GfxFile]) -> Self {
+    pub fn new(id: WindowId) -> Self {
         log::info!("Opened GFX Viewer");
         UiGfxViewer {
-            gfx_files: gfx_files.to_vec(),
+            title: title_with_id("GFX Viewer", id),
             curr_gfx_file_num: 0,
             texture_buffer: None,
             file_in_tex: None,
         }
     }
 
-    fn adjust_gfx_file_num(&mut self) {
-        if self.curr_gfx_file_num < 0 {
-            self.curr_gfx_file_num = self.gfx_files.len() as i32 - 1;
-        } else if self.curr_gfx_file_num >= self.gfx_files.len() as i32 {
-            self.curr_gfx_file_num = 0;
-        }
+    fn adjust_gfx_file_num(&mut self, ctx: &mut FrameContext) {
+        let project = ctx.project_ref.as_ref().unwrap().borrow();
+        let level_count = project.rom_data.gfx_files.len() as i32;
+        self.curr_gfx_file_num = self.curr_gfx_file_num.rem_euclid(level_count);
     }
 
-    fn display_curr_gfx_file(&mut self, ui: &Ui) {
+    fn display_curr_gfx_file(&mut self, ctx: &mut FrameContext) {
 
     }
 }

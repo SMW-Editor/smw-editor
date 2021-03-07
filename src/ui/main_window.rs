@@ -1,77 +1,64 @@
-use crate::ui::{
-    UiAddressConverter,
-    UiGfxViewer,
-    UiPaletteViewer,
-    UiProjectCreator,
-    UiRomInfo,
-    UiTool,
+use crate::{
+    frame_context::FrameContext,
+    ui::{
+        UiAddressConverter,
+        UiGfxViewer,
+        UiPaletteViewer,
+        UiProjectCreator,
+        UiRomInfo,
+        UiTool,
+    },
 };
 
 use imgui::{
     MenuItem,
-    Ui,
     im_str,
-};
-use imgui_glium_renderer::Renderer;
-
-use nsmwe_project::OptProjectRef;
-
-use std::{
-    any::TypeId,
-    rc::Rc,
 };
 
 pub struct UiMainWindow {
-    tools: Vec<(Box<dyn UiTool>, TypeId)>,
+    last_open_tool_id: i32,
+    tools: Vec<Box<dyn UiTool>>,
     running: bool,
-
-    project_ref: Rc<OptProjectRef>,
 }
 
 impl UiMainWindow {
-    pub fn new(project_ref: Rc<OptProjectRef>) -> Self {
+    pub fn new() -> Self {
         UiMainWindow {
+            last_open_tool_id: 0,
             tools: Vec::new(),
             running: true,
-
-            project_ref,
         }
     }
 
-    pub fn tick(&mut self, ui: &Ui, renderer: &mut Renderer) -> bool {
-        self.main_menu_bar(ui);
-        self.handle_tools(ui, renderer);
+    pub fn tick(&mut self, ctx: &mut FrameContext) -> bool {
+        self.main_menu_bar(ctx);
+        self.handle_tools(ctx);
 
         self.running
     }
 
     pub fn open_tool<ToolType, Construct>(&mut self, construct_tool: Construct)
         where ToolType: 'static + UiTool,
-              Construct: FnOnce() -> ToolType,
+              Construct: FnOnce(i32) -> ToolType,
     {
-        let tool_type = TypeId::of::<ToolType>();
-        if !self.tools.iter().any(|(_, type_id)| type_id == &tool_type) {
-            self.tools.push((Box::new(construct_tool()), tool_type));
+        if self.last_open_tool_id < i32::MAX {
+            self.tools.push(Box::new(construct_tool(self.last_open_tool_id)));
+            self.last_open_tool_id += 1;
         }
     }
 
-    pub fn close_tool(&mut self, tool_type_id: TypeId) {
-        self.tools.retain(|(_, type_id)| type_id != &tool_type_id);
-    }
-
-    fn main_menu_bar(&mut self, ui: &Ui) {
-        ui.main_menu_bar(|| {
-            self.menu_file(ui);
-            self.menu_tools(ui);
+    fn main_menu_bar(&mut self, ctx: &mut FrameContext) {
+        ctx.ui.main_menu_bar(|| {
+            self.menu_file(ctx);
+            self.menu_tools(ctx);
         });
     }
 
-    fn menu_file(&mut self, ui: &Ui) {
-        ui.menu(im_str!("File"), true, || {
-            let menu_item = |label| MenuItem::new(label).build(ui);
+    fn menu_file(&mut self, ctx: &mut FrameContext) {
+        ctx.ui.menu(im_str!("File"), true, || {
+            let menu_item = |label| MenuItem::new(label).build(ctx.ui);
             if menu_item(im_str!("New project")) {
-                let project_ref = Rc::clone(&self.project_ref);
-                self.open_tool(|| UiProjectCreator::new(project_ref));
+                self.open_tool(UiProjectCreator::new);
             }
             if menu_item(im_str!("Exit")) {
                 self.running = false;
@@ -79,10 +66,13 @@ impl UiMainWindow {
         });
     }
 
-    fn menu_tools(&mut self, ui: &Ui) {
-        let project = Rc::clone(&self.project_ref);
-        let project = project.borrow();
-        let project = project.as_ref();
+    fn menu_tools(&mut self, ctx: &mut FrameContext) {
+        let FrameContext {
+            ui,
+            project_ref,
+            ..
+        } = ctx;
+        let project = project_ref.as_ref().map(|p| p.borrow_mut());
 
         ui.menu(im_str!("Tools"), true, || {
             if MenuItem::new(im_str!("Address converter"))
@@ -94,36 +84,34 @@ impl UiMainWindow {
                 .enabled(project.is_some())
                 .build(ui)
             {
-                let internal_header = &project.unwrap().rom_data.internal_header;
-                self.open_tool(|| UiRomInfo::new(internal_header));
+                let internal_header = &project.as_ref().unwrap().rom_data.internal_header;
+                self.open_tool(|id| UiRomInfo::new(id, internal_header));
             }
             if MenuItem::new(im_str!("Color palettes"))
                 .enabled(project.is_some())
                 .build(ui)
             {
-                let rom = &project.unwrap().rom_data;
-                let palettes = &rom.level_color_palette_set;
-                let levels = &rom.levels;
-                let gp = &rom.global_level_color_palette;
-                self.open_tool(|| UiPaletteViewer::new(palettes, levels, gp));
+                self.open_tool(UiPaletteViewer::new);
             }
             if MenuItem::new(im_str!("GFX"))
                 .enabled(project.is_some())
                 .build(ui)
             {
-                let rom = &project.unwrap().rom_data;
-                self.open_tool(|| UiGfxViewer::new(&rom.gfx_files));
+                self.open_tool(UiGfxViewer::new);
             }
         });
     }
 
-    fn handle_tools(&mut self, ui: &Ui, renderer: &mut Renderer) {
-        let mut tools_to_close = Vec::new();
-        for (tool, id) in self.tools.iter_mut() {
-            if !tool.tick(ui, renderer) {
-                tools_to_close.push(*id);
+    fn handle_tools(&mut self, ctx: &mut FrameContext) {
+        let mut tools_to_close = Vec::with_capacity(1);
+        for (i, tool) in self.tools.iter_mut().enumerate() {
+            if !tool.tick(ctx) {
+                tools_to_close.push(i);
             }
         }
-        tools_to_close.into_iter().for_each(|id| self.close_tool(id));
+        tools_to_close
+            .into_iter()
+            .rev()
+            .for_each(|i| { self.tools.swap_remove(i); });
     }
 }
