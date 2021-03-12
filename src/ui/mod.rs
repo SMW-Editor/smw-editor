@@ -2,10 +2,10 @@ pub mod color;
 pub mod main_window;
 pub mod project_creator;
 pub mod tool;
-pub mod debug_utils;
+pub mod dev_utils;
 
 pub use self::{
-    debug_utils::{
+    dev_utils::{
         address_converter::UiAddressConverter,
         gfx_viewer::UiGfxViewer,
         palette_viewer::UiPaletteViewer,

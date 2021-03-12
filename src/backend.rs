@@ -101,6 +101,7 @@ impl Backend {
                 let mut ctx = FrameContext {
                     project_ref: &mut project_ref,
                     renderer: &mut renderer,
+                    display: &display,
                     ui: &ui,
                 };
                 if app_code(&mut ctx) {

@@ -69,9 +69,9 @@ impl Tile {
     fn from_xbpp(input: &[u8], x: usize) -> IResult<&[u8], Self> {
         debug_assert!([2, 4, 8].contains(&x));
         let (input, bytes) = take!(input, x * 8)?;
-        let mut tile = Tile { color_indices: [0; N_INDICES_IN_TILE].into() };
+        let mut tile = Tile { color_indices: [0; N_PIXELS_IN_TILE].into() };
 
-        for i in 0..N_INDICES_IN_TILE {
+        for i in 0..N_PIXELS_IN_TILE {
             let (row, col) = (i / 8, i % 8);
             let mut color_idx = 0;
             for bit_idx in 0..x {
@@ -92,9 +92,10 @@ impl Tile {
     }
 
     pub fn to_bgr555(&self, palette: &[Bgr555]) -> Result<Box<[Bgr555]>, GfxTileError> {
-        let mut bgr555_tile = [Bgr555::default(); N_INDICES_IN_TILE];
+        let mut bgr555_tile = [Bgr555::default(); N_PIXELS_IN_TILE];
         for (i, &color_index) in self.color_indices.iter().enumerate() {
-            let color = palette.get(color_index as usize).ok_or(GfxTileError::ToBgr555)?;
+            let color = palette.get(color_index as usize)
+                .unwrap_or(&Bgr555(0));
             bgr555_tile[i] = *color;
         }
         Ok(bgr555_tile.into())
@@ -144,11 +145,15 @@ impl GfxFile {
 
         Ok((rom_data, GfxFile { tile_format, tiles }))
     }
+
+    pub fn n_pixels(&self) -> usize {
+        self.tiles.len() * N_PIXELS_IN_TILE
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
 
-const N_INDICES_IN_TILE: usize = 8 * 8;
+pub const N_PIXELS_IN_TILE: usize = 8 * 8;
 pub(crate) static GFX_FILES_META: [(TileFormat, AddrSnes, usize); 0x34] = [
     (TileFormat::Tile4bpp,  AddrSnes(0x08D9F9), 2104),
     (TileFormat::Tile4bpp,  AddrSnes(0x08E231), 2698),

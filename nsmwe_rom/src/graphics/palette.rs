@@ -131,7 +131,6 @@ macro_rules! impl_color_palette {
 
 // -------------------------------------------------------------------------------------------------
 
-
 #[derive(Clone)]
 pub struct GlobalLevelColorPalette {
     pub wtf:      Box<[Bgr555]>,
