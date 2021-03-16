@@ -219,11 +219,11 @@ impl UiGfxViewer {
             let project = ctx.project_ref.as_ref().unwrap().borrow();
             let rom = &project.rom_data;
             let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];
-            let palette = match self.palette_category_index {
-                I_PAL_LEVEL_WTF => &rom.global_level_color_palette.wtf,
-                I_PAL_LEVEL_LAYER3 => &rom.global_level_color_palette.layer3,
+            let palette = match self.palette_category_index as usize {
+                I_PAL_LEVEL_WTF     => &rom.global_level_color_palette.wtf,
+                I_PAL_LEVEL_LAYER3  => &rom.global_level_color_palette.layer3,
                 I_PAL_LEVEL_PLAYERS => &rom.global_level_color_palette.players,
-                I_PAL_LEVEL_BERRY => &rom.global_level_color_palette.berry,
+                I_PAL_LEVEL_BERRY   => &rom.global_level_color_palette.berry,
                 I_PAL_LEVEL_BACKGROUND => &rom.level_color_palette_set.bg_palettes[self.palette_index as usize],
                 I_PAL_LEVEL_FOREGROUND => &rom.level_color_palette_set.fg_palettes[self.palette_index as usize],
                 I_PAL_LEVEL_SPRITE => &rom.level_color_palette_set.sprite_palettes[self.palette_index as usize],
