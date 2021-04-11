@@ -2,7 +2,7 @@ use crate::{
     addr::AddrPc,
     error::{LevelPaletteError, RomParseError},
     graphics::color::{
-        Bgr555,
+        Abgr1555,
         BGR555_SIZE,
     },
     level::{
@@ -68,7 +68,7 @@ pub mod constants {
 // -------------------------------------------------------------------------------------------------
 
 pub trait ColorPalette {
-    fn set_colors(&mut self, subpalette: &[Bgr555],
+    fn set_colors(&mut self, subpalette: &[Abgr1555],
                   rows: RangeInclusive<usize>, cols: RangeInclusive<usize>)
     {
         let n_cols = *cols.end() - *cols.start() + 1;
@@ -81,8 +81,16 @@ pub trait ColorPalette {
         }
     }
 
-    fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555);
-    fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555>;
+    fn get_row(&self, r: usize) -> [Abgr1555; 16] {
+        let mut row = [Abgr1555::TRANSPARENT; 16];
+        for (c, color) in row.iter_mut().enumerate() {
+            *color = self.get_color_at(r, c).unwrap_or(Abgr1555::MAGENTA);
+        }
+        row
+    }
+
+    fn set_color_at(&mut self, row: usize, col: usize, color: Abgr1555);
+    fn get_color_at(&self, row: usize, col: usize) -> Option<Abgr1555>;
 }
 
 macro_rules! impl_color_palette {
@@ -91,7 +99,7 @@ macro_rules! impl_color_palette {
         $(, _ => $fallback:ident)? $(,)?
     }) => {
         impl ColorPalette for $struct_name {
-            fn set_color_at(&mut self, row: usize, col: usize, color: Bgr555) {
+            fn set_color_at(&mut self, row: usize, col: usize, color: Abgr1555) {
                 assert!(row <= 0xF);
                 assert!(col <= 0xF);
                 $(
@@ -110,19 +118,23 @@ macro_rules! impl_color_palette {
             }
 
             #[allow(unreachable_code)]
-            fn get_color_at(&self, row: usize, col: usize) -> Option<&Bgr555> {
+            fn get_color_at(&self, row: usize, col: usize) -> Option<Abgr1555> {
                 if row > 0xF || col > 0xF {
                     None
+                } else if col == 0 {
+                    Some(Abgr1555::TRANSPARENT)
+                } else if col == 1 {
+                    Some(Abgr1555::WHITE)
                 } else {
                     $(
                         if $rows.contains(&row) && $cols.contains(&col) {
                             let ri = row - *$rows.start();
                             let ci = col - *$cols.start();
-                            return Some(&self.$field_name[(ri * $cols.count()) + ci]);
+                            return Some(self.$field_name[(ri * $cols.count()) + ci]);
                         }
                     )+
                     $(return self.$fallback.get_color_at(row, col);)?
-                    Some(&Bgr555(0))
+                    Some(Abgr1555::TRANSPARENT)
                 }
             }
         }
@@ -133,33 +145,33 @@ macro_rules! impl_color_palette {
 
 #[derive(Clone)]
 pub struct GlobalLevelColorPalette {
-    pub wtf:      Box<[Bgr555]>,
-    pub players:  Box<[Bgr555]>,
-    pub layer3:   Box<[Bgr555]>,
-    pub berry:    Box<[Bgr555]>,
-    pub animated: Box<[Bgr555]>,
+    pub wtf:      Box<[Abgr1555]>,
+    pub players:  Box<[Abgr1555]>,
+    pub layer3:   Box<[Abgr1555]>,
+    pub berry:    Box<[Abgr1555]>,
+    pub animated: Box<[Abgr1555]>,
 }
 
 #[derive(Clone)]
 pub struct LevelColorPalette {
     pub global_palette: Rc<GlobalLevelColorPalette>,
-    pub back_area_color: Bgr555,
-    pub background: Box<[Bgr555]>,
-    pub foreground: Box<[Bgr555]>,
-    pub sprite: Box<[Bgr555]>,
+    pub back_area_color: Abgr1555,
+    pub background: Box<[Abgr1555]>,
+    pub foreground: Box<[Abgr1555]>,
+    pub sprite: Box<[Abgr1555]>,
 }
 
 #[derive(Clone)]
 pub struct LevelColorPaletteSet {
-    pub back_area_colors: Vec<Bgr555>,
-    pub bg_palettes:      Vec<Box<[Bgr555]>>,
-    pub fg_palettes:      Vec<Box<[Bgr555]>>,
-    pub sprite_palettes:  Vec<Box<[Bgr555]>>,
+    pub back_area_colors: Vec<Abgr1555>,
+    pub bg_palettes:      Vec<Box<[Abgr1555]>>,
+    pub fg_palettes:      Vec<Box<[Abgr1555]>>,
+    pub sprite_palettes:  Vec<Box<[Abgr1555]>>,
 }
 
 // -------------------------------------------------------------------------------------------------
 
-named!(le_bgr16<Bgr555>, map!(le_u16, Bgr555));
+named!(le_bgr16<Abgr1555>, map!(le_u16, Abgr1555));
 
 impl GlobalLevelColorPalette {
     pub fn parse(rom_data: &[u8]) -> IResult<&[u8], GlobalLevelColorPalette> {
@@ -175,11 +187,11 @@ impl GlobalLevelColorPalette {
         let (_, animated) = parse_colors(addr::ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = GlobalLevelColorPalette {
-            wtf:      [Bgr555::default(); PALETTE_WTF_LENGTH].into(),
-            players:  [Bgr555::default(); PALETTE_PLAYER_LENGTH].into(),
-            layer3:   [Bgr555::default(); PALETTE_LAYER3_LENGTH].into(),
-            berry:    [Bgr555::default(); PALETTE_BERRY_LENGTH].into(),
-            animated: [Bgr555::default(); PALETTE_ANIMATED_LENGTH].into(),
+            wtf:      [Abgr1555::default(); PALETTE_WTF_LENGTH].into(),
+            players:  [Abgr1555::default(); PALETTE_PLAYER_LENGTH].into(),
+            layer3:   [Abgr1555::default(); PALETTE_LAYER3_LENGTH].into(),
+            berry:    [Abgr1555::default(); PALETTE_BERRY_LENGTH].into(),
+            animated: [Abgr1555::default(); PALETTE_ANIMATED_LENGTH].into(),
         };
 
         palette.set_colors(&wtf,     0x4..=0xD, 0x2..=0x7);
@@ -240,19 +252,19 @@ impl LevelColorPaletteSet {
                 addr::SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp), PALETTE_SPRITE_LENGTH)?;
 
             if palette_set.back_area_colors.len() < idx_bc + 1 {
-                let value = Bgr555::default();
+                let value = Abgr1555::default();
                 palette_set.back_area_colors.resize(idx_bc + 1, value);
             }
             if palette_set.bg_palettes.len() < idx_bg + 1 {
-                let value: Box<[Bgr555]> = [Bgr555::default(); PALETTE_BG_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_BG_LENGTH].into();
                 palette_set.bg_palettes.resize(idx_bg + 1, value);
             }
             if palette_set.fg_palettes.len() < idx_fg + 1 {
-                let value: Box<[Bgr555]> = [Bgr555::default(); PALETTE_FG_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_FG_LENGTH].into();
                 palette_set.fg_palettes.resize(idx_fg + 1, value);
             }
             if palette_set.sprite_palettes.len() < idx_sp + 1 {
-                let value: Box<[Bgr555]> = [Bgr555::default(); PALETTE_SPRITE_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_SPRITE_LENGTH].into();
                 palette_set.sprite_palettes.resize(idx_sp + 1, value);
             }
 
@@ -270,20 +282,30 @@ impl LevelColorPaletteSet {
     pub fn get_level_palette(&self, header: &PrimaryHeader, gp: &Rc<GlobalLevelColorPalette>)
         -> Result<LevelColorPalette, LevelPaletteError>
     {
-        let i_bc = header.back_area_color as usize;
-        let i_bg = header.palette_bg as usize;
-        let i_fg = header.palette_fg as usize;
-        let i_sp = header.palette_sprite as usize;
+        let i_back_area_color = header.back_area_color as usize;
+        let i_background = header.palette_bg as usize;
+        let i_foreground = header.palette_fg as usize;
+        let i_sprite = header.palette_sprite as usize;
+        self.palette_from_indices(i_back_area_color, i_background, i_foreground, i_sprite, gp)
+    }
 
+    pub fn palette_from_indices(
+        &self,
+        i_back_area_color: usize,
+        i_background: usize,
+        i_foreground: usize,
+        i_sprite: usize,
+        gp: &Rc<GlobalLevelColorPalette>,
+    ) -> Result<LevelColorPalette, LevelPaletteError> {
         Ok(LevelColorPalette {
             global_palette: Rc::clone(gp),
-            back_area_color: self.back_area_colors.get(i_bc).cloned()
+            back_area_color: self.back_area_colors.get(i_back_area_color).cloned()
                 .ok_or(LevelPaletteError::BackAreaColor)?,
-            background: self.bg_palettes.get(i_bg).cloned()
+            background: self.bg_palettes.get(i_background).cloned()
                 .ok_or(LevelPaletteError::Background)?,
-            foreground: self.fg_palettes.get(i_fg).cloned()
+            foreground: self.fg_palettes.get(i_foreground).cloned()
                 .ok_or(LevelPaletteError::Foreground)?,
-            sprite: self.sprite_palettes.get(i_sp).cloned()
+            sprite: self.sprite_palettes.get(i_sprite).cloned()
                 .ok_or(LevelPaletteError::Sprite)?,
         })
     }

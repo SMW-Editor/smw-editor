@@ -83,7 +83,7 @@ impl Rom {
         if size == SMC_HEADER_SIZE {
             Ok(&rom_data[SMC_HEADER_SIZE..])
         } else if size == 0 {
-            Ok(&rom_data[..])
+            Ok(&rom_data)
         } else {
             Err(RomParseError::BadSize(size))
         }

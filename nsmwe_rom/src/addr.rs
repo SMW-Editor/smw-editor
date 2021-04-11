@@ -36,8 +36,8 @@ pub mod types {
                 fn from(addr: $prim_type) -> Self { Self(addr) }
             }
 
-            impl Into<$prim_type> for $name {
-                fn into(self) -> $prim_type { self.0 }
+            impl From<$name> for $prim_type {
+                fn from(this: $name) -> $prim_type { this.0 }
             }
 
             impl PartialEq for $name {

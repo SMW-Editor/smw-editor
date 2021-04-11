@@ -14,7 +14,7 @@ use imgui::{
 };
 
 use nsmwe_rom::graphics::{
-    color::Rgba,
+    color::Rgba32,
     palette::ColorPalette,
 };
 
@@ -98,7 +98,7 @@ impl UiPaletteViewer {
 
                 let p1 = [x, y];
                 let p2 = [x + CELL_SIZE, y + CELL_SIZE];
-                let c: [f32; 4] = Rgba::from(*color).into();
+                let c: [f32; 4] = Rgba32::from(color).into();
 
                 draw_list.add_rect(p1, p2, c).filled(true).build();
             }

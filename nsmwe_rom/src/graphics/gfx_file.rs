@@ -1,8 +1,7 @@
 use crate::{
     addr::{AddrPc, AddrSnes},
     compression::lc_lz2_decompress,
-    error::GfxTileError,
-    graphics::color::{Bgr555, Rgba},
+    graphics::color::{Abgr1555, Rgba32},
 };
 
 use nom::{
@@ -72,11 +71,11 @@ impl Tile {
         let mut tile = Tile { color_indices: [0; N_PIXELS_IN_TILE].into() };
 
         for i in 0..N_PIXELS_IN_TILE {
-            let (row, col) = (i / 8, i % 8);
+            let (row, col) = (i / 8, 7 - (i % 8));
             let mut color_idx = 0;
             for bit_idx in 0..x {
                 let byte_idx = (2 * row) + (0x10 * (bit_idx / 2)) + (bit_idx % 2);
-                let color_idx_bit = bytes[byte_idx] & (1 << col);
+                let color_idx_bit = if (bytes[byte_idx] & (1 << col)) > 0 { 1u8 } else { 0u8 };
                 color_idx |= color_idx_bit << bit_idx;
             }
             tile.color_indices[i] = color_idx;
@@ -91,26 +90,23 @@ impl Tile {
         Ok((input, tile))
     }
 
-    pub fn to_bgr555(&self, palette: &[Bgr555]) -> Result<Box<[Bgr555]>, GfxTileError> {
-        let mut bgr555_tile = [Bgr555::default(); N_PIXELS_IN_TILE];
-        for (i, &color_index) in self.color_indices.iter().enumerate() {
-            let color = palette.get(color_index as usize)
-                .unwrap_or(&Bgr555(0));
-            bgr555_tile[i] = *color;
-        }
-        Ok(bgr555_tile.into())
+    pub fn to_bgr555(&self, palette: &[Abgr1555]) -> Box<[Abgr1555]> {
+        self.color_indices.iter()
+            .copied()
+            .map(|color_index| {
+                palette.get(color_index as usize)
+                    .copied()
+                    .unwrap_or(Abgr1555::MAGENTA)
+            })
+            .collect()
     }
 
-    pub fn to_rgba(&self, palette: &[Bgr555]) -> Result<Box<[Rgba]>, GfxTileError> {
-        match self.to_bgr555(palette) {
-            Ok(bgr555_tile) => {
-                let rgba_tile: Box<[Rgba]> = bgr555_tile.iter()
-                    .map(|&color| Rgba::from(color))
-                    .collect();
-                Ok(rgba_tile)
-            }
-            Err(_) => Err(GfxTileError::ToRgba)
-        }
+    pub fn to_rgba(&self, palette: &[Abgr1555]) -> Box<[Rgba32]> {
+        self.to_bgr555(palette)
+            .iter()
+            .copied()
+            .map(Rgba32::from)
+            .collect()
     }
 }
 
