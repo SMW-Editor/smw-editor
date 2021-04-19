@@ -11,124 +11,62 @@ use nom::{
         ErrorKind,
     },
 };
-use std::{
-    error::Error,
-    fmt,
-};
+
+use thiserror::Error;
 
 // -------------------------------------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum AddressConversionError {
+    #[error("PC address {0:#x} is too big for LoROM.")]
     PcToSnes(AddrPc),
+    #[error("Invalid SNES {1} address: ${0:x}")]
     SnesToPc(AddrSnes, MapMode),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("Failed to decompress data: {0}")]
 pub struct DecompressionError(pub &'static str);
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GfxTileError {
-    ToBgr555,
-    ToRgba,
+    #[error("Failed to convert an indexed tile to Abgr1555")]
+    ToAbgr1555,
+    #[error("Failed to convert an indexed tile to Rgba32")]
+    ToRgba32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LevelPaletteError {
+    #[error("Failed to construct a level's back area color.")]
     BackAreaColor,
+    #[error("Failed to construct a level's background palette.")]
     Background,
+    #[error("Failed to construct a level's foreground palette.")]
     Foreground,
+    #[error("Failed to construct a level's sprite palette.")]
     Sprite,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RomParseError {
+    #[error("ROM doesn't contain PC address {0:#x}")]
     BadAddress(usize),
+    #[error("Invalid ROM size: {0} ({0:#x})")]
     BadSize(usize),
+    #[error("Invalid GFX file - tile format: {0}, file num: {1:X}, size: {2}B")]
     GfxFile(TileFormat, usize, usize),
+    #[error("Parsing internal header failed")]
     InternalHeader,
+    #[error("File IO Error")]
     IoError,
+    #[error("Invalid level: {0:#X}")]
     Level(usize),
+    #[error("Could not parse global level color palette")]
     PaletteGlobal,
+    #[error("Invalid color palette in level {0:#X}")]
     PaletteSetLevel(usize),
 }
-
-// -------------------------------------------------------------------------------------------------
-
-
-impl fmt::Display for AddressConversionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use AddressConversionError::*;
-        let msg = match self {
-            PcToSnes(addr) => format!("PC address {:#x} is too big for LoROM.", addr),
-            SnesToPc(addr, map_mode) =>
-                format!("Invalid SNES {} address: ${:x}", map_mode, addr),
-        };
-        f.write_str(msg.as_str())
-    }
-}
-
-impl fmt::Display for DecompressionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Failed to decompress data: ")?;
-        f.write_str(self.0)
-    }
-}
-
-impl fmt::Display for GfxTileError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use GfxTileError::*;
-        let msg = format!("Failed to convert an indexed tile to {}", match self {
-            ToBgr555 => "BGR555",
-            ToRgba => "RGBA",
-        });
-        f.write_str(msg.as_str())
-    }
-}
-
-impl fmt::Display for LevelPaletteError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use LevelPaletteError::*;
-        let msg = format!("Failed to construct a level palette: {}", match self {
-            BackAreaColor => "back area color",
-            Background => "background",
-            Foreground => "foreground",
-            Sprite => "sprite",
-        });
-        f.write_str(msg.as_str())
-    }
-}
-
-impl fmt::Display for RomParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use RomParseError::*;
-        let msg = match self {
-            BadAddress(addr) =>
-                format!("ROM doesn't contain PC address {}", addr),
-            BadSize(size) =>
-                format!("Invalid ROM size: {}", size),
-            InternalHeader =>
-                String::from("Parsing internal header failed"),
-            IoError =>
-                String::from("File IO Error"),
-            Level(level_num) =>
-                format!("Invalid level: {:#X}", level_num),
-            PaletteGlobal =>
-                String::from("Could not parse global level color palette"),
-            PaletteSetLevel(level_num) =>
-                format!("Invalid color palette in level {:#X}", level_num),
-            GfxFile(tile_format, num, size_bytes) =>
-                format!("Invalid GFX file - tile format: {}, file num: {:X}, size: {}B",
-                        tile_format, num, size_bytes),
-        };
-        f.write_str(msg.as_str())
-    }
-}
-
-impl Error for AddressConversionError {}
-impl Error for DecompressionError {}
-impl Error for LevelPaletteError {}
-impl Error for RomParseError {}
 
 // -------------------------------------------------------------------------------------------------
 

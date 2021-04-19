@@ -9,16 +9,16 @@ and none of the main features are there yet.
 
 ## Main features:
 
-- [ ] (WIP) Level editor
-- [ ] (WIP) Overworld editor
-- [ ] (WIP) Block editor
-- [ ] (WIP) Sprite editor
-- [ ] (WIP) Graphics editor
-- [ ] (WIP) Background editor
-- [ ] (WIP) ASM code editor
-- [ ] (WIP) Music editor
-- [ ] (WIP) Plugins and extensions
-- [ ] (WIP) Localisation support
+- (Not yet in progress) Level editor
+- (Not yet in progress) Overworld editor
+- (Not yet in progress) Block editor
+- (Not yet in progress) Sprite editor
+- (Not yet in progress) Graphics editor
+- (Not yet in progress) Background editor
+- (Not yet in progress) ASM code editor
+- (Not yet in progress) Music editor
+- (Not yet in progress) Plugins and extensions
+- (Not yet in progress) Localisation support
 
 **Currently in progress:** parsing the ROM and generating project files from it
 ([To-do list](https://github.com/Adanos020/nsmwe/issues/2)). The internal ROM header
