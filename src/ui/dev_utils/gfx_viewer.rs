@@ -150,6 +150,8 @@ impl UiGfxViewer {
             self.adjust_nums(ctx);
             self.update_texture(ctx);
         }
+
+        ctx.ui.text(format!("{} x {} px", self.curr_image_size.0, self.curr_image_size.1));
     }
 
     fn gfx_image(&mut self, ctx: &mut FrameContext) {
