@@ -20,10 +20,9 @@ and none of the main features are there yet.
 - (Not yet in progress) Plugins and extensions
 - (Not yet in progress) Localisation support
 
-**Currently in progress:** parsing the ROM and generating project files from it
-([To-do list](https://github.com/Adanos020/nsmwe/issues/2)). The internal ROM header
-and colour palettes are now being correctly parsed. Now I'm working on extracting
-graphics.
+**Currently in progress:** parsing the ROM and generating project files from it.
+
+You can track the progress [here](https://github.com/Adanos020/nsmwe/projects/1).
 
 ## Building
 
