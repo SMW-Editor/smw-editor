@@ -9,7 +9,9 @@ use crate::{
         },
         palette::{
             GlobalLevelColorPalette,
+            GlobalOverworldColorPalette,
             LevelColorPaletteSet,
+            OverworldColorPaletteSet,
         },
     },
     internal_header::RomInternalHeader,
@@ -35,15 +37,17 @@ pub struct Rom {
     pub internal_header: RomInternalHeader,
     pub levels: Vec<Level>,
     pub global_level_color_palette: Rc<GlobalLevelColorPalette>,
+    pub global_overworld_color_palette: Rc<GlobalOverworldColorPalette>,
     pub level_color_palette_set: LevelColorPaletteSet,
+    pub overworld_color_palette_set: OverworldColorPaletteSet,
     pub gfx_files: Vec<GfxFile>,
 }
 
 impl Rom {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Rom, RomParseError> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, RomParseError> {
         log::info!("Reading ROM from file: {}", path.as_ref().display());
         match fs::read(path) {
-            Ok(rom_data) => match Rom::from_raw(&rom_data) {
+            Ok(rom_data) => match Self::from_raw(&rom_data) {
                 Ok(rom) => {
                     log::info!("Success parsing ROM");
                     Ok(rom)
@@ -60,20 +64,37 @@ impl Rom {
         }
     }
 
-    pub fn from_raw(rom_data: &[u8]) -> RpResult<Rom> {
-        let rom_data = Rom::trim_smc_header(rom_data)?;
+    pub fn from_raw(rom_data: &[u8]) -> RpResult<Self> {
+        let rom_data = Self::trim_smc_header(rom_data)?;
 
-        let internal_header = Rom::get_internal_header(rom_data)?;
-        let levels = Rom::get_levels(rom_data)?;
-        let global_level_color_palette = Rom::get_global_level_color_palette(rom_data)?;
+        log::info!("Parsing internal ROM header");
+        let internal_header = Self::parse_internal_header(rom_data)?;
+
+        log::info!("Parsing level data");
+        let levels = Self::parse_levels(rom_data)?;
+
+        log::info!("Parsing global level color palette");
+        let global_level_color_palette = Rc::new(GlobalLevelColorPalette::parse(rom_data)?);
+
+        log::info!("Parsing global overworld color palette");
+        let global_overworld_color_palette = Rc::new(GlobalOverworldColorPalette::parse(rom_data)?);
+
+        log::info!("Parsing level-specific palettes");
         let level_color_palette_set = LevelColorPaletteSet::parse(rom_data, &levels)?;
-        let gfx_files = Rom::get_gfx_files(rom_data)?;
 
-        Ok(Rom {
+        log::info!("Parsing submap-specific overworld palettes");
+        let overworld_color_palette_set = OverworldColorPaletteSet::parse(rom_data)?;
+
+        log::info!("Parsing GFX files");
+        let gfx_files = Self::parse_gfx_files(rom_data)?;
+
+        Ok(Self {
             internal_header,
             levels,
             global_level_color_palette,
+            global_overworld_color_palette,
             level_color_palette_set,
+            overworld_color_palette_set,
             gfx_files,
         })
     }
@@ -89,16 +110,14 @@ impl Rom {
         }
     }
 
-    fn get_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
-        log::info!("Parsing internal ROM header");
+    fn parse_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
         match RomInternalHeader::from_rom_data(rom_data) {
             Ok((_, header)) => Ok(header),
             Err(_) => Err(RomParseError::InternalHeader),
         }
     }
 
-    fn get_levels(rom_data: &[u8]) -> RpResult<Vec<Level>> {
-        log::info!("Parsing level data");
+    fn parse_levels(rom_data: &[u8]) -> RpResult<Vec<Level>> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
             match Level::from_rom_data(rom_data, level_num) {
@@ -109,16 +128,7 @@ impl Rom {
         Ok(levels)
     }
 
-    fn get_global_level_color_palette(rom_data: &[u8]) -> RpResult<Rc<GlobalLevelColorPalette>> {
-        log::info!("Parsing global color palette");
-        match GlobalLevelColorPalette::parse(rom_data) {
-            Ok((_, palette)) => Ok(Rc::new(palette)),
-            Err(_) => Err(RomParseError::PaletteGlobalLevel),
-        }
-    }
-
-    fn get_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {
-        log::info!("Parsing GFX files");
+    fn parse_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {
         let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
         for (i, &(tile_format, addr, size_bytes)) in GFX_FILES_META.iter().enumerate() {
             match GfxFile::new(rom_data, tile_format, addr, size_bytes) {

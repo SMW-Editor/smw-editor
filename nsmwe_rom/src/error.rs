@@ -49,6 +49,12 @@ pub enum LevelPaletteError {
 }
 
 #[derive(Debug, Error)]
+pub enum OverworldSubmapPaletteError {
+    #[error("Failed to construct an overworld submap's layer 2 palette.")]
+    Layer2,
+}
+
+#[derive(Debug, Error)]
 pub enum RomParseError {
     #[error("ROM doesn't contain PC address {0:#x}")]
     BadAddress(usize),
