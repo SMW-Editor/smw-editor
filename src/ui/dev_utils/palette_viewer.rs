@@ -40,8 +40,8 @@ impl UiTool for UiPaletteViewer {
                     .chars_hexadecimal(true)
                     .build()
                 {
-                    log::info!("Showing color palette for level {:X}", self.level_num);
                     self.adjust_level_num(ctx);
+                    log::info!("Showing color palette for level {:X}", self.level_num);
                 }
                 self.display_palette(ctx);
             });
