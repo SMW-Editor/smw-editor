@@ -63,9 +63,13 @@ pub enum RomParseError {
     #[error("Invalid level: {0:#X}")]
     Level(usize),
     #[error("Could not parse global level color palette")]
-    PaletteGlobal,
+    PaletteGlobalLevel,
+    #[error("Could not parse global overworld color palette")]
+    PaletteGlobalOverworld,
     #[error("Invalid color palette in level {0:#X}")]
     PaletteSetLevel(usize),
+    #[error("Invalid color palette in overworld")]
+    PaletteSetOverworld,
 }
 
 // -------------------------------------------------------------------------------------------------

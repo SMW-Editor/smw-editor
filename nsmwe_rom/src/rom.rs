@@ -113,7 +113,7 @@ impl Rom {
         log::info!("Parsing global color palette");
         match GlobalLevelColorPalette::parse(rom_data) {
             Ok((_, palette)) => Ok(Rc::new(palette)),
-            Err(_) => Err(RomParseError::PaletteGlobal),
+            Err(_) => Err(RomParseError::PaletteGlobalLevel),
         }
     }
 
