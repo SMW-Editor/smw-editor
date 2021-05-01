@@ -184,12 +184,22 @@ pub struct OverworldColorPaletteSet {
 
 named!(le_bgr16<Abgr1555>, map!(le_u16, Abgr1555));
 
+fn make_color_parser<'r>(rom_data: &'r [u8]) -> impl Fn(AddrSnes, usize) -> IResult<&'r [u8], Vec<Abgr1555>> + 'r {
+    move |pos, n| {
+        let pos: usize = AddrPc::try_from(pos).unwrap().into();
+        preceded!(rom_data, take!(pos), count!(le_bgr16, n))
+    }
+}
+
 impl GlobalLevelColorPalette {
     pub fn parse(rom_data: &[u8]) -> IResult<&[u8], GlobalLevelColorPalette> {
-        let parse_colors = |pos, n| {
-            let pos: usize = AddrPc::try_from(pos).unwrap().into();
-            preceded!(rom_data, take!(pos), count!(le_bgr16, n))
-        };
+        pub const WTF_PALETTE:      AddrSnes = AddrSnes(0x00B250);
+        pub const PLAYER_PALETTE:   AddrSnes = AddrSnes(0x00B2C8);
+        pub const LAYER3_PALETTE:   AddrSnes = AddrSnes(0x00B170);
+        pub const BERRY_PALETTE:    AddrSnes = AddrSnes(0x00B674);
+        pub const ANIMATED_COLOR:   AddrSnes = AddrSnes(0x00B60C);
+
+        let parse_colors = make_color_parser(rom_data);
 
         let (_, wtf)      = parse_colors(WTF_PALETTE,    PALETTE_WTF_LENGTH)?;
         let (_, players)  = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH)?;
