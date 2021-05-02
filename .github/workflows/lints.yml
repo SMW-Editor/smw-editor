@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgtk2.0-dev libglx-dev libgl1-mesa-dev libsdl2-dev libwayland-dev libx11-dev
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
