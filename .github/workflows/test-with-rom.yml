@@ -27,6 +27,13 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
@@ -35,7 +42,7 @@ jobs:
         env:
           SMW_ROM_URL: ${{ secrets.SMW_ROM_URL }}
         run: |
-          curl '$SMW_ROM_URL' -o ${{ github.workspace }}/rom.smc
+          curl "$SMW_ROM_URL" -o ${{ github.workspace }}/rom.smc
       - uses: actions-rs/cargo@v1
         env:
           ROM_PATH: ${{ github.workspace }}/rom.smc
