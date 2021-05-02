@@ -47,5 +47,5 @@ jobs:
         env:
           ROM_PATH: ${{ github.workspace }}/rom.smc
         with:
-          commands: test
+          command: test
           args: -p nsmwe_rom -- --ignored
