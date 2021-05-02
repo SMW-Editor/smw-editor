@@ -1,22 +1,15 @@
-use crate::{
-    addr::{AddrPc, AddrSnes},
-    compression::lc_lz2_decompress,
-    graphics::color::{Abgr1555, Rgba32},
-};
-
-use nom::{
-    bytes::complete::take,
-    combinator::map_parser,
-    count,
-    IResult,
-    preceded,
-    take,
-};
-
 use std::{
     convert::{TryFrom, TryInto},
     fmt,
     fmt::{Display, Formatter},
+};
+
+use nom::{bytes::complete::take, combinator::map_parser, count, preceded, take, IResult};
+
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    compression::lc_lz2_decompress,
+    graphics::color::{Abgr1555, Rgba32},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -35,7 +28,7 @@ pub struct Tile {
 #[derive(Clone)]
 pub struct GfxFile {
     pub tile_format: TileFormat,
-    pub tiles: Vec<Tile>,
+    pub tiles:       Vec<Tile>,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -91,32 +84,20 @@ impl Tile {
     }
 
     pub fn to_bgr555(&self, palette: &[Abgr1555]) -> Box<[Abgr1555]> {
-        self.color_indices.iter()
+        self.color_indices
+            .iter()
             .copied()
-            .map(|color_index| {
-                palette.get(color_index as usize)
-                    .copied()
-                    .unwrap_or(Abgr1555::MAGENTA)
-            })
+            .map(|color_index| palette.get(color_index as usize).copied().unwrap_or(Abgr1555::MAGENTA))
             .collect()
     }
 
     pub fn to_rgba(&self, palette: &[Abgr1555]) -> Box<[Rgba32]> {
-        self.to_bgr555(palette)
-            .iter()
-            .copied()
-            .map(Rgba32::from)
-            .collect()
+        self.to_bgr555(palette).iter().copied().map(Rgba32::from).collect()
     }
 }
 
 impl GfxFile {
-    pub fn new(
-        rom_data: &[u8],
-        tile_format: TileFormat,
-        addr: AddrSnes,
-        size_bytes: usize,
-    ) -> IResult<&[u8], Self> {
+    pub fn new(rom_data: &[u8], tile_format: TileFormat, addr: AddrSnes, size_bytes: usize) -> IResult<&[u8], Self> {
         debug_assert_ne!(0, size_bytes);
         use TileFormat::*;
 
@@ -125,9 +106,9 @@ impl GfxFile {
         let addr = AddrPc::try_from(addr).unwrap();
         let (_, bytes) = preceded!(rom_data, take!(addr.0), take!(size_bytes))?;
         let (parser, tile_size_bytes): (ParserFn, _) = match tile_format {
-            Tile2bpp  => (Tile::from_2bpp, 2 * 8),
-            Tile4bpp  => (Tile::from_4bpp, 4 * 8),
-            Tile8bpp  => (Tile::from_8bpp, 8 * 8),
+            Tile2bpp => (Tile::from_2bpp, 2 * 8),
+            Tile4bpp => (Tile::from_4bpp, 4 * 8),
+            Tile8bpp => (Tile::from_8bpp, 8 * 8),
             TileMode7 => (Tile::from_mode7, 8 * 8),
         };
 
@@ -136,8 +117,8 @@ impl GfxFile {
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
         let tile_count = decomp_bytes.len() / tile_size_bytes;
         let le_tile = map_parser(take(tile_size_bytes), parser);
-        let (_, tiles) = count!(&decomp_bytes, le_tile, tile_count).map_err(
-            |e| e.map(|e| nom::error::Error::new(bytes, e.code)))?;
+        let (_, tiles) =
+            count!(&decomp_bytes, le_tile, tile_count).map_err(|e| e.map(|e| nom::error::Error::new(bytes, e.code)))?;
 
         Ok((rom_data, GfxFile { tile_format, tiles }))
     }
@@ -150,6 +131,7 @@ impl GfxFile {
 // -------------------------------------------------------------------------------------------------
 
 pub const N_PIXELS_IN_TILE: usize = 8 * 8;
+#[rustfmt::skip]
 pub(crate) static GFX_FILES_META: [(TileFormat, AddrSnes, usize); 0x34] = [
     (TileFormat::Tile4bpp,  AddrSnes(0x08D9F9), 2104),
     (TileFormat::Tile4bpp,  AddrSnes(0x08E231), 2698),

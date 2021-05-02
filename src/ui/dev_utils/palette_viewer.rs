@@ -1,43 +1,31 @@
-use crate::{
-    frame_context::FrameContext,
-    ui::{
-        title_with_id,
-        UiTool,
-        WindowId,
-    },
-};
-
-use imgui::{
-    ComboBox,
-    im_str,
-    ImString,
-    Ui,
-    Window,
-};
-
-use num_enum::TryFromPrimitive;
-
 use std::convert::TryFrom;
 
+use imgui::{im_str, ComboBox, ImString, Ui, Window};
 use nsmwe_rom::graphics::{
     color::Rgba32,
     palette::{ColorPalette, OverworldState},
+};
+use num_enum::TryFromPrimitive;
+
+use crate::{
+    frame_context::FrameContext,
+    ui::{title_with_id, UiTool, WindowId},
 };
 
 #[repr(usize)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, TryFromPrimitive)]
 pub enum PaletteContext {
-    Level = 0,
+    Level     = 0,
     Overworld = 1,
 }
 
 pub struct UiPaletteViewer {
-    title: ImString,
-    palette_context: PaletteContext,
+    title:             ImString,
+    palette_context:   PaletteContext,
     // Level viewer
-    level_num: i32,
+    level_num:         i32,
     // Overworld viewer
-    submap_num: i32,
+    submap_num:        i32,
     special_completed: bool,
 }
 
@@ -54,8 +42,8 @@ impl UiTool for UiPaletteViewer {
             .opened(&mut running)
             .build(ctx.ui, || {
                 let mut context_raw = self.palette_context as usize;
-                ComboBox::new(im_str!("Context")).build_simple_string(ctx.ui, &mut context_raw,
-                    &[im_str!("Level"), im_str!("Overworld")]);
+                ComboBox::new(im_str!("Context"))
+                    .build_simple_string(ctx.ui, &mut context_raw, &[im_str!("Level"), im_str!("Overworld")]);
                 self.palette_context = PaletteContext::try_from(context_raw).unwrap_or(PaletteContext::Level);
                 match self.palette_context {
                     PaletteContext::Level => self.viewer_level(ctx),
@@ -75,10 +63,10 @@ impl UiPaletteViewer {
     pub fn new(id: WindowId) -> Self {
         log::info!("Opened Palette Viewer");
         UiPaletteViewer {
-            title: title_with_id("Color palettes", id),
-            palette_context: PaletteContext::Level,
-            level_num: 0,
-            submap_num: 0,
+            title:             title_with_id("Color palettes", id),
+            palette_context:   PaletteContext::Level,
+            level_num:         0,
+            submap_num:        0,
             special_completed: false,
         }
     }
@@ -96,10 +84,7 @@ impl UiPaletteViewer {
     }
 
     fn viewer_level(&mut self, ctx: &mut FrameContext) {
-        if ctx.ui.input_int(im_str!("Level number"), &mut self.level_num)
-            .chars_hexadecimal(true)
-            .build()
-        {
+        if ctx.ui.input_int(im_str!("Level number"), &mut self.level_num).chars_hexadecimal(true).build() {
             self.adjust_level_num(ctx);
             log::info!("Showing color palette for level {:X}", self.level_num);
         }
@@ -109,16 +94,12 @@ impl UiPaletteViewer {
 
     fn viewer_overworld(&mut self, ctx: &mut FrameContext) {
         if ctx.ui.checkbox(im_str!("Special world completed"), &mut self.special_completed) {
-            log::info!("Showing color palette for {}", if self.special_completed {
-                "post-special world"
-            } else {
-                "pre-special world"
-            });
+            log::info!(
+                "Showing color palette for {}",
+                if self.special_completed { "post-special world" } else { "pre-special world" }
+            );
         }
-        if ctx.ui.input_int(im_str!("Submap number"), &mut self.submap_num)
-            .chars_hexadecimal(true)
-            .build()
-        {
+        if ctx.ui.input_int(im_str!("Submap number"), &mut self.submap_num).chars_hexadecimal(true).build() {
             self.adjust_ow_submap_num(ctx);
             log::info!("Showing color palette for submap {:X}", self.submap_num);
         }
@@ -149,33 +130,24 @@ impl UiPaletteViewer {
     }
 
     fn display_level_palette(&mut self, ctx: &mut FrameContext) {
-        let FrameContext {
-            ui,
-            project_ref,
-            ..
-        } = ctx;
+        let FrameContext { ui, project_ref, .. } = ctx;
         let project = project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
 
         let header = &rom.levels[self.level_num as usize].primary_header;
-        let palette = &rom.level_color_palette_set
-            .get_level_palette(header, &rom.global_level_color_palette)
-            .unwrap();
+        let palette = &rom.level_color_palette_set.get_level_palette(header, &rom.global_level_color_palette).unwrap();
         self.display_palette(ui, palette);
     }
 
     fn display_overworld_palette(&mut self, ctx: &mut FrameContext) {
-        let FrameContext {
-            ui,
-            project_ref,
-            ..
-        } = ctx;
+        let FrameContext { ui, project_ref, .. } = ctx;
         let project = project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
 
-        let ow_state = if self.special_completed {OverworldState::PostSpecial} else {OverworldState::PreSpecial};
-        let palette = &rom.overworld_color_palette_set
-            .get_submap_palette(self.submap_num as usize, ow_state,&rom.global_overworld_color_palette)
+        let ow_state = if self.special_completed { OverworldState::PostSpecial } else { OverworldState::PreSpecial };
+        let palette = &rom
+            .overworld_color_palette_set
+            .get_submap_palette(self.submap_num as usize, ow_state, &rom.global_overworld_color_palette)
             .unwrap();
         self.display_palette(ui, palette);
     }

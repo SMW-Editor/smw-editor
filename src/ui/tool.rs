@@ -1,6 +1,6 @@
-use crate::frame_context::FrameContext;
-
 use imgui::ImString;
+
+use crate::frame_context::FrameContext;
 
 pub trait UiTool {
     fn tick(&mut self, ctx: &mut FrameContext) -> bool;

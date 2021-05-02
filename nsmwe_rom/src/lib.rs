@@ -10,8 +10,5 @@ pub mod rom;
 
 pub use crate::{
     internal_header::RomInternalHeader,
-    rom::{
-        Rom,
-        SMC_HEADER_SIZE,
-    },
+    rom::{Rom, SMC_HEADER_SIZE},
 };

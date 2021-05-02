@@ -1,25 +1,22 @@
-use nom::{
-    IResult,
-    take,
-};
+use nom::{take, IResult};
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
 
 #[derive(Clone)]
 pub struct PrimaryHeader {
-    pub palette_bg: u8,
-    pub level_length: u8,
+    pub palette_bg:      u8,
+    pub level_length:    u8,
     pub back_area_color: u8,
-    pub level_mode: u8,
+    pub level_mode:      u8,
     pub layer3_priority: bool,
-    pub music: u8,
-    pub sprite_gfx: u8,
-    pub timer: u8,
-    pub palette_sprite: u8,
-    pub palette_fg: u8,
-    pub item_memory: u8,
+    pub music:           u8,
+    pub sprite_gfx:      u8,
+    pub timer:           u8,
+    pub palette_sprite:  u8,
+    pub palette_fg:      u8,
+    pub item_memory:     u8,
     pub vertical_scroll: u8,
-    pub fg_bg_gfx: u8,
+    pub fg_bg_gfx:       u8,
 }
 
 impl PrimaryHeader {

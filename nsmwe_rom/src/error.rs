@@ -1,18 +1,14 @@
+use nom::{
+    error::{Error as NomError, ErrorKind},
+    Err as NomErr,
+};
+use thiserror::Error;
+
 use crate::{
     addr::{AddrPc, AddrSnes},
     graphics::gfx_file::TileFormat,
     internal_header::MapMode,
 };
-
-use nom::{
-    Err as NomErr,
-    error::{
-        Error as NomError,
-        ErrorKind,
-    },
-};
-
-use thiserror::Error;
 
 // -------------------------------------------------------------------------------------------------
 

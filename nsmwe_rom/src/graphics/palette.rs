@@ -1,38 +1,24 @@
-use crate::{
-    addr::{AddrPc, AddrSnes},
-    error::{
-        LevelPaletteError,
-        OverworldSubmapPaletteError,
-        RomParseError
-    },
-    graphics::color::{
-        Abgr1555,
-        BGR555_SIZE,
-    },
-    level::{
-        Level,
-        primary_header::PrimaryHeader,
-    },
-};
-
-use self::constants::*;
+use std::{convert::TryInto, ops::RangeInclusive, rc::Rc};
 
 use nom::{
     count,
     map,
     named,
-    number::complete::{le_u8, le_u16},
+    number::complete::{le_u16, le_u8},
     preceded,
     take,
     IResult,
 };
 
-use std::{
-    convert::TryInto,
-    ops::RangeInclusive,
-    rc::Rc,
+use self::constants::*;
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    error::{LevelPaletteError, OverworldSubmapPaletteError, RomParseError},
+    graphics::color::{Abgr1555, BGR555_SIZE},
+    level::{primary_header::PrimaryHeader, Level},
 };
 
+#[rustfmt::skip]
 pub mod constants {
     use crate::graphics::color::BGR555_SIZE;
 
@@ -64,9 +50,12 @@ pub mod constants {
 // -------------------------------------------------------------------------------------------------
 
 pub trait ColorPalette {
-    fn set_colors(&mut self, subpalette: &[Abgr1555],
-                  rows: RangeInclusive<usize>, cols: RangeInclusive<usize>)
-    {
+    fn set_colors(
+        &mut self, //
+        subpalette: &[Abgr1555],
+        rows: RangeInclusive<usize>,
+        cols: RangeInclusive<usize>,
+    ) {
         let n_cols = *cols.end() - *cols.start() + 1;
         for (idx, &color) in subpalette.iter().enumerate() {
             let row = *rows.start() + (idx / n_cols);
@@ -150,11 +139,11 @@ pub struct GlobalLevelColorPalette {
 
 #[derive(Clone)]
 pub struct LevelColorPalette {
-    pub global_palette: Rc<GlobalLevelColorPalette>,
+    pub global_palette:  Rc<GlobalLevelColorPalette>,
     pub back_area_color: Abgr1555,
-    pub background: Box<[Abgr1555]>,
-    pub foreground: Box<[Abgr1555]>,
-    pub sprite: Box<[Abgr1555]>,
+    pub background:      Box<[Abgr1555]>,
+    pub foreground:      Box<[Abgr1555]>,
+    pub sprite:          Box<[Abgr1555]>,
 }
 
 #[derive(Clone)]
@@ -175,14 +164,14 @@ pub struct GlobalOverworldColorPalette {
 #[derive(Clone)]
 pub struct OverworldSubmapColorPalette {
     pub global_palette: Rc<GlobalOverworldColorPalette>,
-    pub layer2: Box<[Abgr1555]>,
+    pub layer2:         Box<[Abgr1555]>,
 }
 
 #[derive(Clone)]
 pub struct OverworldColorPaletteSet {
-    pub layer2_pre_special: Vec<Box<[Abgr1555]>>,
+    pub layer2_pre_special:  Vec<Box<[Abgr1555]>>,
     pub layer2_post_special: Vec<Box<[Abgr1555]>>,
-    pub layer2_indices: Vec<usize>,
+    pub layer2_indices:      Vec<usize>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
@@ -195,7 +184,9 @@ pub enum OverworldState {
 
 named!(le_bgr16<Abgr1555>, map!(le_u16, Abgr1555));
 
-fn make_color_parser<'r>(rom_data: &'r [u8]) -> impl Fn(AddrSnes, usize) -> IResult<&'r [u8], Vec<Abgr1555>> + 'r {
+type ColorParserResult<'r> = IResult<&'r [u8], Vec<Abgr1555>>;
+
+fn make_color_parser<'r>(rom_data: &'r [u8]) -> impl Fn(AddrSnes, usize) -> ColorParserResult<'r> + 'r {
     move |pos, n| {
         let pos: AddrPc = pos.try_into().unwrap();
         preceded!(rom_data, take!(pos.0), count!(le_bgr16, n))
@@ -211,18 +202,18 @@ impl GlobalLevelColorPalette {
     }
 
     fn parse_impl(rom_data: &[u8]) -> IResult<&[u8], GlobalLevelColorPalette> {
-        pub const WTF_PALETTE:      AddrSnes = AddrSnes(0x00B250);
-        pub const PLAYER_PALETTE:   AddrSnes = AddrSnes(0x00B2C8);
-        pub const LAYER3_PALETTE:   AddrSnes = AddrSnes(0x00B170);
-        pub const BERRY_PALETTE:    AddrSnes = AddrSnes(0x00B674);
-        pub const ANIMATED_COLOR:   AddrSnes = AddrSnes(0x00B60C);
+        const WTF_PALETTE: AddrSnes = AddrSnes(0x00B250);
+        const PLAYER_PALETTE: AddrSnes = AddrSnes(0x00B2C8);
+        const LAYER3_PALETTE: AddrSnes = AddrSnes(0x00B170);
+        const BERRY_PALETTE: AddrSnes = AddrSnes(0x00B674);
+        const ANIMATED_COLOR: AddrSnes = AddrSnes(0x00B60C);
 
         let parse_colors = make_color_parser(rom_data);
 
-        let (_, wtf)      = parse_colors(WTF_PALETTE,    PALETTE_WTF_LENGTH)?;
-        let (_, players)  = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH)?;
-        let (_, layer3)   = parse_colors(LAYER3_PALETTE, PALETTE_LAYER3_LENGTH)?;
-        let (_, berry)    = parse_colors(BERRY_PALETTE,  PALETTE_BERRY_LENGTH)?;
+        let (_, wtf) = parse_colors(WTF_PALETTE, PALETTE_WTF_LENGTH)?;
+        let (_, players) = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH)?;
+        let (_, layer3) = parse_colors(LAYER3_PALETTE, PALETTE_LAYER3_LENGTH)?;
+        let (_, berry) = parse_colors(BERRY_PALETTE, PALETTE_BERRY_LENGTH)?;
         let (_, animated) = parse_colors(ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH)?;
 
         let mut palette = GlobalLevelColorPalette {
@@ -233,11 +224,11 @@ impl GlobalLevelColorPalette {
             animated: [Abgr1555::default(); PALETTE_ANIMATED_LENGTH].into(),
         };
 
-        palette.set_colors(&wtf,     0x4..=0xD, 0x2..=0x7);
+        palette.set_colors(&wtf, 0x4..=0xD, 0x2..=0x7);
         palette.players = players.try_into().unwrap(); // 0x8..=0x8, 0x6..=0xF
-        palette.set_colors(&layer3,  0x0..=0x1, 0x8..=0xF);
-        palette.set_colors(&berry,   0x2..=0x4, 0x9..=0xF);
-        palette.set_colors(&berry,   0x9..=0xB, 0x9..=0xF);
+        palette.set_colors(&layer3, 0x0..=0x1, 0x8..=0xF);
+        palette.set_colors(&berry, 0x2..=0x4, 0x9..=0xF);
+        palette.set_colors(&berry, 0x9..=0xB, 0x9..=0xF);
         palette.animated = animated.try_into().unwrap(); // 0x6, 0x4
 
         Ok((rom_data, palette))
@@ -257,13 +248,13 @@ impl LevelColorPaletteSet {
         }
     }
 
-    fn parse_impl<'a>(rom_data: &'a [u8], levels: &[Level], lvl_num: &mut usize)
-        -> IResult<&'a [u8], LevelColorPaletteSet>
-    {
+    fn parse_impl<'a>(
+        rom_data: &'a [u8], levels: &[Level], lvl_num: &mut usize,
+    ) -> IResult<&'a [u8], LevelColorPaletteSet> {
         const BACK_AREA_COLORS: AddrSnes = AddrSnes(0x00B0A0);
-        const BG_PALETTES:      AddrSnes = AddrSnes(0x00B0B0);
-        const FG_PALETTES:      AddrSnes = AddrSnes(0x00B190);
-        const SPRITE_PALETTES:  AddrSnes = AddrSnes(0x00B318);
+        const BG_PALETTES: AddrSnes = AddrSnes(0x00B0B0);
+        const FG_PALETTES: AddrSnes = AddrSnes(0x00B190);
+        const SPRITE_PALETTES: AddrSnes = AddrSnes(0x00B318);
 
         let parse_colors = make_color_parser(rom_data);
 
@@ -283,14 +274,10 @@ impl LevelColorPaletteSet {
             let idx_fg = header.palette_fg as usize;
             let idx_sp = header.palette_sprite as usize;
 
-            let (_, bc) = parse_colors(
-                BACK_AREA_COLORS + (BGR555_SIZE * idx_bc), 1)?;
-            let (_, bg) = parse_colors(
-                BG_PALETTES + (PALETTE_BG_SIZE * idx_bg), PALETTE_BG_LENGTH)?;
-            let (_, fg) = parse_colors(
-                FG_PALETTES + (PALETTE_FG_SIZE * idx_fg), PALETTE_FG_LENGTH)?;
-            let (_, sp) = parse_colors(
-                SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp), PALETTE_SPRITE_LENGTH)?;
+            let (_, bc) = parse_colors(BACK_AREA_COLORS + (BGR555_SIZE * idx_bc), 1)?;
+            let (_, bg) = parse_colors(BG_PALETTES + (PALETTE_BG_SIZE * idx_bg), PALETTE_BG_LENGTH)?;
+            let (_, fg) = parse_colors(FG_PALETTES + (PALETTE_FG_SIZE * idx_fg), PALETTE_FG_LENGTH)?;
+            let (_, sp) = parse_colors(SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp), PALETTE_SPRITE_LENGTH)?;
 
             if palette_set.back_area_colors.len() < idx_bc + 1 {
                 let value = Abgr1555::default();
@@ -320,9 +307,9 @@ impl LevelColorPaletteSet {
         Ok((rom_data, palette_set))
     }
 
-    pub fn get_level_palette(&self, header: &PrimaryHeader, gp: &Rc<GlobalLevelColorPalette>)
-        -> Result<LevelColorPalette, LevelPaletteError>
-    {
+    pub fn get_level_palette(
+        &self, header: &PrimaryHeader, gp: &Rc<GlobalLevelColorPalette>,
+    ) -> Result<LevelColorPalette, LevelPaletteError> {
         let i_back_area_color = header.back_area_color as usize;
         let i_background = header.palette_bg as usize;
         let i_foreground = header.palette_fg as usize;
@@ -331,23 +318,19 @@ impl LevelColorPaletteSet {
     }
 
     pub fn palette_from_indices(
-        &self,
-        i_back_area_color: usize,
-        i_background: usize,
-        i_foreground: usize,
-        i_sprite: usize,
+        &self, i_back_area_color: usize, i_background: usize, i_foreground: usize, i_sprite: usize,
         gp: &Rc<GlobalLevelColorPalette>,
     ) -> Result<LevelColorPalette, LevelPaletteError> {
         Ok(LevelColorPalette {
-            global_palette: Rc::clone(gp),
-            back_area_color: self.back_area_colors.get(i_back_area_color).cloned()
+            global_palette:  Rc::clone(gp),
+            back_area_color: self
+                .back_area_colors
+                .get(i_back_area_color)
+                .cloned()
                 .ok_or(LevelPaletteError::BackAreaColor)?,
-            background: self.bg_palettes.get(i_background).cloned()
-                .ok_or(LevelPaletteError::Background)?,
-            foreground: self.fg_palettes.get(i_foreground).cloned()
-                .ok_or(LevelPaletteError::Foreground)?,
-            sprite: self.sprite_palettes.get(i_sprite).cloned()
-                .ok_or(LevelPaletteError::Sprite)?,
+            background:      self.bg_palettes.get(i_background).cloned().ok_or(LevelPaletteError::Background)?,
+            foreground:      self.fg_palettes.get(i_foreground).cloned().ok_or(LevelPaletteError::Foreground)?,
+            sprite:          self.sprite_palettes.get(i_sprite).cloned().ok_or(LevelPaletteError::Sprite)?,
         })
     }
 }
@@ -401,8 +384,10 @@ impl OverworldColorPaletteSet {
 
         for i in 0..6 {
             let subworld_pal_idx = i * 14 * 4;
-            let (_, layer2_colors_normal)  = parse_colors(LAYER2_NORMAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
-            let (_, layer2_colors_special) = parse_colors(LAYER2_SPECIAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
+            let (_, layer2_colors_normal) =
+                parse_colors(LAYER2_NORMAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
+            let (_, layer2_colors_special) =
+                parse_colors(LAYER2_SPECIAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
 
             layer2_pre_special.push(layer2_colors_normal.into());
             layer2_post_special.push(layer2_colors_special.into());
@@ -417,31 +402,28 @@ impl OverworldColorPaletteSet {
             layer2_indices.push(idx as usize);
         }
 
-        Ok((rom_data, OverworldColorPaletteSet {
-            layer2_pre_special,
-            layer2_post_special,
-            layer2_indices,
-        }))
+        Ok((rom_data, OverworldColorPaletteSet { layer2_pre_special, layer2_post_special, layer2_indices }))
     }
 
-    pub fn get_submap_palette(&self, submap: usize, ow_state: OverworldState,
-                              gp: &Rc<GlobalOverworldColorPalette>)
-        -> Result<OverworldSubmapColorPalette, OverworldSubmapPaletteError>
-    {
+    pub fn get_submap_palette(
+        &self, submap: usize, ow_state: OverworldState, gp: &Rc<GlobalOverworldColorPalette>,
+    ) -> Result<OverworldSubmapColorPalette, OverworldSubmapPaletteError> {
         let i_submap_palette = *self.layer2_indices.get(submap).ok_or(OverworldSubmapPaletteError::Layer2)?;
         self.get_submap_palette_from_indices(i_submap_palette, ow_state, gp)
     }
 
-    pub fn get_submap_palette_from_indices(&self, i_submap_palette: usize, ow_state: OverworldState,
-                                           gp: &Rc<GlobalOverworldColorPalette>)
-        -> Result<OverworldSubmapColorPalette, OverworldSubmapPaletteError>
-    {
+    pub fn get_submap_palette_from_indices(
+        &self, i_submap_palette: usize, ow_state: OverworldState, gp: &Rc<GlobalOverworldColorPalette>,
+    ) -> Result<OverworldSubmapColorPalette, OverworldSubmapPaletteError> {
         Ok(OverworldSubmapColorPalette {
             global_palette: Rc::clone(gp),
-            layer2: match ow_state {
+            layer2:         match ow_state {
                 OverworldState::PreSpecial => &self.layer2_pre_special,
                 OverworldState::PostSpecial => &self.layer2_post_special,
-            }.get(i_submap_palette).cloned().ok_or(OverworldSubmapPaletteError::Layer2)?,
+            }
+            .get(i_submap_palette)
+            .cloned()
+            .ok_or(OverworldSubmapPaletteError::Layer2)?,
         })
     }
 }
