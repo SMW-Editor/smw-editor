@@ -48,4 +48,4 @@ jobs:
           ROM_PATH: ${{ github.workspace }}/rom.smc
         with:
           command: test
-          args: -p nsmwe_rom -- --ignored
+          args: -p smwe_rom -- --ignored

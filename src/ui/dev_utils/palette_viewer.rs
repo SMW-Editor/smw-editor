@@ -1,11 +1,11 @@
 use std::convert::TryFrom;
 
 use imgui::{im_str, ComboBox, ImString, Ui, Window};
-use nsmwe_rom::graphics::{
+use num_enum::TryFromPrimitive;
+use smwe_rom::graphics::{
     color::Rgba32,
     palette::{ColorPalette, OverworldState},
 };
-use num_enum::TryFromPrimitive;
 
 use crate::{
     frame_context::FrameContext,

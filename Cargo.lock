@@ -939,40 +939,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nsmwe"
-version = "0.1.0"
-dependencies = [
- "glium",
- "imgui",
- "imgui-glium-renderer",
- "imgui-winit-support",
- "inline_tweak",
- "log",
- "log4rs",
- "nfd2",
- "nsmwe_project",
- "nsmwe_rom",
- "num_enum 0.5.1",
-]
-
-[[package]]
-name = "nsmwe_project"
-version = "0.1.0"
-dependencies = [
- "nsmwe_rom",
-]
-
-[[package]]
-name = "nsmwe_rom"
-version = "0.1.0"
-dependencies = [
- "log",
- "nom",
- "num_enum 0.5.1",
- "thiserror",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1329,6 +1295,40 @@ dependencies = [
  "wayland-client",
  "wayland-cursor",
  "wayland-protocols",
+]
+
+[[package]]
+name = "smw-editor"
+version = "0.1.0"
+dependencies = [
+ "glium",
+ "imgui",
+ "imgui-glium-renderer",
+ "imgui-winit-support",
+ "inline_tweak",
+ "log",
+ "log4rs",
+ "nfd2",
+ "num_enum 0.5.1",
+ "smwe_project",
+ "smwe_rom",
+]
+
+[[package]]
+name = "smwe_project"
+version = "0.1.0"
+dependencies = [
+ "smwe_rom",
+]
+
+[[package]]
+name = "smwe_rom"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "nom",
+ "num_enum 0.5.1",
+ "thiserror",
 ]
 
 [[package]]

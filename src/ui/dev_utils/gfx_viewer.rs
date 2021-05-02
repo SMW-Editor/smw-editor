@@ -9,7 +9,7 @@ use glium::{
 };
 use imgui::{im_str, ImString, Image, TextureId, Window};
 use imgui_glium_renderer::Texture;
-use nsmwe_rom::graphics::{color::Rgba32, gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
+use smwe_rom::graphics::{color::Rgba32, gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
 
 use crate::{
     frame_context::FrameContext,

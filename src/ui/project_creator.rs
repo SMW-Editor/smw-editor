@@ -2,8 +2,8 @@ use std::{cell::RefCell, path::Path, rc::Rc};
 
 use imgui::{im_str, ImString, Ui, Window};
 use inline_tweak::tweak;
-use nsmwe_project::Project;
-use nsmwe_rom::Rom;
+use smwe_project::Project;
+use smwe_rom::Rom;
 
 use crate::{
     frame_context::FrameContext,

@@ -1,13 +1,10 @@
 [package]
-name = "nsmwe_rom"
+name = "smwe_project"
 version = "0.1.0"
-authors = ["Adam Gąsior (Adanos020)"]
+authors = ["Adanos020 <adanos020@gmail.com>", "Jakub Szewczyk (kubasz)"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = "0.4.14"
-nom = "6.1.0"
-num_enum = "0.5.1"
-thiserror = "1.0.24"
+smwe_rom = { path = "../smwe_rom" }

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use nsmwe_rom::Rom;
+use smwe_rom::Rom;
 
 pub struct Project {
     pub title:    String,
