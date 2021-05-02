@@ -1,5 +1,5 @@
 use imgui::{im_str, ImString, Ui, Window};
-use nsmwe_rom::addr::{AddrPc, AddrSnes};
+use smwe_rom::addr::{AddrPc, AddrSnes};
 
 use self::{helpers::*, modes::*};
 use crate::{
@@ -180,7 +180,7 @@ mod modes {
 }
 
 mod helpers {
-    use nsmwe_rom::SMC_HEADER_SIZE;
+    use smwe_rom::SMC_HEADER_SIZE;
 
     pub fn adjust_to_header(addr: usize, include_header: bool) -> usize {
         if include_header {

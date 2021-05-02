@@ -14,7 +14,7 @@ use glium::{
 use imgui::Context;
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use nsmwe_project::ProjectRef;
+use smwe_project::ProjectRef;
 
 use crate::frame_context::FrameContext;
 

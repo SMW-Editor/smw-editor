@@ -4,8 +4,8 @@ mod ui;
 
 use std::{cell::RefCell, env, rc::Rc};
 
-use nsmwe_project::{Project, ProjectRef};
-use nsmwe_rom::Rom;
+use smwe_project::{Project, ProjectRef};
+use smwe_rom::Rom;
 
 use crate::{backend::Backend, ui::UiMainWindow};
 

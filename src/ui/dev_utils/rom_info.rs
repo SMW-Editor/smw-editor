@@ -1,5 +1,5 @@
 use imgui::{ImString, Window};
-use nsmwe_rom::RomInternalHeader;
+use smwe_rom::RomInternalHeader;
 
 use crate::{
     frame_context::FrameContext,

@@ -1,21 +1,21 @@
 [workspace]
 
 members = [
-    "nsmwe_project",
-    "nsmwe_rom",
+    "smwe_project",
+    "smwe_rom",
 ]
 
 [package]
-name = "nsmwe"
+name = "smw-editor"
 version = "0.1.0"
-authors = ["Adam Gąsior (Adanos020)"]
+authors = ["Adam Gąsior (Adanos020)", "Jakub Szewczyk (kubasz)"]
 license = "MIT"
 edition = "2018"
 readme = "README.md"
 
 [dependencies]
-nsmwe_project = { path = "nsmwe_project" }
-nsmwe_rom = { path = "nsmwe_rom" }
+smwe_project = { path = "smwe_project" }
+smwe_rom = { path = "smwe_rom" }
 
 glium = "0.29.0"
 imgui = "0.7.0"
