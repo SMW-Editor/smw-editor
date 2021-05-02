@@ -1,0 +1,30 @@
+on: [push, pull_request]
+
+name: Test with ROM
+
+jobs:
+  clippy:
+    name: Test on stable Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+      - shell: bash
+        env:
+          SMW_ROM_URL: ${{ secrets.SMW_ROM_URL }}
+        run: |
+          curl '$SMW_ROM_URL' -o ${{ github.workspace }}/rom.smc
+      - uses: actions-rs/cargo@v1
+        env:
+          ROM_PATH: ${{ github.workspace }}/rom.smc
+        with:
+          commands: test
+          args: -p nsmwe_rom -- --ignored
