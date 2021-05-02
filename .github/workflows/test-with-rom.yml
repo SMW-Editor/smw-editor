@@ -20,7 +20,7 @@ jobs:
       - name: Install development libraries
         run: |
           sudo apt-get update
-          sudo apt-get install libgtk2.0-dev libglx-dev libgl1-mesa-dev libsdl2-dev libwayland-dev libx11-dev
+          sudo apt-get install libgtk-3-dev libglx-dev libgl1-mesa-dev libsdl2-dev libwayland-dev libx11-dev
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
