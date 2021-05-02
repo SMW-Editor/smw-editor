@@ -1,6 +1,6 @@
-# New Super Mario World Editor
+# SMW Editor
 
-NSMWE aims to become an open-source, multi-platform, modern alternative to Lunar
+SMW Editor aims to become an open-source, multi-platform, modern alternative to Lunar
 Magic bundled with many more tools for SMW romhacking.
 
 This project is in a very early stage of development, currently far from anything
@@ -22,7 +22,7 @@ and none of the main features are there yet.
 
 **Currently in progress:** parsing the ROM and generating project files from it.
 
-You can track the progress [here](https://github.com/Adanos020/nsmwe/projects/1).
+You can track the progress [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
 ## Building
 
