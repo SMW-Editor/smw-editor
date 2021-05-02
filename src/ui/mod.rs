@@ -1,8 +1,8 @@
 pub mod color;
+pub mod dev_utils;
 pub mod main_window;
 pub mod project_creator;
 pub mod tool;
-pub mod dev_utils;
 
 pub use self::{
     dev_utils::{
@@ -13,9 +13,5 @@ pub use self::{
     },
     main_window::UiMainWindow,
     project_creator::UiProjectCreator,
-    tool::{
-        title_with_id,
-        UiTool,
-        WindowId,
-    },
+    tool::{title_with_id, UiTool, WindowId},
 };

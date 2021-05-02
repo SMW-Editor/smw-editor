@@ -1,35 +1,23 @@
+use imgui::{im_str, ImString, Ui, Window};
+use nsmwe_rom::addr::{AddrPc, AddrSnes};
+
+use self::{helpers::*, modes::*};
 use crate::{
     frame_context::FrameContext,
     ui::{
         color,
-        tool::{
-            title_with_id,
-            UiTool,
-            WindowId,
-        },
+        tool::{title_with_id, UiTool, WindowId},
     },
 };
-
-use self::helpers::*;
-use self::modes::*;
-
-use imgui::{
-    ImString,
-    Window,
-    Ui,
-    im_str,
-};
-
-use nsmwe_rom::addr::{AddrPc, AddrSnes};
 
 pub struct UiAddressConverter {
     title: ImString,
 
     conversion_mode: ConversionMode,
-    include_header: bool,
+    include_header:  bool,
 
-    text_pc: ImString,
-    text_snes: ImString,
+    text_pc:    ImString,
+    text_snes:  ImString,
     text_error: ImString,
 }
 
@@ -61,34 +49,26 @@ impl UiAddressConverter {
     pub fn new(id: WindowId) -> Self {
         log::info!("Opened Address Converter");
         UiAddressConverter {
-            title: title_with_id("Address converter", id),
+            title:           title_with_id("Address converter", id),
             conversion_mode: ConversionMode::LoRom,
-            include_header: false,
-            text_pc: ImString::new("0"),
-            text_snes: ImString::new("8000"),
-            text_error: ImString::new(""),
+            include_header:  false,
+            text_pc:         ImString::new("0"),
+            text_snes:       ImString::new("8000"),
+            text_error:      ImString::new(""),
         }
     }
 
     fn mode_selection(&mut self, ui: &Ui) {
-        let lorom_changed = ui.radio_button(
-            im_str!("PC and LoROM"),
-            &mut self.conversion_mode,
-            ConversionMode::LoRom);
-        let hirom_changed = ui.radio_button(
-            im_str!("PC and HiROM"),
-            &mut self.conversion_mode,
-            ConversionMode::HiRom);
+        let lorom_changed = ui.radio_button(im_str!("PC and LoROM"), &mut self.conversion_mode, ConversionMode::LoRom);
+        let hirom_changed = ui.radio_button(im_str!("PC and HiROM"), &mut self.conversion_mode, ConversionMode::HiRom);
         if lorom_changed || hirom_changed {
             log::info!("Conversion mode changed to {}", self.conversion_mode);
             self.update_addresses(ConvDir::PcToSnes);
         }
 
         if ui.checkbox(im_str!("Include header"), &mut self.include_header) {
-            log::info!("Inclusion of SMC header: {}",
-                       if self.include_header { "ON" } else { "OFF" });
-            let addr_pc = usize::from_str_radix(self.text_pc.to_str(), 16)
-                .unwrap_or(0);
+            log::info!("Inclusion of SMC header: {}", if self.include_header { "ON" } else { "OFF" });
+            let addr_pc = usize::from_str_radix(self.text_pc.to_str(), 16).unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
             self.text_pc = ImString::new(format!("{:x}", addr_pc));
             self.update_addresses(ConvDir::PcToSnes);
@@ -109,12 +89,7 @@ impl UiAddressConverter {
             ConvDir::SnesToPc => (im_str!("SNES"), &mut self.text_snes),
         };
 
-        if ui.input_text(label, buf)
-            .chars_hexadecimal(true)
-            .chars_noblank(true)
-            .auto_select_all(true)
-            .build()
-        {
+        if ui.input_text(label, buf).chars_hexadecimal(true).chars_noblank(true).auto_select_all(true).build() {
             log::info!("Changed input '{}' to: {}", direction, buf);
             self.update_addresses(direction);
         }
@@ -127,8 +102,7 @@ impl UiAddressConverter {
         };
 
         let addr_src = {
-            let addr = usize::from_str_radix(buf_src.to_str(), 16)
-                .unwrap_or(0);
+            let addr = usize::from_str_radix(buf_src.to_str(), 16).unwrap_or(0);
             if self.include_header {
                 match direction {
                     ConvDir::PcToSnes => adjust_to_header(addr, false),
@@ -173,8 +147,7 @@ impl UiAddressConverter {
 }
 
 mod modes {
-    use std::cmp::PartialEq;
-    use std::fmt;
+    use std::{cmp::PartialEq, fmt};
 
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum ConversionMode {

@@ -20,6 +20,7 @@ pub struct Rgba32 {
 
 // -------------------------------------------------------------------------------------------------
 
+#[rustfmt::skip]
 impl Abgr1555 {
     pub const TRANSPARENT: Abgr1555 = Abgr1555(0b1_00000_00000_00000);
     pub const BLACK:       Abgr1555 = Abgr1555(0b0_00000_00000_00000);
@@ -47,6 +48,7 @@ impl Default for Abgr1555 {
     }
 }
 
+#[rustfmt::skip]
 impl Rgba32 {
     pub const TRANSPARENT: Rgba32 = Rgba32::new(0.0, 0.0, 0.0, 0.0);
     pub const BLACK:       Rgba32 = Rgba32::new(0.0, 0.0, 0.0, 1.0);
@@ -54,7 +56,9 @@ impl Rgba32 {
     pub const RED:         Rgba32 = Rgba32::new(1.0, 0.0, 0.0, 1.0);
     pub const GREEN:       Rgba32 = Rgba32::new(0.0, 1.0, 0.0, 1.0);
     pub const BLUE:        Rgba32 = Rgba32::new(0.0, 0.0, 1.0, 1.0);
+}
 
+impl Rgba32 {
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Rgba32 { r, g, b, a }
     }
@@ -82,12 +86,7 @@ impl From<Abgr1555> for Rgba32 {
 
 impl From<[f32; 4]> for Rgba32 {
     fn from(color: [f32; 4]) -> Self {
-        Rgba32 {
-            r: color[0],
-            g: color[1],
-            b: color[2],
-            a: color[3],
-        }
+        Rgba32 { r: color[0], g: color[1], b: color[2], a: color[3] }
     }
 }
 
@@ -99,12 +98,7 @@ impl From<Rgba32> for [f32; 4] {
 
 impl From<(f32, f32, f32, f32)> for Rgba32 {
     fn from(color: (f32, f32, f32, f32)) -> Self {
-        Rgba32 {
-            r: color.0,
-            g: color.1,
-            b: color.2,
-            a: color.3,
-        }
+        Rgba32 { r: color.0, g: color.1, b: color.2, a: color.3 }
     }
 }
 

@@ -1,12 +1,10 @@
-pub use self::constants::*;
+use std::{fs, path::Path, rc::Rc};
 
+pub use self::constants::*;
 use crate::{
     error::RomParseError,
     graphics::{
-        gfx_file::{
-            GfxFile,
-            GFX_FILES_META,
-        },
+        gfx_file::{GfxFile, GFX_FILES_META},
         palette::{
             GlobalLevelColorPalette,
             GlobalOverworldColorPalette,
@@ -15,16 +13,7 @@ use crate::{
         },
     },
     internal_header::RomInternalHeader,
-    level::{
-        Level,
-        LEVEL_COUNT,
-    },
-};
-
-use std::{
-    fs,
-    path::Path,
-    rc::Rc,
+    level::{Level, LEVEL_COUNT},
 };
 
 pub mod constants {
@@ -34,13 +23,13 @@ pub mod constants {
 type RpResult<T> = Result<T, RomParseError>;
 
 pub struct Rom {
-    pub internal_header: RomInternalHeader,
-    pub levels: Vec<Level>,
-    pub global_level_color_palette: Rc<GlobalLevelColorPalette>,
+    pub internal_header:                RomInternalHeader,
+    pub levels:                         Vec<Level>,
+    pub global_level_color_palette:     Rc<GlobalLevelColorPalette>,
     pub global_overworld_color_palette: Rc<GlobalOverworldColorPalette>,
-    pub level_color_palette_set: LevelColorPaletteSet,
-    pub overworld_color_palette_set: OverworldColorPaletteSet,
-    pub gfx_files: Vec<GfxFile>,
+    pub level_color_palette_set:        LevelColorPaletteSet,
+    pub overworld_color_palette_set:    OverworldColorPaletteSet,
+    pub gfx_files:                      Vec<GfxFile>,
 }
 
 impl Rom {
@@ -51,16 +40,16 @@ impl Rom {
                 Ok(rom) => {
                     log::info!("Success parsing ROM");
                     Ok(rom)
-                },
+                }
                 Err(err) => {
                     log::error!("Failed to parse ROM: {}", err);
                     Err(err)
-                },
+                }
             },
             Err(err) => {
                 log::error!("Couldn't read ROM: {}", err);
                 Err(RomParseError::IoError)
-            },
+            }
         }
     }
 

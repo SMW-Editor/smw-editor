@@ -1,46 +1,27 @@
+use std::{array::IntoIter, borrow::Cow, rc::Rc};
+
+use glium::{
+    backend::Facade,
+    texture::{ClientFormat, RawImage2d},
+    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
+    Rect,
+    Texture2d,
+};
+use imgui::{im_str, ImString, Image, TextureId, Window};
+use imgui_glium_renderer::Texture;
+use nsmwe_rom::graphics::{color::Rgba32, gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
+
 use crate::{
     frame_context::FrameContext,
     ui::{title_with_id, UiTool, WindowId},
 };
 
-use glium::{
-    backend::Facade,
-    Rect,
-    texture::{ClientFormat, RawImage2d},
-    uniforms::{
-        MagnifySamplerFilter,
-        MinifySamplerFilter,
-        SamplerBehavior,
-    },
-    Texture2d,
-};
-
-use imgui::{
-    Image,
-    im_str,
-    ImString,
-    TextureId,
-    Window,
-};
-use imgui_glium_renderer::Texture;
-
-use nsmwe_rom::graphics::{
-    color::Rgba32,
-    gfx_file::N_PIXELS_IN_TILE,
-    palette::ColorPalette,
-};
-
-use std::{
-    array::IntoIter,
-    borrow::Cow,
-    rc::Rc,
-};
-
 // -------------------------------------------------------------------------------------------------
 
 #[allow(dead_code)]
+#[rustfmt::skip]
 mod constants {
-    use imgui::{ImStr, im_str};
+    use imgui::{im_str, ImStr};
 
     pub const N_TILES_IN_ROW: usize = 16;
 
@@ -67,20 +48,20 @@ use constants::*;
 
 struct BufferInfo {
     pub texture_id: TextureId,
-    pub size: (u32, u32),
-    pub file_num: i32,
+    pub size:       (u32, u32),
+    pub file_num:   i32,
 }
 
 pub struct UiGfxViewer {
-    title: ImString,
-    buffer_info: Option<BufferInfo>,
-    curr_image_size: (usize, usize),
-    curr_gfx_file_num: i32,
+    title:                ImString,
+    buffer_info:          Option<BufferInfo>,
+    curr_image_size:      (usize, usize),
+    curr_gfx_file_num:    i32,
     curr_palette_row_idx: i32,
-    curr_bg_palette_num: i32,
-    curr_fg_palette_num: i32,
-    curr_sp_palette_num: i32,
-    curr_pl_palette_num: i32,
+    curr_bg_palette_num:  i32,
+    curr_fg_palette_num:  i32,
+    curr_sp_palette_num:  i32,
+    curr_pl_palette_num:  i32,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -119,25 +100,21 @@ impl UiGfxViewer {
     pub fn new(id: WindowId) -> Self {
         log::info!("Opened GFX Viewer");
         UiGfxViewer {
-            title: title_with_id("GFX Viewer", id),
-            buffer_info: None,
-            curr_image_size: (0, 0),
-            curr_gfx_file_num: 0,
+            title:                title_with_id("GFX Viewer", id),
+            buffer_info:          None,
+            curr_image_size:      (0, 0),
+            curr_gfx_file_num:    0,
             curr_palette_row_idx: 0,
-            curr_bg_palette_num: 0,
-            curr_fg_palette_num: 0,
-            curr_sp_palette_num: 0,
-            curr_pl_palette_num: 0,
+            curr_bg_palette_num:  0,
+            curr_fg_palette_num:  0,
+            curr_sp_palette_num:  0,
+            curr_pl_palette_num:  0,
         }
     }
 
     fn switches(&mut self, ctx: &mut FrameContext) {
         let mut changed_any = false;
-        let mut input_int = |label, var| {
-            changed_any |= ctx.ui.input_int(label, var)
-                .chars_hexadecimal(true)
-                .build()
-        };
+        let mut input_int = |label, var| changed_any |= ctx.ui.input_int(label, var).chars_hexadecimal(true).build();
 
         input_int(im_str!("GFX file number"), &mut self.curr_gfx_file_num);
         input_int(im_str!("Palette row index"), &mut self.curr_palette_row_idx);
@@ -167,10 +144,14 @@ impl UiGfxViewer {
     fn create_texture(&mut self, ctx: &mut FrameContext) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
 
-        let max_tile_count = project.rom_data.gfx_files.iter()
+        let max_tile_count = project
+            .rom_data
+            .gfx_files
+            .iter()
             .max_by(|a, b| a.tiles.len().cmp(&b.tiles.len()))
             .expect("Cannot create texture: No GFX files are loaded")
-            .tiles.len();
+            .tiles
+            .len();
         let row_count = 1 + (max_tile_count / N_TILES_IN_ROW);
         let texture_size = row_count * N_TILES_IN_ROW * N_PIXELS_IN_TILE;
         let width = (8 * N_TILES_IN_ROW) as u32;
@@ -179,10 +160,10 @@ impl UiGfxViewer {
         let image = RawImage2d {
             data: Cow::Owned(vec![Rgba32::default().as_tuple(); texture_size]),
             format: ClientFormat::F32F32F32F32,
-            width, height,
+            width,
+            height,
         };
-        let gl_texture = Texture2d::new(ctx.display.get_context(), image)
-            .expect("Failed to create GL texture.");
+        let gl_texture = Texture2d::new(ctx.display.get_context(), image).expect("Failed to create GL texture.");
         let texture = Texture {
             texture: Rc::new(gl_texture),
             sampler: SamplerBehavior {
@@ -194,8 +175,8 @@ impl UiGfxViewer {
 
         self.buffer_info = Some(BufferInfo {
             texture_id: ctx.renderer.textures().insert(texture),
-            size: (width, height),
-            file_num: -1,
+            size:       (width, height),
+            file_num:   -1,
         });
 
         log::info!("Successfully created a texture buffer (w = {}, h = {}).", width, height);
@@ -206,14 +187,20 @@ impl UiGfxViewer {
             buf.file_num = self.curr_gfx_file_num;
 
             let tex_id = buf.texture_id;
-            let texture = ctx.renderer.textures().get_mut(tex_id)
+            let texture = ctx
+                .renderer
+                .textures()
+                .get_mut(tex_id)
                 .unwrap_or_else(|| panic!("Texture with id {} does not exist", tex_id.id()))
-                .texture.as_ref();
+                .texture
+                .as_ref();
 
             let project = ctx.project_ref.as_ref().unwrap().borrow();
             let rom = &project.rom_data;
             let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];
-            let palette = &rom.level_color_palette_set.palette_from_indices(
+            let palette = &rom
+                .level_color_palette_set
+                .palette_from_indices(
                     0,
                     self.curr_bg_palette_num as usize,
                     self.curr_fg_palette_num as usize,
@@ -230,17 +217,10 @@ impl UiGfxViewer {
             for (idx, tile) in gfx_file.tiles.iter().enumerate() {
                 let (row, col) = (idx / N_TILES_IN_ROW, idx % N_TILES_IN_ROW);
                 let (x, y) = ((col * 8) as u32, (row * 8) as u32);
-                let rgba_tile: Vec<f32> = tile.to_rgba(palette)
-                    .iter()
-                    .flat_map(|c| IntoIter::new(c.as_array()))
-                    .collect();
+                let rgba_tile: Vec<f32> =
+                    tile.to_rgba(palette).iter().flat_map(|c| IntoIter::new(c.as_array())).collect();
                 let image = RawImage2d::from_raw_rgba(rgba_tile, (8, 8));
-                let rect = Rect {
-                    left: x,
-                    bottom: y,
-                    width: 8,
-                    height: 8,
-                };
+                let rect = Rect { left: x, bottom: y, width: 8, height: 8 };
                 texture.write(rect, image);
             }
 

@@ -2,28 +2,20 @@ mod backend;
 mod frame_context;
 mod ui;
 
-use crate::{
-    backend::Backend,
-    ui::UiMainWindow,
-};
+use std::{cell::RefCell, env, rc::Rc};
 
 use nsmwe_project::{Project, ProjectRef};
 use nsmwe_rom::Rom;
 
-use std::{
-    cell::RefCell,
-    env,
-    rc::Rc,
-};
+use crate::{backend::Backend, ui::UiMainWindow};
 
 fn main() {
-    log4rs::init_file("log4rs.yaml", Default::default())
-        .expect("Failed to initialize log4rs");
+    log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize log4rs");
 
     let project: Option<ProjectRef> = if let Ok(rom_path) = env::var("ROM_PATH") {
         log::info!("Opening ROM from path defined in ROM_PATH");
         Some(Rc::new(RefCell::new(Project {
-            title: String::from("Test Project"),
+            title:    String::from("Test Project"),
             rom_data: Rom::from_file(rom_path).expect("Couldn't load ROM"),
         })))
     } else {

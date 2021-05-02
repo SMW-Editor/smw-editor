@@ -1,29 +1,13 @@
-use crate::{
-    frame_context::FrameContext,
-    ui::{
-        color,
-        title_with_id,
-        UiTool,
-        WindowId,
-    },
-};
+use std::{cell::RefCell, path::Path, rc::Rc};
 
-use imgui::{
-    ImString,
-    Window,
-    Ui,
-    im_str,
-};
-
+use imgui::{im_str, ImString, Ui, Window};
 use inline_tweak::tweak;
-
 use nsmwe_project::Project;
 use nsmwe_rom::Rom;
 
-use std::{
-    cell::RefCell,
-    path::Path,
-    rc::Rc,
+use crate::{
+    frame_context::FrameContext,
+    ui::{color, title_with_id, UiTool, WindowId},
 };
 
 pub struct UiProjectCreator {
@@ -32,8 +16,8 @@ pub struct UiProjectCreator {
     project_title: ImString,
     base_rom_path: ImString,
 
-    err_project_title: ImString,
-    err_base_rom_path: ImString,
+    err_project_title:    ImString,
+    err_base_rom_path:    ImString,
     err_project_creation: ImString,
 }
 
@@ -43,7 +27,7 @@ impl UiTool for UiProjectCreator {
         let mut created_or_cancelled = false;
 
         let title = std::mem::take(&mut self.title);
-        Window::new(&title)
+        Window::new(&title) //
             .always_auto_resize(true)
             .resizable(false)
             .collapsible(false)
@@ -73,8 +57,8 @@ impl UiProjectCreator {
             project_title: ImString::new("My SMW hack"),
             base_rom_path: ImString::new(""),
 
-            err_project_title: ImString::new(""),
-            err_base_rom_path: ImString::new(""),
+            err_project_title:    ImString::new(""),
+            err_base_rom_path:    ImString::new(""),
             err_project_creation: ImString::new(""),
         };
         myself.handle_rom_file_path();
@@ -83,9 +67,7 @@ impl UiProjectCreator {
 
     fn input_project_title(&mut self, ui: &Ui) {
         ui.text(im_str!("Project title:"));
-        if ui.input_text(im_str!("##project_title"), &mut self.project_title)
-            .build()
-        {
+        if ui.input_text(im_str!("##project_title"), &mut self.project_title).build() {
             self.handle_project_title();
         }
 
@@ -104,9 +86,7 @@ impl UiProjectCreator {
 
     fn input_rom_file_path(&mut self, ui: &Ui) {
         ui.text(im_str!("Base ROM file:"));
-        if ui.input_text(im_str!("##rom_file"), &mut self.base_rom_path)
-            .build()
-        {
+        if ui.input_text(im_str!("##rom_file"), &mut self.base_rom_path).build() {
             self.handle_rom_file_path();
         }
         ui.same_line(0.0);
@@ -122,11 +102,9 @@ impl UiProjectCreator {
     fn handle_rom_file_path(&mut self) {
         let file_path = Path::new(self.base_rom_path.to_str());
         if !file_path.exists() {
-            self.err_base_rom_path = ImString::new(
-                format!("File '{}' does not exist.", self.base_rom_path));
+            self.err_base_rom_path = ImString::new(format!("File '{}' does not exist.", self.base_rom_path));
         } else if file_path.is_dir() {
-            self.err_base_rom_path = ImString::new(
-                format!("'{}' is not a file.", self.base_rom_path));
+            self.err_base_rom_path = ImString::new(format!("'{}' is not a file.", self.base_rom_path));
         } else {
             self.err_base_rom_path.clear();
         }
@@ -135,7 +113,7 @@ impl UiProjectCreator {
     fn open_file_selector(&mut self) {
         log::info!("Opened File Selector");
         use nfd2::Response;
-        if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None)
+        if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None) //
             .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
         {
             self.base_rom_path = ImString::new(path.to_str().unwrap());
@@ -163,10 +141,7 @@ impl UiProjectCreator {
         match Rom::from_file(self.base_rom_path.to_str()) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
-                let project = Project {
-                    title: self.project_title.to_string(),
-                    rom_data,
-                };
+                let project = Project { title: self.project_title.to_string(), rom_data };
                 *ctx.project_ref = Some(Rc::new(RefCell::new(project)));
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
@@ -193,9 +168,6 @@ impl UiProjectCreator {
     }
 
     fn no_creation_errors(&self) -> bool {
-        vec![
-            &self.err_base_rom_path,
-            &self.err_project_title,
-        ].iter().all(|s| s.is_empty())
+        vec![&self.err_base_rom_path, &self.err_project_title].iter().all(|s| s.is_empty())
     }
 }

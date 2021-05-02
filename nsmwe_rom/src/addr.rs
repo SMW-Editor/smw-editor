@@ -1,6 +1,6 @@
-pub use self::masks::*;
-pub use self::types::*;
+pub use self::{masks::*, types::*};
 
+#[rustfmt::skip]
 pub mod masks {
     use super::types::Mask;
     pub const BB:     Mask = 0xFF0000; // Bank
@@ -11,17 +11,14 @@ pub mod masks {
 }
 
 pub mod types {
-    use crate::{
-        error::AddressConversionError,
-        internal_header::MapMode,
-    };
-
     use std::{
         cmp::{Ordering, PartialEq, PartialOrd},
         convert::TryFrom,
         fmt,
-        ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub, RangeInclusive},
+        ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, RangeInclusive, Rem, Shl, Shr, Sub},
     };
+
+    use crate::{error::AddressConversionError, internal_header::MapMode};
 
     pub type AddrSpaceSnes = RangeInclusive<AddrSnes>;
     pub type AddrSpacePc = RangeInclusive<AddrPc>;
@@ -113,17 +110,22 @@ pub mod types {
 
     impl TryFrom<AddrSnes> for AddrPc {
         type Error = AddressConversionError;
+
         fn try_from(value: AddrSnes) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)
         }
     }
 
     impl fmt::LowerHex for AddrPc {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "PC {:#x}", self.0) }
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "PC {:#x}", self.0)
+        }
     }
 
     impl fmt::UpperHex for AddrPc {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "PC {:#X}", self.0) }
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "PC {:#X}", self.0)
+        }
     }
 
     impl AddrSnes {
@@ -159,16 +161,21 @@ pub mod types {
 
     impl TryFrom<AddrPc> for AddrSnes {
         type Error = AddressConversionError;
+
         fn try_from(value: AddrPc) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)
         }
     }
 
     impl fmt::LowerHex for AddrSnes {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "SNES ${:x}", self.0) }
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "SNES ${:x}", self.0)
+        }
     }
 
     impl fmt::UpperHex for AddrSnes {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "SNES ${:X}", self.0) }
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "SNES ${:X}", self.0)
+        }
     }
 }

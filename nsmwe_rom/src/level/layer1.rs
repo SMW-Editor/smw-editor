@@ -1,4 +1,2 @@
 #[derive(Clone)]
-pub struct Layer1 {
-
-}
+pub struct Layer1 {}
