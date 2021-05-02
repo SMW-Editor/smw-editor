@@ -1,6 +1,6 @@
 use std::env;
 
-use nsmwe_rom::Rom;
+use smwe_rom::Rom;
 
 #[test]
 #[ignore]
