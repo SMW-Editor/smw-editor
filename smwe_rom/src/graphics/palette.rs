@@ -132,7 +132,7 @@ pub struct ColorPalettes {
     pub ow_layer3: Box<[Abgr1555]>,
     pub ow_sprite: Box<[Abgr1555]>,
 
-    pub lv_wtf:      Box<[Abgr1555]>,
+    pub wtf:      Box<[Abgr1555]>,
     pub lv_layer3:   Box<[Abgr1555]>,
     pub lv_berry:    Box<[Abgr1555]>,
     pub lv_animated: Box<[Abgr1555]>,
@@ -176,6 +176,7 @@ pub struct SpecificOverworldColorPalette {
     pub layer3:  Box<[Abgr1555]>,
     pub sprite:  Box<[Abgr1555]>,
     pub players: Box<[Abgr1555]>,
+    pub wtf:     Box<[Abgr1555]>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
@@ -233,7 +234,7 @@ impl ColorPalettes {
             ow_layer1: ow_layer1_colors.into(),
             ow_layer3: ow_layer3_colors.into(),
             ow_sprite: ow_sprite_colors.into(),
-            lv_wtf: lv_wtf.into(),
+            wtf: lv_wtf.into(),
             lv_layer3: lv_layer3.into(),
             lv_berry: lv_berry.into(),
             lv_animated: lv_animated.into(),
@@ -331,7 +332,7 @@ impl LevelColorPaletteSet {
             background:      self.bg_palettes.get(i_background).cloned().ok_or(ColorPaletteError::LvBackground)?,
             foreground:      self.fg_palettes.get(i_foreground).cloned().ok_or(ColorPaletteError::LvForeground)?,
             sprite:          self.sprite_palettes.get(i_sprite).cloned().ok_or(ColorPaletteError::LvSprite)?,
-            wtf:             palettes.lv_wtf.clone(),
+            wtf:             palettes.wtf.clone(),
             layer3:          palettes.lv_layer3.clone(),
             berry:           palettes.lv_berry.clone(),
             animated:        palettes.lv_animated.clone(),
@@ -386,19 +387,22 @@ impl OverworldColorPaletteSet {
     pub fn get_submap_palette_from_indices(
         &self, i_submap_palette: usize, ow_state: OverworldState, palettes: &ColorPalettes,
     ) -> Result<SpecificOverworldColorPalette, ColorPaletteError> {
-        Ok(SpecificOverworldColorPalette {
+        let mut palette = SpecificOverworldColorPalette {
             layer1:  palettes.ow_layer1.clone(),
             layer2:  match ow_state {
                 OverworldState::PreSpecial => &self.layer2_pre_special,
                 OverworldState::PostSpecial => &self.layer2_post_special,
             }
-            .get(i_submap_palette)
-            .cloned()
-            .ok_or(ColorPaletteError::OwLayer2)?,
+                .get(i_submap_palette)
+                .cloned()
+                .ok_or(ColorPaletteError::OwLayer2)?,
             layer3:  palettes.ow_layer3.clone(),
             sprite:  palettes.ow_sprite.clone(),
             players: palettes.players.clone(),
-        })
+            wtf:     palettes.wtf.clone()[23..=27].into(),
+        };
+        palette.wtf[0] = Abgr1555::WHITE;
+        Ok(palette)
     }
 }
 
@@ -420,4 +424,5 @@ impl_color_palette!(SpecificOverworldColorPalette {
     [0x0..=0x1, 0x8..=0xF] => layer3,
     [0x9..=0xF, 0x1..=0x7] => sprite,
     [0x8..=0x8, 0x6..=0xF] => players,
+    [0x8..=0x8, 0x1..=0x5] => wtf,
 });
