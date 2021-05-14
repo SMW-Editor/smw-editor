@@ -132,7 +132,7 @@ pub struct ColorPalettes {
     pub ow_layer3: Box<[Abgr1555]>,
     pub ow_sprite: Box<[Abgr1555]>,
 
-    pub wtf:      Box<[Abgr1555]>,
+    pub wtf:         Box<[Abgr1555]>,
     pub lv_layer3:   Box<[Abgr1555]>,
     pub lv_berry:    Box<[Abgr1555]>,
     pub lv_animated: Box<[Abgr1555]>,
@@ -393,9 +393,9 @@ impl OverworldColorPaletteSet {
                 OverworldState::PreSpecial => &self.layer2_pre_special,
                 OverworldState::PostSpecial => &self.layer2_post_special,
             }
-                .get(i_submap_palette)
-                .cloned()
-                .ok_or(ColorPaletteError::OwLayer2)?,
+            .get(i_submap_palette)
+            .cloned()
+            .ok_or(ColorPaletteError::OwLayer2)?,
             layer3:  palettes.ow_layer3.clone(),
             sprite:  palettes.ow_sprite.clone(),
             players: palettes.players.clone(),
