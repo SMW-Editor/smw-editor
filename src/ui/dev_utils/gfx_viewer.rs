@@ -199,13 +199,14 @@ impl UiGfxViewer {
             let rom = &project.rom_data;
             let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];
             let palette = &rom
-                .level_color_palette_set
+                .color_palettes
+                .lv_specific_set
                 .palette_from_indices(
                     0,
                     self.curr_bg_palette_num as usize,
                     self.curr_fg_palette_num as usize,
                     self.curr_sp_palette_num as usize,
-                    &rom.global_level_color_palette,
+                    &rom.color_palettes,
                 )
                 .unwrap()
                 .get_row(self.curr_palette_row_idx as usize);
@@ -241,16 +242,16 @@ impl UiGfxViewer {
             let palette_row_count = 16i32;
             self.curr_palette_row_idx = self.curr_palette_row_idx.rem_euclid(palette_row_count);
 
-            let bg_pals_count = rom.level_color_palette_set.bg_palettes.len() as i32;
+            let bg_pals_count = rom.color_palettes.lv_specific_set.bg_palettes.len() as i32;
             self.curr_bg_palette_num = self.curr_bg_palette_num.rem_euclid(bg_pals_count);
 
-            let fg_pals_count = rom.level_color_palette_set.fg_palettes.len() as i32;
+            let fg_pals_count = rom.color_palettes.lv_specific_set.fg_palettes.len() as i32;
             self.curr_fg_palette_num = self.curr_fg_palette_num.rem_euclid(fg_pals_count);
 
-            let sp_pals_count = rom.level_color_palette_set.sprite_palettes.len() as i32;
+            let sp_pals_count = rom.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
             self.curr_sp_palette_num = self.curr_sp_palette_num.rem_euclid(sp_pals_count);
 
-            let pl_pals_count = rom.global_level_color_palette.players.len() as i32 / 10;
+            let pl_pals_count = rom.color_palettes.players.len() as i32 / 10;
             self.curr_pl_palette_num = self.curr_pl_palette_num.rem_euclid(pl_pals_count);
         }
     }
