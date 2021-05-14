@@ -1,16 +1,11 @@
-use std::{fs, path::Path, rc::Rc};
+use std::{fs, path::Path};
 
 pub use self::constants::*;
 use crate::{
     error::RomParseError,
     graphics::{
         gfx_file::{GfxFile, GFX_FILES_META},
-        palette::{
-            GlobalLevelColorPalette,
-            GlobalOverworldColorPalette,
-            LevelColorPaletteSet,
-            OverworldColorPaletteSet,
-        },
+        palette::ColorPalettes,
     },
     internal_header::RomInternalHeader,
     level::{Level, LEVEL_COUNT},
@@ -23,13 +18,10 @@ pub mod constants {
 type RpResult<T> = Result<T, RomParseError>;
 
 pub struct Rom {
-    pub internal_header:                RomInternalHeader,
-    pub levels:                         Vec<Level>,
-    pub global_level_color_palette:     Rc<GlobalLevelColorPalette>,
-    pub global_overworld_color_palette: Rc<GlobalOverworldColorPalette>,
-    pub level_color_palette_set:        LevelColorPaletteSet,
-    pub overworld_color_palette_set:    OverworldColorPaletteSet,
-    pub gfx_files:                      Vec<GfxFile>,
+    pub internal_header: RomInternalHeader,
+    pub levels:          Vec<Level>,
+    pub color_palettes:  ColorPalettes,
+    pub gfx_files:       Vec<GfxFile>,
 }
 
 impl Rom {
@@ -62,30 +54,13 @@ impl Rom {
         log::info!("Parsing level data");
         let levels = Self::parse_levels(rom_data)?;
 
-        log::info!("Parsing global level color palette");
-        let global_level_color_palette = Rc::new(GlobalLevelColorPalette::parse(rom_data)?);
-
-        log::info!("Parsing global overworld color palette");
-        let global_overworld_color_palette = Rc::new(GlobalOverworldColorPalette::parse(rom_data)?);
-
-        log::info!("Parsing level-specific palettes");
-        let level_color_palette_set = LevelColorPaletteSet::parse(rom_data, &levels)?;
-
-        log::info!("Parsing submap-specific overworld palettes");
-        let overworld_color_palette_set = OverworldColorPaletteSet::parse(rom_data)?;
+        log::info!("Parsing color palettes");
+        let color_palettes = ColorPalettes::parse(rom_data, &levels)?;
 
         log::info!("Parsing GFX files");
         let gfx_files = Self::parse_gfx_files(rom_data)?;
 
-        Ok(Self {
-            internal_header,
-            levels,
-            global_level_color_palette,
-            global_overworld_color_palette,
-            level_color_palette_set,
-            overworld_color_palette_set,
-            gfx_files,
-        })
+        Ok(Self { internal_header, levels, color_palettes, gfx_files })
     }
 
     fn trim_smc_header(rom_data: &[u8]) -> RpResult<&[u8]> {

@@ -79,7 +79,7 @@ impl UiPaletteViewer {
 
     fn adjust_ow_submap_num(&mut self, ctx: &mut FrameContext) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
-        let submap_count = project.rom_data.overworld_color_palette_set.layer2_indices.len() as i32;
+        let submap_count = project.rom_data.color_palettes.ow_specific_set.layer2_indices.len() as i32;
         self.submap_num = self.submap_num.rem_euclid(submap_count);
     }
 
@@ -106,6 +106,26 @@ impl UiPaletteViewer {
         self.display_overworld_palette(ctx);
     }
 
+    fn display_level_palette(&mut self, ctx: &mut FrameContext) {
+        let FrameContext { ui, project_ref, .. } = ctx;
+        let project = project_ref.as_ref().unwrap().borrow();
+        let rom = &project.rom_data;
+
+        let header = &rom.levels[self.level_num as usize].primary_header;
+        let palette = &rom.color_palettes.get_level_palette(header).unwrap();
+        self.display_palette(ui, palette);
+    }
+
+    fn display_overworld_palette(&mut self, ctx: &mut FrameContext) {
+        let FrameContext { ui, project_ref, .. } = ctx;
+        let project = project_ref.as_ref().unwrap().borrow();
+        let rom = &project.rom_data;
+
+        let ow_state = if self.special_completed { OverworldState::PostSpecial } else { OverworldState::PreSpecial };
+        let palette = &rom.color_palettes.get_submap_palette(self.submap_num as usize, ow_state).unwrap();
+        self.display_palette(ui, palette);
+    }
+
     fn display_palette(&mut self, ui: &Ui, palette: &dyn ColorPalette) {
         const CELL_SIZE: f32 = 20.0;
 
@@ -127,28 +147,5 @@ impl UiPaletteViewer {
             }
         }
         ui.set_cursor_screen_pos([wx + 16.0 * CELL_SIZE, wy + 16.0 * CELL_SIZE]);
-    }
-
-    fn display_level_palette(&mut self, ctx: &mut FrameContext) {
-        let FrameContext { ui, project_ref, .. } = ctx;
-        let project = project_ref.as_ref().unwrap().borrow();
-        let rom = &project.rom_data;
-
-        let header = &rom.levels[self.level_num as usize].primary_header;
-        let palette = &rom.level_color_palette_set.get_level_palette(header, &rom.global_level_color_palette).unwrap();
-        self.display_palette(ui, palette);
-    }
-
-    fn display_overworld_palette(&mut self, ctx: &mut FrameContext) {
-        let FrameContext { ui, project_ref, .. } = ctx;
-        let project = project_ref.as_ref().unwrap().borrow();
-        let rom = &project.rom_data;
-
-        let ow_state = if self.special_completed { OverworldState::PostSpecial } else { OverworldState::PreSpecial };
-        let palette = &rom
-            .overworld_color_palette_set
-            .get_submap_palette(self.submap_num as usize, ow_state, &rom.global_overworld_color_palette)
-            .unwrap();
-        self.display_palette(ui, palette);
     }
 }

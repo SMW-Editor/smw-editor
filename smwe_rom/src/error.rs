@@ -33,21 +33,17 @@ pub enum GfxTileError {
 }
 
 #[derive(Debug, Error)]
-pub enum LevelPaletteError {
+pub enum ColorPaletteError {
     #[error("Failed to construct a level's back area color.")]
-    BackAreaColor,
+    LvBackAreaColor,
     #[error("Failed to construct a level's background palette.")]
-    Background,
+    LvBackground,
     #[error("Failed to construct a level's foreground palette.")]
-    Foreground,
+    LvForeground,
     #[error("Failed to construct a level's sprite palette.")]
-    Sprite,
-}
-
-#[derive(Debug, Error)]
-pub enum OverworldSubmapPaletteError {
+    LvSprite,
     #[error("Failed to construct an overworld submap's layer 2 palette.")]
-    Layer2,
+    OwLayer2,
 }
 
 #[derive(Debug, Error)]
@@ -64,14 +60,8 @@ pub enum RomParseError {
     IoError,
     #[error("Invalid level: {0:#X}")]
     Level(usize),
-    #[error("Could not parse global level color palette")]
-    PaletteGlobalLevel,
-    #[error("Could not parse global overworld color palette")]
-    PaletteGlobalOverworld,
-    #[error("Invalid color palette in level {0:#X}")]
-    PaletteSetLevel(usize),
-    #[error("Invalid color palette in overworld")]
-    PaletteSetOverworld,
+    #[error("Could not parse color palettes")]
+    ColorPalettes,
 }
 
 // -------------------------------------------------------------------------------------------------
