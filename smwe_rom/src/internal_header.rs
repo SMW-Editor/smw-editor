@@ -134,7 +134,7 @@ pub enum RegionCode {
 // -------------------------------------------------------------------------------------------------
 
 impl RomInternalHeader {
-    named!(parse<&[u8], RomInternalHeader>, do_parse!(
+    named!(parse_impl<&[u8], RomInternalHeader>, do_parse!(
         internal_rom_name: map!(take_str!(sizes::INTERNAL_ROM_NAME), String::from) >>
         map_mode:          map_res!(le_u8, MapMode::try_from)                      >>
         rom_type:          map_res!(le_u8, RomType::try_from)                      >>
@@ -155,13 +155,13 @@ impl RomInternalHeader {
         })
     ));
 
-    pub fn from_rom_data(rom_data: &[u8]) -> IResult<&[u8], Self> {
+    pub fn parse(rom_data: &[u8]) -> IResult<&[u8], Self> {
         use nom::error::ErrorKind;
         match RomInternalHeader::find(rom_data)?.1 {
             Some(begin) => {
                 let end = begin + sizes::INTERNAL_HEADER;
                 let (_, input) = preceded!(rom_data, take!(begin.0), take!((end - begin).0))?;
-                RomInternalHeader::parse(input)
+                RomInternalHeader::parse_impl(input)
             }
             None => Err(nom_error(rom_data, ErrorKind::Satisfy)),
         }
