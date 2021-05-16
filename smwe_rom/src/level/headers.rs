@@ -1,5 +1,9 @@
 use nom::{number::complete::le_u8, preceded, take, IResult};
 
+use std::convert::TryFrom;
+
+use crate::addr::{AddrPc, AddrSnes};
+
 pub const PRIMARY_HEADER_SIZE: usize = 5;
 
 #[derive(Clone)]
@@ -57,11 +61,15 @@ impl PrimaryHeader {
 
 impl SecondaryHeader {
     pub fn parse(rom_data: &[u8], level_number: usize) -> IResult<&[u8], Self> {
+        let take_byte = |addr| {
+            let addr: usize = AddrPc::try_from(AddrSnes(addr)).unwrap().into();
+            preceded!(rom_data, take!(addr + level_number), le_u8)
+        };
         let bytes = [
-            preceded!(rom_data, take!(0x05F000 + level_number), le_u8)?.1,
-            preceded!(rom_data, take!(0x05F200 + level_number), le_u8)?.1,
-            preceded!(rom_data, take!(0x05F400 + level_number), le_u8)?.1,
-            preceded!(rom_data, take!(0x05F600 + level_number), le_u8)?.1,
+            take_byte(0x05F000)?.1,
+            take_byte(0x05F200)?.1,
+            take_byte(0x05F400)?.1,
+            take_byte(0x05F600)?.1,
         ];
         Ok((rom_data, Self {
             layer2_scroll:              (bytes[0] >> 4),
