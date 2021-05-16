@@ -49,7 +49,6 @@ use constants::*;
 struct BufferInfo {
     pub texture_id: TextureId,
     pub size:       (u32, u32),
-    pub file_num:   i32,
 }
 
 pub struct UiGfxViewer {
@@ -173,19 +172,14 @@ impl UiGfxViewer {
             },
         };
 
-        self.buffer_info = Some(BufferInfo {
-            texture_id: ctx.renderer.textures().insert(texture),
-            size:       (width, height),
-            file_num:   -1,
-        });
+        self.buffer_info =
+            Some(BufferInfo { texture_id: ctx.renderer.textures().insert(texture), size: (width, height) });
 
         log::info!("Successfully created a texture buffer (w = {}, h = {}).", width, height);
     }
 
     fn update_texture(&mut self, ctx: &mut FrameContext) {
         if let Some(buf) = &mut self.buffer_info {
-            buf.file_num = self.curr_gfx_file_num;
-
             let tex_id = buf.texture_id;
             let texture = ctx
                 .renderer
