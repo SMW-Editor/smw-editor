@@ -75,7 +75,7 @@ impl Rom {
     }
 
     fn parse_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
-        match RomInternalHeader::from_rom_data(rom_data) {
+        match RomInternalHeader::parse(rom_data) {
             Ok((_, header)) => Ok(header),
             Err(_) => Err(RomParseError::InternalHeader),
         }
@@ -84,7 +84,7 @@ impl Rom {
     fn parse_levels(rom_data: &[u8]) -> RpResult<Vec<Level>> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
-            match Level::from_rom_data(rom_data, level_num) {
+            match Level::parse(rom_data, level_num) {
                 Ok((_, level)) => levels.push(level),
                 Err(_) => return Err(RomParseError::Level(level_num)),
             }
