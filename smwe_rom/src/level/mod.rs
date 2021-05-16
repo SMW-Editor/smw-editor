@@ -1,15 +1,13 @@
+pub mod headers;
 pub mod object_layer;
-pub mod primary_header;
-pub mod secondary_header;
 
 use std::convert::TryFrom;
 
 use nom::{number::complete::le_u24, preceded, take, IResult};
 
 pub use self::{
+    headers::{PrimaryHeader, SecondaryHeader, PRIMARY_HEADER_SIZE},
     object_layer::ObjectLayer,
-    primary_header::{PrimaryHeader, PRIMARY_HEADER_SIZE},
-    secondary_header::SecondaryHeader,
 };
 use crate::addr::{AddrPc, AddrSnes};
 
@@ -23,10 +21,10 @@ pub enum Layer2Data {
 
 #[derive(Clone)]
 pub struct Level {
-    pub primary_header: PrimaryHeader,
-    //pub secondary_header: SecondaryHeader,
-    pub layer1:         ObjectLayer,
-    pub layer2:         Layer2Data,
+    pub primary_header:   PrimaryHeader,
+    pub secondary_header: SecondaryHeader,
+    pub layer1:           ObjectLayer,
+    pub layer2:           Layer2Data,
 }
 
 impl Level {
@@ -54,7 +52,7 @@ impl Level {
         };
 
         let (_, primary_header) = PrimaryHeader::parse(ph)?;
-        //let (_, secondary_header) = SecondaryHeader::parse(rom_data, level_num)?;
+        let (_, secondary_header) = SecondaryHeader::parse(rom_data, level_num)?;
         let (_, layer1) = ObjectLayer::parse(layer1)?;
         let layer2 = if is_l2_background {
             Layer2Data::Background
@@ -63,11 +61,6 @@ impl Level {
             Layer2Data::Objects(objects)
         };
 
-        Ok((rom_data, Level {
-            primary_header,
-            //secondary_header,
-            layer1,
-            layer2,
-        }))
+        Ok((rom_data, Level { primary_header, secondary_header, layer1, layer2 }))
     }
 }

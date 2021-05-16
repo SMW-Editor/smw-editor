@@ -15,7 +15,7 @@ use crate::{
     addr::{AddrPc, AddrSnes},
     error::{ColorPaletteError, RomParseError},
     graphics::color::{Abgr1555, BGR555_SIZE},
-    level::{primary_header::PrimaryHeader, Level},
+    level::{headers::PrimaryHeader, Level},
 };
 
 #[rustfmt::skip]
