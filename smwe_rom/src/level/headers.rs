@@ -1,6 +1,6 @@
-use nom::{number::complete::le_u8, preceded, take, IResult};
-
 use std::convert::TryFrom;
+
+use nom::{number::complete::le_u8, preceded, take, IResult};
 
 use crate::addr::{AddrPc, AddrSnes};
 
@@ -65,12 +65,7 @@ impl SecondaryHeader {
             let addr: usize = AddrPc::try_from(AddrSnes(addr)).unwrap().into();
             preceded!(rom_data, take!(addr + level_number), le_u8)
         };
-        let bytes = [
-            take_byte(0x05F000)?.1,
-            take_byte(0x05F200)?.1,
-            take_byte(0x05F400)?.1,
-            take_byte(0x05F600)?.1,
-        ];
+        let bytes = [take_byte(0x05F000)?.1, take_byte(0x05F200)?.1, take_byte(0x05F400)?.1, take_byte(0x05F600)?.1];
         Ok((rom_data, Self {
             layer2_scroll:              (bytes[0] >> 4),
             main_entrance_pos:          (bytes[1] & 0b111, bytes[0] & 0b1111),
