@@ -8,7 +8,7 @@ use nom::{bytes::complete::take, combinator::map_parser, count, preceded, take, 
 
 use crate::{
     addr::{AddrPc, AddrSnes},
-    compression::lc_lz2_decompress,
+    compression::lc_lz2,
     graphics::color::{Abgr1555, Rgba32},
 };
 
@@ -113,7 +113,7 @@ impl GfxFile {
         };
 
         // TODO - change to error
-        let decomp_bytes = lc_lz2_decompress(bytes).expect("Decompression error in GFX file");
+        let decomp_bytes = lc_lz2::decompress(bytes).expect("Decompression error in GFX file");
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
         let tile_count = decomp_bytes.len() / tile_size_bytes;
         let le_tile = map_parser(take(tile_size_bytes), parser);
