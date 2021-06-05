@@ -13,12 +13,6 @@ pub struct ObjectLayer {
     objects: Vec<ObjectData>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
-pub enum ObjectLayerType {
-    Layer1,
-    Layer2,
-}
-
 impl ObjectData {
     pub fn is_extended(&self) -> bool {
         self.std_obj_num == 0

@@ -29,8 +29,12 @@ pub mod types {
             #[derive(Copy, Clone, Debug)]
             pub struct $name(pub $prim_type);
 
-            impl From<usize> for $name {
+            impl From<$prim_type> for $name {
                 fn from(addr: $prim_type) -> Self { Self(addr) }
+            }
+
+            impl From<u32> for $name {
+                fn from(addr: u32) -> Self { Self(addr as $prim_type) }
             }
 
             impl From<$name> for $prim_type {

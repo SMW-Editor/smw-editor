@@ -8,13 +8,13 @@ use crate::error::DecompressionError;
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
 enum Command {
     DirectCopy = 0,
-    ByteFill = 1,
+    ByteFill   = 1,
 }
 
 pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
     assert!(!input.len() >= 2);
-    let mut output = Vec::with_capacity(input.len()* 2);
+    let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
     while let Some(chunk_header) = in_it.first().copied() {
         if chunk_header == 0xFF && (in_it.len() == 1 || in_it[1] == 0xFF) {

@@ -8,14 +8,14 @@ use crate::error::DecompressionError;
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
 enum Command {
     /// Followed by (L+1) bytes of data
-    DirectCopy = 0b000,
+    DirectCopy     = 0b000,
 
     /// Followed by one byte to be repeated (L+1) times
-    ByteFill = 0b001,
+    ByteFill       = 0b001,
 
     /// Followed by two bytes. Output first byte, then second, then first,
     /// then second, etc. until (L+1) bytes has been outputted
-    WordFill = 0b010,
+    WordFill       = 0b010,
 
     /// Followed by one byte to be repeated (L+1) times, but the byte is
     /// increased by 1 after each write
@@ -23,7 +23,7 @@ enum Command {
 
     /// Followed by two bytes (ABCD byte order) containing address (in the
     /// output buffer) to copy (L+1) bytes from
-    Repeat = 0b100,
+    Repeat         = 0b100,
 
     /// This command has got a two-byte header:
     /// ```text
@@ -31,7 +31,7 @@ enum Command {
     /// CCC:        Real command
     /// LLLLLLLLLL: Length
     /// ```
-    LongLength = 0b111,
+    LongLength     = 0b111,
 }
 
 pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
@@ -83,7 +83,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                         byte = byte.wrapping_add(1);
                         temp
                     })
-                        .take(length),
+                    .take(length),
                 );
                 in_it = &in_it[1..];
             }

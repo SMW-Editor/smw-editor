@@ -1,11 +1,13 @@
+pub mod background;
 pub mod headers;
 pub mod object_layer;
 
 use std::convert::TryFrom;
 
-use nom::{number::complete::le_u24, preceded, take, IResult};
+use nom::{count, map, number::complete::le_u24, preceded, take, IResult};
 
 pub use self::{
+    background::{BackgroundData, BackgroundTileID},
     headers::{PrimaryHeader, SecondaryHeader, PRIMARY_HEADER_SIZE},
     object_layer::ObjectLayer,
 };
@@ -15,7 +17,7 @@ pub const LEVEL_COUNT: usize = 0x200;
 
 #[derive(Clone)]
 pub enum Layer2Data {
-    Background,
+    Background(BackgroundData),
     Objects(ObjectLayer),
 }
 
@@ -42,12 +44,20 @@ impl Level {
         };
 
         let (layer2, is_l2_background) = {
-            let l2_ptr_addr: usize = AddrPc::try_from(LAYER2_DATA + (3 * level_num)).unwrap().into();
-            let isolate_l2 = |addr| take!(rom_data, addr + PRIMARY_HEADER_SIZE);
-            if (l2_ptr_addr >> 16) == 0xFF {
-                (isolate_l2((l2_ptr_addr & 0xFFFF) | 0x0C0000)?.0, true)
+            let l2_ptr_table_addr: usize = AddrPc::try_from(LAYER2_DATA).unwrap().into();
+            let (_, l2_ptr_table) =
+                preceded!(rom_data, take!(l2_ptr_table_addr), count!(map!(le_u24, AddrSnes::from), 3 * LEVEL_COUNT))?;
+            let l2_ptr = l2_ptr_table[level_num];
+
+            let isolate_l2 = |addr| {
+                let addr: usize = AddrPc::try_from(addr).unwrap().into();
+                take!(rom_data, addr + PRIMARY_HEADER_SIZE)
+            };
+
+            if (l2_ptr.0 >> 16) == 0xFF {
+                (isolate_l2((l2_ptr & 0xFFFF) | 0x0C0000)?.0, true)
             } else {
-                (isolate_l2(l2_ptr_addr)?.0, false)
+                (isolate_l2(l2_ptr)?.0, false)
             }
         };
 
@@ -55,7 +65,8 @@ impl Level {
         let (_, secondary_header) = SecondaryHeader::parse(rom_data, level_num)?;
         let (_, layer1) = ObjectLayer::parse(layer1)?;
         let layer2 = if is_l2_background {
-            Layer2Data::Background
+            let background = BackgroundData::parse(layer2).unwrap(); // TODO: replace with error
+            Layer2Data::Background(background)
         } else {
             let (_, objects) = ObjectLayer::parse(layer2)?;
             Layer2Data::Objects(objects)
