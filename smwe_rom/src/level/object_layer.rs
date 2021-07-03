@@ -5,6 +5,9 @@ use nom::{cond, do_parse, many_till, tag, take, IResult};
 pub const NON_EXIT_INSTANCE_SIZE: usize = 3;
 pub const EXIT_INSTANCE_SIZE: usize = 4;
 
+pub type StandardObjectID = u8;
+pub type ExtendedObjectID = u8;
+
 #[derive(Clone)]
 pub struct ExitInstance([u8; EXIT_INSTANCE_SIZE]);
 
@@ -36,7 +39,9 @@ impl ExitInstance {
     }
 
     pub fn destination_level(&self) -> u16 {
-        ((self.0[1] as u16 & 0b1) << 8) | self.0[3] as u16
+        let hi = (self.0[1] as u16 & 0b1) << 8;
+        let lo = self.0[3] as u16;
+        hi | lo
     }
 }
 
@@ -45,8 +50,22 @@ impl NonExitInstance {
         ((self.0[0] >> 7) & 0b1) != 0
     }
 
-    pub fn std_obj_num(&self) -> u8 {
-        ((self.0[0] >> 1) & 0b110000) | ((self.0[1] >> 4) & 0b1111)
+    pub fn std_obj_num(&self) -> StandardObjectID {
+        let hi = (self.0[0] >> 1) & 0b110000;
+        let lo = (self.0[1] >> 4) & 0b1111;
+        hi | lo
+    }
+
+    pub fn ext_obj_num(&self) -> Option<ExtendedObjectID> {
+        if self.is_extended() {
+            Some(self.0[2])
+        } else {
+            None
+        }
+    }
+
+    pub fn is_extended(&self) -> bool {
+        self.std_obj_num() == 0
     }
 
     pub fn xy_pos(&self) -> (u8, u8) {
@@ -69,7 +88,7 @@ impl ScreenJumpInstance {
 impl ObjectInstance {
     pub fn is_extended(&self) -> bool {
         match self {
-            ObjectInstance::NonExit(i) => i.std_obj_num() == 0,
+            ObjectInstance::NonExit(i) => i.is_extended(),
             ObjectInstance::Exit(_) | ObjectInstance::ScreenJump(_) => true,
         }
     }

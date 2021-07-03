@@ -8,7 +8,7 @@ pub struct BackgroundData {
 }
 
 impl BackgroundData {
-    pub fn parse(input: &[u8]) -> Result<Self, DecompressionError> {
+    pub fn read_from(input: &[u8]) -> Result<Self, DecompressionError> {
         let tile_ids = lc_rle1::decompress(input)?;
         Ok(Self { tile_ids })
     }

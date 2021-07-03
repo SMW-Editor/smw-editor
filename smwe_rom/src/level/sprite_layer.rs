@@ -4,6 +4,8 @@ use nom::{many_till, tag, take, IResult};
 
 pub const SPRITE_INSTANCE_SIZE: usize = 3;
 
+pub type SpriteID = u8;
+
 #[derive(Clone)]
 pub struct SpriteInstance([u8; SPRITE_INSTANCE_SIZE]);
 
@@ -15,7 +17,11 @@ pub struct SpriteLayer {
 impl SpriteInstance {
     pub fn xy_pos(&self) -> (u8, u8) {
         let x = (self.0[1] >> 4) & 0b1111;
-        let y = ((self.0[0] & 0b1) << 4) | ((self.0[0] >> 4) & 0b1111);
+        let y = {
+            let hi = (self.0[0] & 0b1) << 4;
+            let lo = (self.0[0] >> 4) & 0b1111;
+            hi | lo
+        };
         (x, y)
     }
 
@@ -27,7 +33,7 @@ impl SpriteInstance {
         ((self.0[0] & 0b10) << 3) | (self.0[1] & 0b1111)
     }
 
-    pub fn sprite_id(&self) -> u8 {
+    pub fn sprite_id(&self) -> SpriteID {
         self.0[2]
     }
 }

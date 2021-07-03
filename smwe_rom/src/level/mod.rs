@@ -46,6 +46,9 @@ impl Level {
         pub const LAYER2_DATA: AddrSnes = AddrSnes(0x05E600);
         pub const SPRITE_DATA: AddrSnes = AddrSnes(0x05EC00);
 
+        log::info!("Parsing level {:X}", level_num);
+
+        log::info!("Isolating raw data of Layer1 and Primary Header");
         let (layer1, ph) = {
             let l1_ptr_addr: usize = AddrPc::try_from(LAYER1_DATA + (3 * level_num)).unwrap().into();
             let (_, ph_addr) = preceded!(rom_data, take!(l1_ptr_addr), le_u24)?;
@@ -53,6 +56,8 @@ impl Level {
             let ph_addr: usize = AddrPc::try_from(ph_addr).unwrap().into();
             preceded!(rom_data, take!(ph_addr), take!(PRIMARY_HEADER_SIZE))?
         };
+
+        log::info!("Isolating raw data of Layer2 and Secondary Header");
         let (layer2, is_l2_background) = {
             let l2_ptr_table_addr: usize = AddrPc::try_from(LAYER2_DATA).unwrap().into();
             let (_, l2_ptr_table) =
@@ -70,6 +75,8 @@ impl Level {
                 (isolate_l2(l2_ptr)?.0, false)
             }
         };
+
+        log::info!("Isolating raw data of Sprite Layer and Sprite Header");
         let (sprite_layer, sh) = {
             let sp_ptr_table_addr: usize = AddrPc::try_from(SPRITE_DATA).unwrap().into();
             let (_, sh_addr) = preceded!(rom_data, take!(sp_ptr_table_addr), le_u16)?;
@@ -78,18 +85,27 @@ impl Level {
             preceded!(rom_data, take!(sh_addr), take!(PRIMARY_HEADER_SIZE))?
         };
 
+        log::info!("Parsing Primary Header");
         let (_, primary_header) = PrimaryHeader::read_from(ph)?;
+        log::info!("Parsing Secondary Header");
         let (_, secondary_header) = SecondaryHeader::read_from_rom(rom_data, level_num)?;
+        log::info!("Parsing Sprite Header");
         let (_, sprite_header) = SpriteHeader::read_from(sh)?;
 
+        log::info!("Parsing Layer1");
         let (_, layer1) = ObjectLayer::parse(layer1)?;
+
         let layer2 = if is_l2_background {
-            let background = BackgroundData::parse(layer2).unwrap(); // TODO: replace with error
+            log::info!("Parsing Layer2: background");
+            let background = BackgroundData::read_from(layer2).unwrap(); // TODO: replace with error
             Layer2Data::Background(background)
         } else {
+            log::info!("Parsing Layer2: objects");
             let (_, objects) = ObjectLayer::parse(layer2)?;
             Layer2Data::Objects(objects)
         };
+
+        log::info!("Parsing Sprite Layer");
         let (_, sprite_layer) = SpriteLayer::parse(sprite_layer)?;
 
         Ok((rom_data, Level { primary_header, secondary_header, sprite_header, layer1, layer2, sprite_layer }))
