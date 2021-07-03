@@ -1,33 +1,57 @@
 use std::convert::TryInto;
 
-use nom::{many_till, tag, take, IResult};
+use nom::{cond, do_parse, many_till, tag, take, IResult};
 
-pub const OBJECT_INSTANCE_SIZE: usize = 3;
+pub const NON_EXIT_INSTANCE_SIZE: usize = 3;
+pub const EXIT_INSTANCE_SIZE: usize = 4;
 
 #[derive(Clone)]
-pub struct ObjectInstance([u8; OBJECT_INSTANCE_SIZE]);
+pub struct ExitInstance([u8; EXIT_INSTANCE_SIZE]);
+
+#[derive(Clone)]
+pub struct NonExitInstance([u8; NON_EXIT_INSTANCE_SIZE]);
+
+#[derive(Clone)]
+pub struct ScreenJumpInstance([u8; NON_EXIT_INSTANCE_SIZE]);
+
+#[derive(Clone)]
+pub enum ObjectInstance {
+    Exit(ExitInstance),
+    NonExit(NonExitInstance),
+    ScreenJump(ScreenJumpInstance),
+}
 
 #[derive(Clone)]
 pub struct ObjectLayer {
     objects: Vec<ObjectInstance>,
 }
 
-impl ObjectInstance {
-    pub fn is_extended(&self) -> bool {
-        self.std_obj_num() == 0
+impl ExitInstance {
+    pub fn screen_number(&self) -> u8 {
+        self.0[0] & 0b11111
     }
 
+    pub fn secondary_exit(&self) -> bool {
+        (self.0[1] & 0b10) != 0
+    }
+
+    pub fn destination_level(&self) -> u16 {
+        ((self.0[1] as u16 & 0b1) << 8) | self.0[3] as u16
+    }
+}
+
+impl NonExitInstance {
     pub fn new_screen(&self) -> bool {
         ((self.0[0] >> 7) & 0b1) != 0
     }
 
     pub fn std_obj_num(&self) -> u8 {
-        ((self.0[0] >> 5) & 0b11) | ((self.0[1] >> 4) & 0b1111)
+        ((self.0[0] >> 1) & 0b110000) | ((self.0[1] >> 4) & 0b1111)
     }
 
     pub fn xy_pos(&self) -> (u8, u8) {
-        let x = (self.0[1] >> 0) & 0b1111;
-        let y = (self.0[0] >> 0) & 0b11111;
+        let x = self.0[1] & 0b1111;
+        let y = self.0[0] & 0b11111;
         (x, y)
     }
 
@@ -36,10 +60,43 @@ impl ObjectInstance {
     }
 }
 
+impl ScreenJumpInstance {
+    pub fn screen_number(&self) -> u8 {
+        self.0[0] & 0b11111
+    }
+}
+
+impl ObjectInstance {
+    pub fn is_extended(&self) -> bool {
+        match self {
+            ObjectInstance::NonExit(i) => i.std_obj_num() == 0,
+            ObjectInstance::Exit(_) | ObjectInstance::ScreenJump(_) => true,
+        }
+    }
+}
+
 impl ObjectLayer {
+    #[rustfmt::skip]
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, (objects_raw, _)) = many_till!(input, take!(OBJECT_INSTANCE_SIZE), tag!(&[0xFFu8]))?;
-        let objects = objects_raw.into_iter().map(|obj| ObjectInstance(obj.try_into().unwrap())).collect();
+        let (input, (objects, _)) = many_till!(
+            input,
+            do_parse!(
+                first_three: take!(3) >>
+                last: cond!((first_three[0] & 0b11100000) == 0 && first_three[2] == 0, take!(1)) >>
+                (match last {
+                    Some(l) => {
+                        let instance = ExitInstance([first_three, l].concat().as_slice().try_into().unwrap());
+                        ObjectInstance::Exit(instance)
+                    },
+                    None => if first_three[2] == 1 {
+                        let instance = ScreenJumpInstance(first_three.try_into().unwrap());
+                        ObjectInstance::ScreenJump(instance)
+                    } else {
+                        let instance = NonExitInstance(first_three.try_into().unwrap());
+                        ObjectInstance::NonExit(instance)
+                    },
+                })),
+            tag!(&[0xFFu8]))?;
         Ok((input, Self { objects }))
     }
 }

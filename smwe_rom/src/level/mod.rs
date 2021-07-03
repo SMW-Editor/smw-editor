@@ -53,7 +53,6 @@ impl Level {
             let ph_addr: usize = AddrPc::try_from(ph_addr).unwrap().into();
             preceded!(rom_data, take!(ph_addr), take!(PRIMARY_HEADER_SIZE))?
         };
-
         let (layer2, is_l2_background) = {
             let l2_ptr_table_addr: usize = AddrPc::try_from(LAYER2_DATA).unwrap().into();
             let (_, l2_ptr_table) =
@@ -71,7 +70,6 @@ impl Level {
                 (isolate_l2(l2_ptr)?.0, false)
             }
         };
-
         let (sprite_layer, sh) = {
             let sp_ptr_table_addr: usize = AddrPc::try_from(SPRITE_DATA).unwrap().into();
             let (_, sh_addr) = preceded!(rom_data, take!(sp_ptr_table_addr), le_u16)?;
