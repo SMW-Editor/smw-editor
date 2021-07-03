@@ -273,10 +273,10 @@ impl LevelColorPaletteSet {
         for level in levels {
             let header = &level.primary_header;
 
-            let idx_bc = header.back_area_color as usize;
-            let idx_bg = header.palette_bg as usize;
-            let idx_fg = header.palette_fg as usize;
-            let idx_sp = header.palette_sprite as usize;
+            let idx_bc = header.back_area_color() as usize;
+            let idx_bg = header.palette_bg() as usize;
+            let idx_fg = header.palette_fg() as usize;
+            let idx_sp = header.palette_sprite() as usize;
 
             let (_, bc) = parse_colors(BACK_AREA_COLORS + (BGR555_SIZE * idx_bc), 1)?;
             let (_, bg) = parse_colors(BG_PALETTES + (PALETTE_BG_SIZE * idx_bg), PALETTE_BG_LENGTH)?;
@@ -312,10 +312,10 @@ impl LevelColorPaletteSet {
     pub fn get_level_palette(
         &self, header: &PrimaryHeader, palettes: &ColorPalettes,
     ) -> Result<SpecificLevelColorPalette, ColorPaletteError> {
-        let i_back_area_color = header.back_area_color as usize;
-        let i_background = header.palette_bg as usize;
-        let i_foreground = header.palette_fg as usize;
-        let i_sprite = header.palette_sprite as usize;
+        let i_back_area_color = header.back_area_color() as usize;
+        let i_background = header.palette_bg() as usize;
+        let i_foreground = header.palette_fg() as usize;
+        let i_sprite = header.palette_sprite() as usize;
         self.palette_from_indices(i_back_area_color, i_background, i_foreground, i_sprite, palettes)
     }
 

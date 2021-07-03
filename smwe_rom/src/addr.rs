@@ -133,17 +133,17 @@ pub mod types {
     }
 
     impl AddrSnes {
-        pub fn try_from_lorom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
+        pub fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressConversionError> {
             if addr.is_valid_lorom() {
-                Ok(AddrSnes(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
+                Ok(Self(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
             } else {
                 Err(AddressConversionError::PcToSnes(addr))
             }
         }
 
-        pub fn try_from_hirom(addr: AddrPc) -> Result<AddrSnes, AddressConversionError> {
+        pub fn try_from_hirom(addr: AddrPc) -> Result<Self, AddressConversionError> {
             if addr.is_valid_hirom() {
-                Ok(AddrSnes(addr.0 | 0xC00000))
+                Ok(Self(addr.0 | 0xC00000))
             } else {
                 Err(AddressConversionError::PcToSnes(addr))
             }

@@ -1,37 +1,45 @@
-use nom::{many_till, number::complete::le_u24, tag, IResult};
+use std::convert::TryInto;
+
+use nom::{many_till, tag, take, IResult};
+
+pub const OBJECT_INSTANCE_SIZE: usize = 3;
 
 #[derive(Clone)]
-pub struct ObjectData {
-    new_screen:  bool,
-    std_obj_num: u8,
-    xy_pos:      (u8, u8),
-    settings:    u8,
-}
+pub struct ObjectInstance([u8; OBJECT_INSTANCE_SIZE]);
 
 #[derive(Clone)]
 pub struct ObjectLayer {
-    objects: Vec<ObjectData>,
+    objects: Vec<ObjectInstance>,
 }
 
-impl ObjectData {
+impl ObjectInstance {
     pub fn is_extended(&self) -> bool {
-        self.std_obj_num == 0
+        self.std_obj_num() == 0
+    }
+
+    pub fn new_screen(&self) -> bool {
+        ((self.0[0] >> 7) & 0b1) != 0
+    }
+
+    pub fn std_obj_num(&self) -> u8 {
+        ((self.0[0] >> 5) & 0b11) | ((self.0[1] >> 4) & 0b1111)
+    }
+
+    pub fn xy_pos(&self) -> (u8, u8) {
+        let x = (self.0[1] >> 0) & 0b1111;
+        let y = (self.0[0] >> 0) & 0b11111;
+        (x, y)
+    }
+
+    pub fn settings(&self) -> u8 {
+        self.0[2]
     }
 }
 
 impl ObjectLayer {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, (objects_raw, _)) = many_till!(input, le_u24, tag!(&[0xFFu8]))?;
-        let objects = objects_raw
-            .into_iter()
-            .map(|obj| {
-                let new_screen = ((obj >> 23) & 1) != 0;
-                let std_obj_num = (((obj >> 17) & 0b110000) | ((obj >> 12) & 0b1111)) as u8;
-                let xy_pos = (((obj >> 8) & 0b1111) as u8, ((obj >> 16) & 0b11111) as u8);
-                let settings = (obj & 0xFF) as u8;
-                ObjectData { new_screen, std_obj_num, xy_pos, settings }
-            })
-            .collect();
-        Ok((input, ObjectLayer { objects }))
+        let (input, (objects_raw, _)) = many_till!(input, take!(OBJECT_INSTANCE_SIZE), tag!(&[0xFFu8]))?;
+        let objects = objects_raw.into_iter().map(|obj| ObjectInstance(obj.try_into().unwrap())).collect();
+        Ok((input, Self { objects }))
     }
 }

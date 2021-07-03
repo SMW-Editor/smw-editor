@@ -1,15 +1,24 @@
 pub mod background;
 pub mod headers;
 pub mod object_layer;
+pub mod sprite_layer;
 
 use std::convert::TryFrom;
 
-use nom::{count, map, number::complete::le_u24, preceded, take, IResult};
+use nom::{
+    count,
+    map,
+    number::complete::{le_u16, le_u24},
+    preceded,
+    take,
+    IResult,
+};
 
 pub use self::{
     background::{BackgroundData, BackgroundTileID},
-    headers::{PrimaryHeader, SecondaryHeader, PRIMARY_HEADER_SIZE},
+    headers::{PrimaryHeader, SecondaryHeader, SpriteHeader, PRIMARY_HEADER_SIZE, SPRITE_HEADER_SIZE},
     object_layer::ObjectLayer,
+    sprite_layer::SpriteLayer,
 };
 use crate::addr::{AddrPc, AddrSnes};
 
@@ -25,15 +34,17 @@ pub enum Layer2Data {
 pub struct Level {
     pub primary_header:   PrimaryHeader,
     pub secondary_header: SecondaryHeader,
+    pub sprite_header:    SpriteHeader,
     pub layer1:           ObjectLayer,
     pub layer2:           Layer2Data,
+    pub sprite_layer:     SpriteLayer,
 }
 
 impl Level {
     pub fn parse(rom_data: &[u8], level_num: usize) -> IResult<&[u8], Self> {
         pub const LAYER1_DATA: AddrSnes = AddrSnes(0x05E000);
         pub const LAYER2_DATA: AddrSnes = AddrSnes(0x05E600);
-        pub const _SPRITE_DATA: AddrSnes = AddrSnes(0x05EC00);
+        pub const SPRITE_DATA: AddrSnes = AddrSnes(0x05EC00);
 
         let (layer1, ph) = {
             let l1_ptr_addr: usize = AddrPc::try_from(LAYER1_DATA + (3 * level_num)).unwrap().into();
@@ -61,8 +72,18 @@ impl Level {
             }
         };
 
-        let (_, primary_header) = PrimaryHeader::parse(ph)?;
-        let (_, secondary_header) = SecondaryHeader::parse(rom_data, level_num)?;
+        let (sprite_layer, sh) = {
+            let sp_ptr_table_addr: usize = AddrPc::try_from(SPRITE_DATA).unwrap().into();
+            let (_, sh_addr) = preceded!(rom_data, take!(sp_ptr_table_addr), le_u16)?;
+            let sh_addr = AddrSnes((sh_addr as u32 | 0x07_0000) as usize);
+            let sh_addr: usize = AddrPc::try_from(sh_addr).unwrap().into();
+            preceded!(rom_data, take!(sh_addr), take!(PRIMARY_HEADER_SIZE))?
+        };
+
+        let (_, primary_header) = PrimaryHeader::read_from(ph)?;
+        let (_, secondary_header) = SecondaryHeader::read_from_rom(rom_data, level_num)?;
+        let (_, sprite_header) = SpriteHeader::read_from(sh)?;
+
         let (_, layer1) = ObjectLayer::parse(layer1)?;
         let layer2 = if is_l2_background {
             let background = BackgroundData::parse(layer2).unwrap(); // TODO: replace with error
@@ -71,7 +92,8 @@ impl Level {
             let (_, objects) = ObjectLayer::parse(layer2)?;
             Layer2Data::Objects(objects)
         };
+        let (_, sprite_layer) = SpriteLayer::parse(sprite_layer)?;
 
-        Ok((rom_data, Level { primary_header, secondary_header, layer1, layer2 }))
+        Ok((rom_data, Level { primary_header, secondary_header, sprite_header, layer1, layer2, sprite_layer }))
     }
 }
