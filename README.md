@@ -7,22 +7,24 @@ This project is in a very early stage of development, currently far from anythin
 presentable. I haven't yet decided what the final name of this project will be,
 and none of the main features are there yet.
 
-## Main features:
+## Currently in progress
 
-- (Not yet in progress) Level editor
-- (Not yet in progress) Overworld editor
-- (Not yet in progress) Block editor
-- (Not yet in progress) Sprite editor
-- (Not yet in progress) Graphics editor
-- (Not yet in progress) Background editor
-- (Not yet in progress) ASM code editor
-- (Not yet in progress) Music editor
-- (Not yet in progress) Plugins and extensions
-- (Not yet in progress) Localisation support
-
-**Currently in progress:** parsing the ROM and generating project files from it.
+Parsing the ROM and generating project files from it.
 
 You can track the progress [here](https://github.com/SMW-Editor/smw-editor/projects/1).
+
+## Planned features:
+
+- Level editor
+- Overworld editor
+- Block editor
+- Sprite editor
+- Graphics editor
+- Background editor
+- ASM code editor
+- Music editor
+- Plugins and extensions
+- Multiple language support
 
 ## Building
 
