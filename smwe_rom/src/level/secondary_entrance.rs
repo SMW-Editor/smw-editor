@@ -1,8 +1,8 @@
-use crate::addr::{AddrPc, AddrSnes};
-
-use nom::{count, IResult, number::complete::le_u8, preceded, take};
-
 use std::convert::{TryFrom, TryInto};
+
+use nom::{count, number::complete::le_u8, preceded, take, IResult};
+
+use crate::addr::{AddrPc, AddrSnes};
 
 pub const SECONDARY_ENTRANCE_TABLE_ADDR: AddrSnes = AddrSnes(0x05F800);
 pub const SECONDARY_ENTRANCE_TABLE_SIZE: usize = 512;
@@ -16,12 +16,7 @@ impl SecondaryEntrance {
         let (input, bytes) = preceded!(
             rom_data,
             take!(pc_addr.0 - bytes_before_table),
-            count!(
-                preceded!(
-                    take!(SECONDARY_ENTRANCE_TABLE_SIZE),
-                    le_u8),
-                4
-            )
+            count!(preceded!(take!(SECONDARY_ENTRANCE_TABLE_SIZE), le_u8), 4)
         )?;
         Ok((input, Self(bytes.try_into().unwrap())))
     }
@@ -51,7 +46,7 @@ impl SecondaryEntrance {
         // -------- ----yyyy xxx----- --------
         // entrance_xy_pos = (xxx, yyyy)
 
-        let x= self.0[2] >> 5;
+        let x = self.0[2] >> 5;
         let y = self.0[1] & 0b1111;
         (x, y)
     }
