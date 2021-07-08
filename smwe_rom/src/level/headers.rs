@@ -24,55 +24,94 @@ impl PrimaryHeader {
     }
 
     pub fn palette_bg(&self) -> u8 {
-        (self.0[0] >> 5) & 0b111
+        // BBB----- -------- -------- -------- --------
+        // palette_bg = BBB
+
+        self.0[0] >> 5
     }
 
     pub fn level_length(&self) -> u8 {
-        (self.0[0] >> 0) & 0b11111
+        // ---LLLLL -------- -------- -------- --------
+        // level_length = LLLLL
+
+        self.0[0] & 0b11111
     }
 
     pub fn back_area_color(&self) -> u8 {
-        (self.0[1] >> 5) & 0b111
+        // -------- CCC----- -------- -------- --------
+        // back_area_color = CCC
+
+        self.0[1] >> 5
     }
 
     pub fn level_mode(&self) -> u8 {
-        (self.0[1] >> 0) & 0b11111
+        // -------- ---OOOOO -------- -------- --------
+        // level_mode = OOOOO
+
+        self.0[1] & 0b11111
     }
 
     pub fn layer3_priority(&self) -> bool {
-        ((self.0[2] >> 7) & 0b1) != 0
+        // -------- -------- 3------- -------- --------
+        // layer3_priority = 3
+
+        (self.0[2] >> 7) != 0
     }
 
     pub fn music(&self) -> u8 {
+        // -------- -------- -MMM---- -------- --------
+        // music = MMM
+
         (self.0[2] >> 4) & 0b111
     }
 
     pub fn sprite_gfx(&self) -> u8 {
-        (self.0[2] >> 0) & 0b1111
+        // -------- -------- ----SSSS -------- --------
+        // sprite_gfx = SSSS
+
+        self.0[2] & 0b1111
     }
 
     pub fn timer(&self) -> u8 {
-        (self.0[3] >> 6) & 0b11
+        // -------- -------- -------- TT------ --------
+        // timer = TT
+
+        self.0[3] >> 6
     }
 
     pub fn palette_sprite(&self) -> u8 {
+        // -------- -------- -------- --PPP--- --------
+        // palette_sprite = PPP
+
         (self.0[3] >> 3) & 0b111
     }
 
     pub fn palette_fg(&self) -> u8 {
-        (self.0[3] >> 0) & 0b111
+        // -------- -------- -------- -----FFF --------
+        // palette_fg = FFF
+
+        self.0[3] & 0b111
     }
 
     pub fn item_memory(&self) -> u8 {
-        (self.0[4] >> 6) & 0b11
+        // -------- -------- -------- -------- II------
+        // item_memory = II
+
+        self.0[4] >> 6
     }
 
     pub fn vertical_scroll(&self) -> u8 {
+        // -------- -------- -------- -------- --VV----
+        // vertical_scroll = VV
+
         (self.0[4] >> 4) & 0b11
     }
 
     pub fn fg_bg_gfx(&self) -> u8 {
-        (self.0[4] >> 0) & 0b1111
+        // -------- -------- -------- -------- ----ZZZZ
+        // fg_bg_gfx = ZZZZ
+
+        self.0[4] & 0b1111
     }
 }
 

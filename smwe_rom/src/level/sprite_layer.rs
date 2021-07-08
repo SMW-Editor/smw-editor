@@ -16,6 +16,9 @@ pub struct SpriteLayer {
 
 impl SpriteInstance {
     pub fn xy_pos(&self) -> (u8, u8) {
+        // yyyy---Y XXXX---- --------
+        // xy_pos = (XXXX, Yyyyy)
+
         let x = (self.0[1] >> 4) & 0b1111;
         let y = {
             let hi = (self.0[0] & 0b1) << 4;
@@ -26,14 +29,23 @@ impl SpriteInstance {
     }
 
     pub fn extra_bits(&self) -> u8 {
+        // ----EE-- -------- --------
+        // extra_bits = EE
+
         (self.0[0] >> 2) & 0b11
     }
 
     pub fn screen_number(&self) -> u8 {
+        // ------S- ----ssss --------
+        // screen_number = Sssss
+
         ((self.0[0] & 0b10) << 3) | (self.0[1] & 0b1111)
     }
 
     pub fn sprite_id(&self) -> SpriteID {
+        // -------- -------- NNNNNNNN
+        // sprite_id = NNNNNNNN
+
         self.0[2]
     }
 }
