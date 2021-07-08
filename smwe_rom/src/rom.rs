@@ -8,7 +8,7 @@ use crate::{
         palette::ColorPalettes,
     },
     internal_header::RomInternalHeader,
-    level::{Level, LEVEL_COUNT},
+    level::{Level, LEVEL_COUNT, secondary_entrance::{SecondaryEntrance, SECONDARY_ENTRANCE_TABLE_SIZE}},
 };
 
 pub mod constants {
@@ -18,10 +18,11 @@ pub mod constants {
 type RpResult<T> = Result<T, RomParseError>;
 
 pub struct Rom {
-    pub internal_header: RomInternalHeader,
-    pub levels:          Vec<Level>,
-    pub color_palettes:  ColorPalettes,
-    pub gfx_files:       Vec<GfxFile>,
+    pub internal_header:     RomInternalHeader,
+    pub levels:              Vec<Level>,
+    pub secondary_entrances: Vec<SecondaryEntrance>,
+    pub color_palettes:      ColorPalettes,
+    pub gfx_files:           Vec<GfxFile>,
 }
 
 impl Rom {
@@ -54,13 +55,16 @@ impl Rom {
         log::info!("Parsing level data");
         let levels = Self::parse_levels(rom_data)?;
 
+        log::info!("Parsing secondary entrances");
+        let secondary_entrances = Self::parse_secondary_entrances(rom_data)?;
+
         log::info!("Parsing color palettes");
         let color_palettes = ColorPalettes::parse(rom_data, &levels)?;
 
         log::info!("Parsing GFX files");
         let gfx_files = Self::parse_gfx_files(rom_data)?;
 
-        Ok(Self { internal_header, levels, color_palettes, gfx_files })
+        Ok(Self { internal_header, levels, secondary_entrances, color_palettes, gfx_files })
     }
 
     fn trim_smc_header(rom_data: &[u8]) -> RpResult<&[u8]> {
@@ -90,6 +94,17 @@ impl Rom {
             }
         }
         Ok(levels)
+    }
+
+    fn parse_secondary_entrances(rom_data: &[u8]) -> RpResult<Vec<SecondaryEntrance>> {
+        let mut secondary_entrances = Vec::with_capacity(SECONDARY_ENTRANCE_TABLE_SIZE);
+        for entrance_id in 0..SECONDARY_ENTRANCE_TABLE_SIZE {
+            match SecondaryEntrance::read_from_rom(rom_data, entrance_id) {
+                Ok((_, entrance)) => secondary_entrances.push(entrance),
+                Err(_) => return Err(RomParseError::SecondaryEntrance(entrance_id)),
+            }
+        }
+        Ok(secondary_entrances)
     }
 
     fn parse_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {

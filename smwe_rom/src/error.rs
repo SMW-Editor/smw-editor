@@ -60,6 +60,8 @@ pub enum RomParseError {
     IoError,
     #[error("Invalid level: {0:#X}")]
     Level(usize),
+    #[error("Invalid secondary entrance: {0:#X}")]
+    SecondaryEntrance(usize),
     #[error("Could not parse color palettes")]
     ColorPalettes,
 }

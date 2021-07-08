@@ -1,6 +1,7 @@
 pub mod background;
 pub mod headers;
 pub mod object_layer;
+pub mod secondary_entrance;
 pub mod sprite_layer;
 
 use std::convert::TryFrom;
