@@ -8,7 +8,11 @@ use crate::{
         palette::ColorPalettes,
     },
     internal_header::RomInternalHeader,
-    level::{Level, LEVEL_COUNT, secondary_entrance::{SecondaryEntrance, SECONDARY_ENTRANCE_TABLE_SIZE}},
+    level::{
+        secondary_entrance::{SecondaryEntrance, SECONDARY_ENTRANCE_TABLE_SIZE},
+        Level,
+        LEVEL_COUNT,
+    },
 };
 
 pub mod constants {
