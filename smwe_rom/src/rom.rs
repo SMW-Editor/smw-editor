@@ -54,7 +54,7 @@ impl Rom {
         let rom_data = Self::trim_smc_header(rom_data)?;
 
         log::info!("Parsing internal ROM header");
-        let internal_header = RomInternalHeader::parse(rom_data)?;
+        let internal_header = RomInternalHeader::parse(rom_data).map_err(RomParseError::InternalHeader)?;
 
         log::info!("Parsing level data");
         let levels = Self::parse_levels(rom_data)?;

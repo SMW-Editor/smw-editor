@@ -100,15 +100,11 @@ impl Tile {
 impl GfxFile {
     pub fn new(rom_data: &[u8], file_num: usize) -> Result<Self, GfxFileParseError> {
         debug_assert!(file_num < GFX_FILES_META.len());
+
         use TileFormat::*;
+        type ParserFn = fn(&[u8]) -> IResult<&[u8], Tile>;
 
         let (tile_format, addr, size_bytes) = GFX_FILES_META[file_num];
-
-        let addr = AddrPc::try_from(addr).map_err(|_| GfxFileParseError::AddressConversion)?;
-        let (_, bytes) = preceded(take(addr.0), take(size_bytes))(rom_data)
-            .map_err(|_: ParseErr| GfxFileParseError::IsolatingData)?;
-
-        type ParserFn = fn(&[u8]) -> IResult<&[u8], Tile>;
         let (parser, tile_size_bytes): (ParserFn, usize) = match tile_format {
             Tile2bpp => (Tile::from_2bpp, 2 * 8),
             Tile4bpp => (Tile::from_4bpp, 4 * 8),
@@ -116,14 +112,17 @@ impl GfxFile {
             TileMode7 => (Tile::from_mode7, 8 * 8),
         };
 
+        let addr: usize = AddrPc::try_from(addr).map_err(GfxFileParseError::AddressConversion)?.into();
+        let mut read_gfx_file = preceded(take(addr), take(size_bytes));
+
+        let (_, bytes) = read_gfx_file(rom_data).map_err(|_: ParseErr| GfxFileParseError::IsolatingData)?;
         let decomp_bytes = lc_lz2::decompress(bytes).map_err(GfxFileParseError::DecompressingData)?;
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
 
         let tile_count = decomp_bytes.len() / tile_size_bytes;
-        let le_tile = map_parser(take(tile_size_bytes), parser);
-        let (_, tiles) =
-            count(le_tile, tile_count)(&decomp_bytes).map_err(|_: ParseErr| GfxFileParseError::ParsingTile)?;
+        let mut read_tiles = count(map_parser(take(tile_size_bytes), parser), tile_count);
 
+        let (_, tiles) = read_tiles(&decomp_bytes).map_err(|_: ParseErr| GfxFileParseError::ParsingTile)?;
         Ok(Self { tile_format, tiles })
     }
 

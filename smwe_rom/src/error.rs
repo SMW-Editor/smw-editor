@@ -46,6 +46,35 @@ pub enum ColorPaletteError {
 }
 
 #[derive(Debug, Error)]
+pub enum InternalHeaderParseError {
+    #[error("Couldn't find internal ROM header")]
+    NotFound,
+    #[error("Isolating Internal ROM Header")]
+    IsolatingData,
+
+    #[error("Reading checksum and complement at LoROM location")]
+    ReadLoRomChecksum,
+    #[error("Reading checksum and complement at HiROM location")]
+    ReadHiRomChecksum,
+    #[error("Reading Internal ROM Name")]
+    ReadRomName,
+    #[error("Reading Map Mode")]
+    ReadMapMode,
+    #[error("Reading ROM Type")]
+    ReadRomType,
+    #[error("Reading ROM Size")]
+    ReadRomSize,
+    #[error("Reading SRAM Size")]
+    ReadSramSize,
+    #[error("Reading Region Code")]
+    ReadRegionCode,
+    #[error("Reading Developer ID")]
+    ReadDeveloperId,
+    #[error("Reading Version Number")]
+    ReadVersionNumber,
+}
+
+#[derive(Debug, Error)]
 pub enum ColorPaletteParseError {
     #[error("Player Color Palette")]
     PlayerPalette,
@@ -84,8 +113,8 @@ pub enum ColorPaletteParseError {
 
 #[derive(Debug, Error)]
 pub enum GfxFileParseError {
-    #[error("Address conversion")]
-    AddressConversion,
+    #[error("Address conversion: {0}")]
+    AddressConversion(AddressConversionError),
     #[error("Isolating data")]
     IsolatingData,
     #[error("Decompressing data: {0}")]
@@ -99,6 +128,14 @@ pub enum SecondaryEntranceParseError {
     #[error("Converting SNES address of Secondary Entrance Tables to PC")]
     TablesAddressConversion,
     #[error("Reading Secondary Entrance data")]
+    Read,
+}
+
+#[derive(Debug, Error)]
+pub enum SecondaryHeaderParseError {
+    #[error("Converting SNES address of Secondary Header Tables to PC")]
+    AddressConversion(AddressConversionError),
+    #[error("Reading Secondary Header data")]
     Read,
 }
 
@@ -134,7 +171,7 @@ pub enum LevelParseError {
     #[error("Reading Primary Header")]
     PrimaryHeaderRead,
     #[error("Reading Secondary Header")]
-    SecondaryHeaderRead,
+    SecondaryHeaderRead(SecondaryHeaderParseError),
     #[error("Reading Sprite Header")]
     SpriteHeaderRead,
 
@@ -157,7 +194,7 @@ pub enum RomParseError {
     #[error("Invalid GFX file {0:X}: {1}")]
     GfxFile(usize, GfxFileParseError),
     #[error("Parsing internal header failed")]
-    InternalHeader(&'static str),
+    InternalHeader(InternalHeaderParseError),
     #[error("File IO Error")]
     IoError,
     #[error("Failed to parse level {0:#X}: {1}")]

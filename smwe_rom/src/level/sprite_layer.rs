@@ -1,6 +1,10 @@
 use std::convert::TryInto;
 
-use nom::{many_till, tag, take, IResult};
+use nom::{
+    bytes::complete::{tag, take},
+    multi::many_till,
+    IResult,
+};
 
 pub const SPRITE_INSTANCE_SIZE: usize = 3;
 
@@ -50,7 +54,8 @@ impl SpriteInstance {
 
 impl SpriteLayer {
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, (sprites_raw, _)) = many_till!(input, take!(SPRITE_INSTANCE_SIZE), tag!(&[0xFFu8]))?;
+        let mut read_sprite_layer = many_till(take(SPRITE_INSTANCE_SIZE), tag(&[0xFFu8]));
+        let (input, (sprites_raw, _)) = read_sprite_layer(input)?;
         let sprites = sprites_raw.into_iter().map(|spr| SpriteInstance(spr.try_into().unwrap())).collect();
         Ok((input, Self { sprites }))
     }

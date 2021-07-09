@@ -1,8 +1,11 @@
 use std::convert::{TryFrom, TryInto};
 
-use nom::{number::complete::le_u8, preceded, take, IResult};
+use nom::{bytes::complete::take, number::complete::le_u8, sequence::preceded, IResult};
 
-use crate::addr::{AddrPc, AddrSnes};
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    error::{ParseErr, SecondaryHeaderParseError},
+};
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
 pub const SECONDARY_HEADER_SIZE: usize = 4;
@@ -19,7 +22,7 @@ pub struct SpriteHeader(u8);
 
 impl PrimaryHeader {
     pub fn read_from(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = take!(input, PRIMARY_HEADER_SIZE)?;
+        let (input, bytes) = take(PRIMARY_HEADER_SIZE)(input)?;
         Ok((input, Self(bytes.try_into().unwrap())))
     }
 
@@ -103,13 +106,15 @@ impl PrimaryHeader {
 }
 
 impl SecondaryHeader {
-    pub fn read_from_rom(rom_data: &[u8], level_num: usize) -> IResult<&[u8], Self> {
+    pub fn read_from_rom(rom_data: &[u8], level_num: usize) -> Result<Self, SecondaryHeaderParseError> {
         let take_byte = |addr| {
-            let addr: usize = AddrPc::try_from(AddrSnes(addr)).unwrap().into();
-            preceded!(rom_data, take!(addr + level_num), le_u8)
+            let addr: usize =
+                AddrPc::try_from(AddrSnes(addr)).map_err(SecondaryHeaderParseError::AddressConversion)?.into();
+            let mut read_byte = preceded(take(addr + level_num), le_u8);
+            read_byte(rom_data).map_err(|_: ParseErr| SecondaryHeaderParseError::Read)
         };
         let bytes = [take_byte(0x05F000)?.1, take_byte(0x05F200)?.1, take_byte(0x05F400)?.1, take_byte(0x05F600)?.1];
-        Ok((rom_data, Self(bytes)))
+        Ok(Self(bytes))
     }
 
     pub fn layer2_scroll(&self) -> u8 {
@@ -183,7 +188,7 @@ impl SecondaryHeader {
 
 impl SpriteHeader {
     pub fn read_from(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = take!(input, SPRITE_HEADER_SIZE)?;
+        let (input, bytes) = take(SPRITE_HEADER_SIZE)(input)?;
         Ok((input, Self(bytes[0])))
     }
 

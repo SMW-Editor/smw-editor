@@ -190,7 +190,8 @@ fn make_color_parser(
 ) -> impl Fn(AddrSnes, usize, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
     move |pos, n, err| {
         let pos: AddrPc = pos.try_into().unwrap();
-        let (_, cols) = preceded(take(pos.0), count(map(le_u16, Abgr1555), n))(rom_data).map_err(|_: ParseErr| err)?;
+        let mut read_colors = preceded(take(pos.0), count(map(le_u16, Abgr1555), n));
+        let (_, cols) = read_colors(rom_data).map_err(|_: ParseErr| err)?;
         Ok(cols)
     }
 }
@@ -384,13 +385,19 @@ impl OverworldColorPaletteSet {
 
         let indirect1_addr: AddrPc = LAYER2_PALETTE_INDIRECT1.try_into().unwrap();
         let indirect2_addr: AddrPc = LAYER2_PALETTE_INDIRECT2.try_into().unwrap();
-        let (_, indirect1) = preceded(take(indirect1_addr.0), count(le_u8, 7))(rom_data).map_err(|_: ParseErr| {
+        let mut read_indirect1 = preceded(take(indirect1_addr.0), count(le_u8, 7));
+
+        let (_, indirect1) = read_indirect1(rom_data).map_err(|_: ParseErr| {
             ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1)
         })?;
+
         for offset in indirect1.into_iter() {
             let index_offset = indirect2_addr.0 + (2 * offset as usize);
-            let (_, ptr16) = preceded(take(index_offset), le_u16)(rom_data)
+            let mut read_index = preceded(take(index_offset), le_u16);
+
+            let (_, ptr16) = read_index(rom_data)
                 .map_err(|_: ParseErr| ColorPaletteParseError::OverworldLayer2IndexRead(index_offset))?;
+
             let idx = ptr16 / 0x38;
             layer2_indices.push(idx as usize);
         }
