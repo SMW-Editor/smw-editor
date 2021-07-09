@@ -116,10 +116,10 @@ impl PrimaryHeader {
 }
 
 impl SecondaryHeader {
-    pub fn read_from_rom(rom_data: &[u8], level_number: usize) -> IResult<&[u8], Self> {
+    pub fn read_from_rom(rom_data: &[u8], level_num: usize) -> IResult<&[u8], Self> {
         let take_byte = |addr| {
             let addr: usize = AddrPc::try_from(AddrSnes(addr)).unwrap().into();
-            preceded!(rom_data, take!(addr + level_number), le_u8)
+            preceded!(rom_data, take!(addr + level_num), le_u8)
         };
         let bytes = [take_byte(0x05F000)?.1, take_byte(0x05F200)?.1, take_byte(0x05F400)?.1, take_byte(0x05F600)?.1];
         Ok((rom_data, Self(bytes)))

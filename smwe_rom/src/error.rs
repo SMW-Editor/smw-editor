@@ -6,7 +6,6 @@ use thiserror::Error;
 
 use crate::{
     addr::{AddrPc, AddrSnes},
-    graphics::gfx_file::TileFormat,
     internal_header::MapMode,
 };
 
@@ -47,24 +46,129 @@ pub enum ColorPaletteError {
 }
 
 #[derive(Debug, Error)]
+pub enum ColorPaletteParseError {
+    #[error("Player Color Palette")]
+    PlayerPalette,
+    #[error("Overworld Layer1 Color Palette")]
+    OverworldLayer1Palette,
+    #[error("Overworld Layer2 Color Palette")]
+    OverworldLayer3Palette,
+    #[error("Overworld Sprite Color Palette")]
+    OverworldSpritePalette,
+    #[error("Overworld Submap {0}'s Normal Layer2 Color Palette")]
+    OverworldLayer2NormalPalette(usize),
+    #[error("Overworld Submap {0}'s Special Layer2 Color Palette")]
+    OverworldLayer2SpecialPalette(usize),
+    #[error("Overworld Layer2's Indirect Indices Table (${0:X})")]
+    OverworldLayer2IndicesIndirect1Read(AddrSnes),
+    #[error("Overworld Layer2's Index (${0:X})")]
+    OverworldLayer2IndexRead(usize),
+
+    #[error("Level Misc. Color Palette")]
+    LevelMiscPalette,
+    #[error("Level Layer3 Color Palette")]
+    LevelLayer3Palette,
+    #[error("Level Berry Color Palette")]
+    LevelBerryPalette,
+    #[error("Level Animated Color")]
+    LevelAnimatedColor,
+    #[error("Level {0:X}'s Back Area Color")]
+    LevelBackAreaColor(usize),
+    #[error("Level {0:X}'s Background Color Palette")]
+    LevelBackgroundPalette(usize),
+    #[error("Level {0:X}'s Foreground Color Palette")]
+    LevelForegroundPalette(usize),
+    #[error("Level {0:X}'s Sprite Color Palette")]
+    LevelSpritePalette(usize),
+}
+
+#[derive(Debug, Error)]
+pub enum GfxFileParseError {
+    #[error("Address conversion")]
+    AddressConversion,
+    #[error("Isolating data")]
+    IsolatingData,
+    #[error("Decompressing data: {0}")]
+    DecompressingData(DecompressionError),
+    #[error("Parsing tile")]
+    ParsingTile,
+}
+
+#[derive(Debug, Error)]
+pub enum SecondaryEntranceParseError {
+    #[error("Converting SNES address of Secondary Entrance Tables to PC")]
+    TablesAddressConversion,
+    #[error("Reading Secondary Entrance data")]
+    Read,
+}
+
+#[derive(Debug, Error)]
+pub enum LevelParseError {
+    #[error("Converting SNES address of Layer1 data into PC")]
+    Layer1AddressConversion,
+    #[error("Converting SNES address of Layer2 data to PC")]
+    Layer2AddressConversion,
+    #[error("Converting SNES address of Layer2 pointer to PC")]
+    Layer2PtrAddressConversion,
+    #[error("Converting SNES address of primary header into PC")]
+    PrimaryHeaderAddressConversion,
+    #[error("Converting SNES address of address of Sprite data to PC")]
+    SpritePtrAddressConversion,
+    #[error("Converting SNES address of sprite header to PC")]
+    SpriteAddressConversion,
+
+    #[error("Reading address of Layer1")]
+    Layer1AddressRead,
+    #[error("Reading address of Layer2")]
+    Layer2AddressRead,
+    #[error("Reading address of Sprite data")]
+    SpriteAddressRead,
+
+    #[error("Isolating Layer1 data")]
+    Layer1Isolate,
+    #[error("Isolating Layer2 data")]
+    Layer2Isolate,
+    #[error("Isolating Sprite data")]
+    SpriteIsolate,
+
+    #[error("Reading Primary Header")]
+    PrimaryHeaderRead,
+    #[error("Reading Secondary Header")]
+    SecondaryHeaderRead,
+    #[error("Reading Sprite Header")]
+    SpriteHeaderRead,
+
+    #[error("Reading Layer1 object data")]
+    Layer1Read,
+    #[error("Parsing Layer2 object data")]
+    Layer2Read,
+    #[error("Reading Layer2 background: {0}")]
+    Layer2BackgroundRead(DecompressionError),
+    #[error("Reading Sprite data")]
+    SpriteRead,
+}
+
+#[derive(Debug, Error)]
 pub enum RomParseError {
     #[error("ROM doesn't contain PC address {0:#x}")]
     BadAddress(usize),
     #[error("Invalid ROM size: {0} ({0:#x})")]
     BadSize(usize),
-    #[error("Invalid GFX file - tile format: {0}, file num: {1:X}, size: {2}B")]
-    GfxFile(TileFormat, usize, usize),
+    #[error("Invalid GFX file {0:X}: {1}")]
+    GfxFile(usize, GfxFileParseError),
     #[error("Parsing internal header failed")]
-    InternalHeader,
+    InternalHeader(&'static str),
     #[error("File IO Error")]
     IoError,
-    #[error("Invalid level: {0:#X}")]
-    Level(usize),
-    #[error("Invalid secondary entrance: {0:#X}")]
-    SecondaryEntrance(usize),
+    #[error("Failed to parse level {0:#X}: {1}")]
+    Level(usize, LevelParseError),
+    #[error("Failed to read secondary entrance {0:#X}: {1}")]
+    SecondaryEntrance(usize, SecondaryEntranceParseError),
     #[error("Could not parse color palettes")]
-    ColorPalettes,
+    ColorPalettes(ColorPaletteParseError),
 }
+
+pub type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
 
 // -------------------------------------------------------------------------------------------------
 

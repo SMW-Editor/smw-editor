@@ -1,19 +1,17 @@
 use std::{convert::TryInto, ops::RangeInclusive};
 
 use nom::{
-    count,
-    map,
-    named,
+    bytes::complete::take,
+    combinator::map,
+    multi::count,
     number::complete::{le_u16, le_u8},
-    preceded,
-    take,
-    IResult,
+    sequence::preceded,
 };
 
 use self::constants::*;
 use crate::{
     addr::{AddrPc, AddrSnes},
-    error::{ColorPaletteError, RomParseError},
+    error::{ColorPaletteError, ColorPaletteParseError, ParseErr},
     graphics::color::{Abgr1555, BGR555_SIZE},
     level::{headers::PrimaryHeader, Level},
 };
@@ -187,26 +185,18 @@ pub enum OverworldState {
 
 // -------------------------------------------------------------------------------------------------
 
-named!(le_bgr16<Abgr1555>, map!(le_u16, Abgr1555));
-
-type ColorParserResult<'r> = IResult<&'r [u8], Vec<Abgr1555>>;
-
-fn make_color_parser<'r>(rom_data: &'r [u8]) -> impl Fn(AddrSnes, usize) -> ColorParserResult<'r> + 'r {
-    move |pos, n| {
+fn make_color_parser(
+    rom_data: &[u8],
+) -> impl Fn(AddrSnes, usize, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
+    move |pos, n, err| {
         let pos: AddrPc = pos.try_into().unwrap();
-        preceded!(rom_data, take!(pos.0), count!(le_bgr16, n))
+        let (_, cols) = preceded(take(pos.0), count(map(le_u16, Abgr1555), n))(rom_data).map_err(|_: ParseErr| err)?;
+        Ok(cols)
     }
 }
 
 impl ColorPalettes {
-    pub fn parse(rom_data: &[u8], levels: &[Level]) -> Result<Self, RomParseError> {
-        match Self::parse_impl(rom_data, levels) {
-            Ok((_, palette_set)) => Ok(palette_set),
-            Err(_) => Err(RomParseError::ColorPalettes),
-        }
-    }
-
-    fn parse_impl<'r>(rom_data: &'r [u8], levels: &[Level]) -> IResult<&'r [u8], Self> {
+    pub fn parse(rom_data: &[u8], levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
         const PLAYER_PALETTE: AddrSnes = AddrSnes(0x00B2C8);
         const OW_LAYER1_PALETTES: AddrSnes = AddrSnes(0x00B528);
         const OW_LAYER3_PALETTES: AddrSnes = AddrSnes(0x00B5EC);
@@ -218,18 +208,23 @@ impl ColorPalettes {
 
         let parse_colors = make_color_parser(rom_data);
 
-        let (_, players) = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH)?;
-        let (_, ow_layer1_colors) = parse_colors(OW_LAYER1_PALETTES, OW_LAYER1_PALETTE_LENGTH)?;
-        let (_, ow_layer3_colors) = parse_colors(OW_LAYER3_PALETTES, OW_LAYER3_PALETTE_LENGTH)?;
-        let (_, ow_sprite_colors) = parse_colors(OW_SPRITE_PALETTES, OW_SPRITE_PALETTE_LENGTH)?;
-        let (_, lv_wtf) = parse_colors(LV_WTF_PALETTE, PALETTE_WTF_LENGTH)?;
-        let (_, lv_layer3) = parse_colors(LV_LAYER3_PALETTE, PALETTE_LAYER3_LENGTH)?;
-        let (_, lv_berry) = parse_colors(LV_BERRY_PALETTE, PALETTE_BERRY_LENGTH)?;
-        let (_, lv_animated) = parse_colors(LV_ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH)?;
-        let (_, lv_specific_set) = LevelColorPaletteSet::parse(rom_data, levels)?;
-        let (_, ow_specific_set) = OverworldColorPaletteSet::parse(rom_data)?;
+        let players = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH, ColorPaletteParseError::PlayerPalette)?;
+        let ow_layer1_colors =
+            parse_colors(OW_LAYER1_PALETTES, OW_LAYER1_PALETTE_LENGTH, ColorPaletteParseError::OverworldLayer1Palette)?;
+        let ow_layer3_colors =
+            parse_colors(OW_LAYER3_PALETTES, OW_LAYER3_PALETTE_LENGTH, ColorPaletteParseError::OverworldLayer3Palette)?;
+        let ow_sprite_colors =
+            parse_colors(OW_SPRITE_PALETTES, OW_SPRITE_PALETTE_LENGTH, ColorPaletteParseError::OverworldSpritePalette)?;
+        let lv_wtf = parse_colors(LV_WTF_PALETTE, PALETTE_WTF_LENGTH, ColorPaletteParseError::LevelMiscPalette)?;
+        let lv_layer3 =
+            parse_colors(LV_LAYER3_PALETTE, PALETTE_LAYER3_LENGTH, ColorPaletteParseError::LevelLayer3Palette)?;
+        let lv_berry = parse_colors(LV_BERRY_PALETTE, PALETTE_BERRY_LENGTH, ColorPaletteParseError::LevelBerryPalette)?;
+        let lv_animated =
+            parse_colors(LV_ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH, ColorPaletteParseError::LevelAnimatedColor)?;
+        let lv_specific_set = LevelColorPaletteSet::parse(rom_data, levels)?;
+        let ow_specific_set = OverworldColorPaletteSet::parse(rom_data)?;
 
-        Ok((rom_data, ColorPalettes {
+        Ok(ColorPalettes {
             players: players.into(),
             ow_layer1: ow_layer1_colors.into(),
             ow_layer3: ow_layer3_colors.into(),
@@ -240,7 +235,7 @@ impl ColorPalettes {
             lv_animated: lv_animated.into(),
             ow_specific_set,
             lv_specific_set,
-        }))
+        })
     }
 
     pub fn get_level_palette(&self, header: &PrimaryHeader) -> Result<SpecificLevelColorPalette, ColorPaletteError> {
@@ -255,7 +250,7 @@ impl ColorPalettes {
 }
 
 impl LevelColorPaletteSet {
-    fn parse<'a>(rom_data: &'a [u8], levels: &[Level]) -> IResult<&'a [u8], LevelColorPaletteSet> {
+    fn parse(rom_data: &[u8], levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
         const BACK_AREA_COLORS: AddrSnes = AddrSnes(0x00B0A0);
         const BG_PALETTES: AddrSnes = AddrSnes(0x00B0B0);
         const FG_PALETTES: AddrSnes = AddrSnes(0x00B190);
@@ -263,14 +258,14 @@ impl LevelColorPaletteSet {
 
         let parse_colors = make_color_parser(rom_data);
 
-        let mut palette_set = LevelColorPaletteSet {
+        let mut palette_set = Self {
             back_area_colors: Vec::with_capacity(8),
             bg_palettes:      Vec::with_capacity(8),
             fg_palettes:      Vec::with_capacity(8),
             sprite_palettes:  Vec::with_capacity(8),
         };
 
-        for level in levels {
+        for (level_num, level) in levels.iter().enumerate() {
             let header = &level.primary_header;
 
             let idx_bc = header.back_area_color() as usize;
@@ -278,10 +273,26 @@ impl LevelColorPaletteSet {
             let idx_fg = header.palette_fg() as usize;
             let idx_sp = header.palette_sprite() as usize;
 
-            let (_, bc) = parse_colors(BACK_AREA_COLORS + (BGR555_SIZE * idx_bc), 1)?;
-            let (_, bg) = parse_colors(BG_PALETTES + (PALETTE_BG_SIZE * idx_bg), PALETTE_BG_LENGTH)?;
-            let (_, fg) = parse_colors(FG_PALETTES + (PALETTE_FG_SIZE * idx_fg), PALETTE_FG_LENGTH)?;
-            let (_, sp) = parse_colors(SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp), PALETTE_SPRITE_LENGTH)?;
+            let bc = parse_colors(
+                BACK_AREA_COLORS + (BGR555_SIZE * idx_bc),
+                1,
+                ColorPaletteParseError::LevelBackAreaColor(level_num),
+            )?;
+            let bg = parse_colors(
+                BG_PALETTES + (PALETTE_BG_SIZE * idx_bg),
+                PALETTE_BG_LENGTH,
+                ColorPaletteParseError::LevelBackgroundPalette(level_num),
+            )?;
+            let fg = parse_colors(
+                FG_PALETTES + (PALETTE_FG_SIZE * idx_fg),
+                PALETTE_FG_LENGTH,
+                ColorPaletteParseError::LevelForegroundPalette(level_num),
+            )?;
+            let sp = parse_colors(
+                SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp),
+                PALETTE_SPRITE_LENGTH,
+                ColorPaletteParseError::LevelSpritePalette(level_num),
+            )?;
 
             if palette_set.back_area_colors.len() < idx_bc + 1 {
                 let value = Abgr1555::default();
@@ -306,7 +317,7 @@ impl LevelColorPaletteSet {
             palette_set.sprite_palettes[idx_sp] = sp.try_into().unwrap();
         }
 
-        Ok((rom_data, palette_set))
+        Ok(palette_set)
     }
 
     pub fn get_level_palette(
@@ -342,7 +353,7 @@ impl LevelColorPaletteSet {
 }
 
 impl OverworldColorPaletteSet {
-    fn parse(rom_data: &[u8]) -> IResult<&[u8], OverworldColorPaletteSet> {
+    fn parse(rom_data: &[u8]) -> Result<OverworldColorPaletteSet, ColorPaletteParseError> {
         let parse_colors = make_color_parser(rom_data);
 
         const LAYER2_NORMAL_PALETTES: AddrSnes = AddrSnes(0x00B3D8);
@@ -356,10 +367,16 @@ impl OverworldColorPaletteSet {
 
         for i in 0..6 {
             let subworld_pal_idx = i * 14 * 4;
-            let (_, layer2_colors_normal) =
-                parse_colors(LAYER2_NORMAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
-            let (_, layer2_colors_special) =
-                parse_colors(LAYER2_SPECIAL_PALETTES + subworld_pal_idx, OW_LAYER2_PALETTE_LENGTH)?;
+            let layer2_colors_normal = parse_colors(
+                LAYER2_NORMAL_PALETTES + subworld_pal_idx,
+                OW_LAYER2_PALETTE_LENGTH,
+                ColorPaletteParseError::OverworldLayer2NormalPalette(i),
+            )?;
+            let layer2_colors_special = parse_colors(
+                LAYER2_SPECIAL_PALETTES + subworld_pal_idx,
+                OW_LAYER2_PALETTE_LENGTH,
+                ColorPaletteParseError::OverworldLayer2SpecialPalette(i),
+            )?;
 
             layer2_pre_special.push(layer2_colors_normal.into());
             layer2_post_special.push(layer2_colors_special.into());
@@ -367,14 +384,18 @@ impl OverworldColorPaletteSet {
 
         let indirect1_addr: AddrPc = LAYER2_PALETTE_INDIRECT1.try_into().unwrap();
         let indirect2_addr: AddrPc = LAYER2_PALETTE_INDIRECT2.try_into().unwrap();
-        let (_, indirect1) = preceded!(rom_data, take!(indirect1_addr.0), count!(le_u8, 7))?;
+        let (_, indirect1) = preceded(take(indirect1_addr.0), count(le_u8, 7))(rom_data).map_err(|_: ParseErr| {
+            ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1)
+        })?;
         for offset in indirect1.into_iter() {
-            let (_, ptr16) = preceded!(rom_data, take!(indirect2_addr.0 + (2 * offset as usize)), le_u16)?;
+            let index_offset = indirect2_addr.0 + (2 * offset as usize);
+            let (_, ptr16) = preceded(take(index_offset), le_u16)(rom_data)
+                .map_err(|_: ParseErr| ColorPaletteParseError::OverworldLayer2IndexRead(index_offset))?;
             let idx = ptr16 / 0x38;
             layer2_indices.push(idx as usize);
         }
 
-        Ok((rom_data, OverworldColorPaletteSet { layer2_pre_special, layer2_post_special, layer2_indices }))
+        Ok(Self { layer2_pre_special, layer2_post_special, layer2_indices })
     }
 
     pub fn get_submap_palette(
