@@ -33,21 +33,18 @@ impl ExitInstance {
     pub fn screen_number(&self) -> u8 {
         // ---ppppp -------- -------- --------
         // screen_number = ppppp
-
         self.0[0] & 0b11111
     }
 
     pub fn secondary_exit(&self) -> bool {
         // -------- ------s- -------- --------
         // secondary_exit = s
-
         (self.0[1] & 0b10) != 0
     }
 
     pub fn destination_level(&self) -> u16 {
         // -------- -------D -------- dddddddd
         // destination_level = Ddddddddd
-
         let hi = (self.0[1] as u16 & 0b1) << 8;
         let lo = self.0[3] as u16;
         hi | lo
@@ -58,14 +55,12 @@ impl NonExitInstance {
     pub fn new_screen(&self) -> bool {
         // N----- -------- --------
         // new_screen = N
-
-        ((self.0[0] >> 7) & 0b1) != 0
+        (self.0[0] >> 7) != 0
     }
 
     pub fn std_obj_num(&self) -> StandardObjectID {
         // -BB----- bbbb---- --------
         // std_obj_num = BBbbbb
-
         let hi = (self.0[0] >> 1) & 0b110000;
         let lo = (self.0[1] >> 4) & 0b1111;
         hi | lo
@@ -73,23 +68,17 @@ impl NonExitInstance {
 
     pub fn ext_obj_num(&self) -> Option<ExtendedObjectID> {
         if self.is_extended() {
-            // -------- -------- SSSSSSSS
-            // ext_obj_num = SSSSSSSS
-
+            // -------- -------- NNNNNNNN
+            // ext_obj_num = NNNNNNNN
             Some(self.0[2])
         } else {
             None
         }
     }
 
-    pub fn is_extended(&self) -> bool {
-        self.std_obj_num() == 0
-    }
-
     pub fn xy_pos(&self) -> (u8, u8) {
         // ---YYYYY ----XXXX --------
         // xy_pos = (XXXX, YYYYY)
-
         let x = self.0[1] & 0b1111;
         let y = self.0[0] & 0b11111;
         (x, y)
@@ -98,8 +87,11 @@ impl NonExitInstance {
     pub fn settings(&self) -> u8 {
         // -------- -------- SSSSSSSS
         // settings = SSSSSSSS
-
         self.0[2]
+    }
+
+    pub fn is_extended(&self) -> bool {
+        self.std_obj_num() == 0
     }
 }
 
@@ -107,7 +99,6 @@ impl ScreenJumpInstance {
     pub fn screen_number(&self) -> u8 {
         // ---HHHHH -------- --------
         // screen_number = HHHHH
-
         self.0[0] & 0b11111
     }
 }
