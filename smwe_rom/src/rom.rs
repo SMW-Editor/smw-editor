@@ -54,7 +54,7 @@ impl Rom {
         let rom_data = Self::trim_smc_header(rom_data)?;
 
         log::info!("Parsing internal ROM header");
-        let internal_header = Self::parse_internal_header(rom_data)?;
+        let internal_header = RomInternalHeader::parse(rom_data)?;
 
         log::info!("Parsing level data");
         let levels = Self::parse_levels(rom_data)?;
@@ -63,7 +63,7 @@ impl Rom {
         let secondary_entrances = Self::parse_secondary_entrances(rom_data)?;
 
         log::info!("Parsing color palettes");
-        let color_palettes = ColorPalettes::parse(rom_data, &levels)?;
+        let color_palettes = ColorPalettes::parse(rom_data, &levels).map_err(RomParseError::ColorPalettes)?;
 
         log::info!("Parsing GFX files");
         let gfx_files = Self::parse_gfx_files(rom_data)?;
@@ -82,20 +82,11 @@ impl Rom {
         }
     }
 
-    fn parse_internal_header(rom_data: &[u8]) -> RpResult<RomInternalHeader> {
-        match RomInternalHeader::parse(rom_data) {
-            Ok((_, header)) => Ok(header),
-            Err(_) => Err(RomParseError::InternalHeader),
-        }
-    }
-
     fn parse_levels(rom_data: &[u8]) -> RpResult<Vec<Level>> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
-            match Level::parse(rom_data, level_num) {
-                Ok((_, level)) => levels.push(level),
-                Err(_) => return Err(RomParseError::Level(level_num)),
-            }
+            let level = Level::parse(rom_data, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
+            levels.push(level);
         }
         Ok(levels)
     }
@@ -103,21 +94,18 @@ impl Rom {
     fn parse_secondary_entrances(rom_data: &[u8]) -> RpResult<Vec<SecondaryEntrance>> {
         let mut secondary_entrances = Vec::with_capacity(SECONDARY_ENTRANCE_TABLE_SIZE);
         for entrance_id in 0..SECONDARY_ENTRANCE_TABLE_SIZE {
-            match SecondaryEntrance::read_from_rom(rom_data, entrance_id) {
-                Ok((_, entrance)) => secondary_entrances.push(entrance),
-                Err(_) => return Err(RomParseError::SecondaryEntrance(entrance_id)),
-            }
+            let entrance = SecondaryEntrance::read_from_rom(rom_data, entrance_id)
+                .map_err(|e| RomParseError::SecondaryEntrance(entrance_id, e))?;
+            secondary_entrances.push(entrance);
         }
         Ok(secondary_entrances)
     }
 
     fn parse_gfx_files(rom_data: &[u8]) -> RpResult<Vec<GfxFile>> {
         let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
-        for (i, &(tile_format, addr, size_bytes)) in GFX_FILES_META.iter().enumerate() {
-            match GfxFile::new(rom_data, tile_format, addr, size_bytes) {
-                Ok((_, file)) => gfx_files.push(file),
-                Err(_) => return Err(RomParseError::GfxFile(tile_format, i, size_bytes)),
-            }
+        for file_num in 0..GFX_FILES_META.len() {
+            let file = GfxFile::new(rom_data, file_num).map_err(|e| RomParseError::GfxFile(file_num, e))?;
+            gfx_files.push(file);
         }
         Ok(gfx_files)
     }

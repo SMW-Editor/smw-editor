@@ -1,8 +1,11 @@
 use std::convert::{TryFrom, TryInto};
 
-use nom::{count, number::complete::le_u8, preceded, take, IResult};
+use nom::{bytes::complete::take, multi::count, number::complete::le_u8, sequence::preceded};
 
-use crate::addr::{AddrPc, AddrSnes};
+use crate::{
+    addr::{AddrPc, AddrSnes},
+    error::{ParseErr, SecondaryEntranceParseError},
+};
 
 pub const SECONDARY_ENTRANCE_TABLE_ADDR: AddrSnes = AddrSnes(0x05F800);
 pub const SECONDARY_ENTRANCE_TABLE_SIZE: usize = 512;
@@ -10,15 +13,19 @@ pub const SECONDARY_ENTRANCE_TABLE_SIZE: usize = 512;
 pub struct SecondaryEntrance([u8; 4]);
 
 impl SecondaryEntrance {
-    pub fn read_from_rom(rom_data: &[u8], entrance_id: usize) -> IResult<&[u8], Self> {
+    pub fn read_from_rom(rom_data: &[u8], entrance_id: usize) -> Result<Self, SecondaryEntranceParseError> {
         let bytes_before_table = SECONDARY_ENTRANCE_TABLE_SIZE - entrance_id;
-        let pc_addr = AddrPc::try_from(SECONDARY_ENTRANCE_TABLE_ADDR).unwrap();
-        let (input, bytes) = preceded!(
-            rom_data,
-            take!(pc_addr.0 - bytes_before_table),
-            count!(preceded!(take!(SECONDARY_ENTRANCE_TABLE_SIZE), le_u8), 4)
-        )?;
-        Ok((input, Self(bytes.try_into().unwrap())))
+        let pc_addr: usize = AddrPc::try_from(SECONDARY_ENTRANCE_TABLE_ADDR)
+            .map_err(|_| SecondaryEntranceParseError::TablesAddressConversion)?
+            .into();
+
+        let (_, bytes) = preceded(
+            take(pc_addr - bytes_before_table),
+            count(preceded(take(SECONDARY_ENTRANCE_TABLE_SIZE), le_u8), 4),
+        )(rom_data)
+        .map_err(|_: ParseErr| SecondaryEntranceParseError::Read)?;
+
+        Ok(Self(bytes.try_into().unwrap()))
     }
 
     pub fn destination_level(&self) -> u16 {

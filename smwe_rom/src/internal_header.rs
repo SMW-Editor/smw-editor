@@ -1,21 +1,20 @@
 use std::{clone::Clone, convert::TryFrom, fmt};
 
 use nom::{
-    do_parse,
+    bytes::complete::take,
+    combinator::map_res,
     map,
-    map_res,
-    named,
     number::complete::{le_u16, le_u8},
-    pair,
-    preceded,
-    take,
+    sequence::{pair, preceded},
     take_str,
-    IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 pub use self::address_spaces::*;
-use crate::{addr::AddrPc, error::nom_error};
+use crate::{
+    addr::AddrPc,
+    error::{ParseErr, RomParseError},
+};
 
 pub mod address_spaces {
     use crate::addr::{AddrPc, AddrSpacePc};
@@ -134,16 +133,29 @@ pub enum RegionCode {
 // -------------------------------------------------------------------------------------------------
 
 impl RomInternalHeader {
-    named!(parse_impl<&[u8], RomInternalHeader>, do_parse!(
-        internal_rom_name: map!(take_str!(sizes::INTERNAL_ROM_NAME), String::from) >>
-        map_mode:          map_res!(le_u8, MapMode::try_from)                      >>
-        rom_type:          map_res!(le_u8, RomType::try_from)                      >>
-        rom_size:          le_u8                                                   >>
-        sram_size:         le_u8                                                   >>
-        region_code:       map_res!(le_u8, RegionCode::try_from)                   >>
-        developer_id:      le_u8                                                   >>
-        version_number:    le_u8                                                   >>
-        (RomInternalHeader {
+    pub fn parse(rom_data: &[u8]) -> Result<Self, RomParseError> {
+        let begin: usize = RomInternalHeader::find(rom_data)?.into();
+        let (input, _) = take(begin)(rom_data)
+            .map_err(|_: ParseErr| RomParseError::InternalHeader("Isolating Internal ROM Header"))?;
+
+        let (input, internal_rom_name) = map!(input, take_str!(sizes::INTERNAL_ROM_NAME), String::from)
+            .map_err(|_: ParseErr| RomParseError::InternalHeader("Reading Internal ROM Name"))?;
+        let (input, map_mode) = map_res(le_u8, MapMode::try_from)(input)
+            .map_err(|_: ParseErr| RomParseError::InternalHeader("Reading Map Mode"))?;
+        let (input, rom_type) = map_res(le_u8, RomType::try_from)(input)
+            .map_err(|_: ParseErr| RomParseError::InternalHeader("Reading ROM Type"))?;
+        let (input, rom_size) =
+            le_u8(input).map_err(|_: ParseErr| RomParseError::InternalHeader("Reading ROM Size"))?;
+        let (input, sram_size) =
+            le_u8(input).map_err(|_: ParseErr| RomParseError::InternalHeader("Reading SRAM Size"))?;
+        let (input, region_code) = map_res(le_u8, RegionCode::try_from)(input)
+            .map_err(|_: ParseErr| RomParseError::InternalHeader("Reading Region Code"))?;
+        let (input, developer_id) =
+            le_u8(input).map_err(|_: ParseErr| RomParseError::InternalHeader("Reading Developer ID"))?;
+        let (_, version_number) =
+            le_u8(input).map_err(|_: ParseErr| RomParseError::InternalHeader("Reading Version Number"))?;
+
+        Ok(Self {
             internal_rom_name,
             map_mode,
             rom_type,
@@ -153,37 +165,31 @@ impl RomInternalHeader {
             developer_id,
             version_number,
         })
-    ));
-
-    pub fn parse(rom_data: &[u8]) -> IResult<&[u8], Self> {
-        use nom::error::ErrorKind;
-        match RomInternalHeader::find(rom_data)?.1 {
-            Some(begin) => {
-                let end = begin + sizes::INTERNAL_HEADER;
-                let (_, input) = preceded!(rom_data, take!(begin.0), take!((end - begin).0))?;
-                RomInternalHeader::parse_impl(input)
-            }
-            None => Err(nom_error(rom_data, ErrorKind::Satisfy)),
-        }
     }
 
-    fn find(rom_data: &[u8]) -> IResult<&[u8], Option<AddrPc>> {
+    fn find(rom_data: &[u8]) -> Result<AddrPc, RomParseError> {
         let lo_cpl_idx: usize = (*HEADER_LOROM.start() + offsets::COMPLEMENT_CHECK).into();
         let hi_cpl_idx: usize = (*HEADER_HIROM.start() + offsets::COMPLEMENT_CHECK).into();
 
-        let (_, (lo_cpl, lo_csm)) = preceded!(rom_data, take!(lo_cpl_idx), pair!(le_u16, le_u16))?;
-        let (_, (hi_cpl, hi_csm)) = preceded!(rom_data, take!(hi_cpl_idx), pair!(le_u16, le_u16))?;
+        let (_, (lo_cpl, lo_csm)) =
+            preceded(take(lo_cpl_idx), pair(le_u16, le_u16))(rom_data).map_err(|_: ParseErr| {
+                RomParseError::InternalHeader("Reading checksum and complement at LoROM location")
+            })?;
+        let (_, (hi_cpl, hi_csm)) =
+            preceded(take(hi_cpl_idx), pair(le_u16, le_u16))(rom_data).map_err(|_: ParseErr| {
+                RomParseError::InternalHeader("Reading checksum and complement at HiROM location")
+            })?;
 
         if (lo_csm ^ lo_cpl) == 0xFFFF {
             log::info!("Internal ROM header found at LoROM location: {:#X}", *HEADER_LOROM.start());
-            Ok((rom_data, Some(*HEADER_LOROM.start())))
+            Ok(*HEADER_LOROM.start())
         } else if (hi_csm ^ hi_cpl) == 0xFFFF {
             log::info!("Internal ROM header found at HiROM location: {:#X}", *HEADER_HIROM.start());
-            Ok((rom_data, Some(*HEADER_HIROM.start())))
+            Ok(*HEADER_HIROM.start())
         } else {
             log::error!("Couldn't find internal ROM header due to invalid checksums");
             log::error!("(LoROM: {:X}^{:X}, HiROM: {:X}^{:X})", lo_cpl, lo_csm, hi_cpl, hi_csm);
-            Ok((rom_data, None))
+            Err(RomParseError::InternalHeader("Couldn't find internal ROM header"))
         }
     }
 
