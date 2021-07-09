@@ -47,8 +47,8 @@ impl Level {
         let (primary_header, layer1) = Self::parse_ph_and_l1(rom_data, level_num)?;
         let layer2 = Self::parse_l2(rom_data, level_num)?;
         let (sprite_header, sprite_layer) = Self::parse_sh_and_sl(rom_data, level_num)?;
-        let (_, secondary_header) =
-            SecondaryHeader::read_from_rom(rom_data, level_num).map_err(|_| LevelParseError::SecondaryHeaderRead)?;
+        let secondary_header =
+            SecondaryHeader::read_from_rom(rom_data, level_num).map_err(LevelParseError::SecondaryHeaderRead)?;
 
         Ok(Level { primary_header, secondary_header, sprite_header, layer1, layer2, sprite_layer })
     }
@@ -59,17 +59,19 @@ impl Level {
         let l1_ptr_addr: usize = AddrPc::try_from(LAYER1_DATA + (3 * level_num))
             .map_err(|_| LevelParseError::Layer1AddressConversion)?
             .into();
-        let (_, ph_addr) = preceded(take(l1_ptr_addr), map(le_u24, AddrSnes::from))(rom_data)
-            .map_err(|_: ParseErr| LevelParseError::Layer1AddressRead)?;
+
+        let mut read_ph_addr = preceded(take(l1_ptr_addr), map(le_u24, AddrSnes::from));
+        let (_, ph_addr) = read_ph_addr(rom_data).map_err(|_: ParseErr| LevelParseError::Layer1AddressRead)?;
+
         let ph_addr: usize =
             AddrPc::try_from(ph_addr).map_err(|_| LevelParseError::PrimaryHeaderAddressConversion)?.into();
 
-        let (layer1, primary_header) = preceded(take(ph_addr), take(PRIMARY_HEADER_SIZE))(rom_data)
-            .map_err(|_: ParseErr| LevelParseError::Layer1Isolate)?;
+        let mut read_ph = preceded(take(ph_addr), take(PRIMARY_HEADER_SIZE));
+        let (layer1, primary_header) = read_ph(rom_data).map_err(|_: ParseErr| LevelParseError::Layer1Isolate)?;
+
         let (_, primary_header) =
             PrimaryHeader::read_from(primary_header).map_err(|_| LevelParseError::PrimaryHeaderRead)?;
         let (_, layer1) = ObjectLayer::parse(layer1).map_err(|_| LevelParseError::Layer1Read)?;
-
         Ok((primary_header, layer1))
     }
 
@@ -79,8 +81,9 @@ impl Level {
         let l2_ptr_addr: usize = AddrPc::try_from(LAYER2_DATA + (3 * level_num))
             .map_err(|_| LevelParseError::Layer2PtrAddressConversion)?
             .into();
-        let (_, l2_ptr) = preceded(take(l2_ptr_addr), map(le_u24, AddrSnes::from))(rom_data)
-            .map_err(|_: ParseErr| LevelParseError::Layer2AddressRead)?;
+
+        let mut read_l2_addr = preceded(take(l2_ptr_addr), map(le_u24, AddrSnes::from));
+        let (_, l2_ptr) = read_l2_addr(rom_data).map_err(|_: ParseErr| LevelParseError::Layer2AddressRead)?;
 
         let isolate_l2 = |addr| {
             let addr: usize = AddrPc::try_from(addr).map_err(|_| LevelParseError::Layer2AddressConversion)?.into();
@@ -104,16 +107,18 @@ impl Level {
         let sprite_ptr_addr: usize = AddrPc::try_from(SPRITE_DATA + (2 * level_num))
             .map_err(|_| LevelParseError::SpritePtrAddressConversion)?
             .into();
-        let (_, sh_addr) = preceded(take(sprite_ptr_addr), le_u16)(rom_data)
-            .map_err(|_: ParseErr| LevelParseError::SpriteAddressRead)?;
+
+        let mut read_sh_addr = preceded(take(sprite_ptr_addr), le_u16);
+        let (_, sh_addr) = read_sh_addr(rom_data).map_err(|_: ParseErr| LevelParseError::SpriteAddressRead)?;
+
         let sh_addr = AddrSnes((sh_addr as u32 | 0x07_0000) as usize);
         let sh_addr: usize = AddrPc::try_from(sh_addr).map_err(|_| LevelParseError::SpriteAddressConversion)?.into();
 
-        let (sprite_layer, sh) = preceded(take(sh_addr), take(PRIMARY_HEADER_SIZE))(rom_data)
-            .map_err(|_: ParseErr| LevelParseError::SpriteIsolate)?;
+        let mut read_sh = preceded(take(sh_addr), take(PRIMARY_HEADER_SIZE));
+        let (sprite_layer, sh) = read_sh(rom_data).map_err(|_: ParseErr| LevelParseError::SpriteIsolate)?;
+
         let (_, sprite_header) = SpriteHeader::read_from(sh).map_err(|_| LevelParseError::SpriteHeaderRead)?;
         let (_, sprite_layer) = SpriteLayer::parse(sprite_layer).map_err(|_| LevelParseError::SpriteRead)?;
-
         Ok((sprite_header, sprite_layer))
     }
 }

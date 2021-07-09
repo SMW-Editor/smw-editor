@@ -122,7 +122,7 @@ impl ObjectLayer {
                 last: cond!((first_three[0] & 0b11100000) == 0 && first_three[2] == 0, take!(1)) >>
                 (match last {
                     Some(l) => {
-                        let instance = ExitInstance([first_three, l].concat().as_slice().try_into().unwrap());
+                        let instance = ExitInstance([first_three, l].concat().try_into().unwrap());
                         ObjectInstance::Exit(instance)
                     },
                     None => if first_three[2] == 1 {

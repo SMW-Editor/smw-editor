@@ -18,12 +18,12 @@ impl SecondaryEntrance {
         let pc_addr: usize = AddrPc::try_from(SECONDARY_ENTRANCE_TABLE_ADDR)
             .map_err(|_| SecondaryEntranceParseError::TablesAddressConversion)?
             .into();
-
-        let (_, bytes) = preceded(
+        let mut read_secondary_entrance = preceded(
             take(pc_addr - bytes_before_table),
             count(preceded(take(SECONDARY_ENTRANCE_TABLE_SIZE), le_u8), 4),
-        )(rom_data)
-        .map_err(|_: ParseErr| SecondaryEntranceParseError::Read)?;
+        );
+
+        let (_, bytes) = read_secondary_entrance(rom_data).map_err(|_: ParseErr| SecondaryEntranceParseError::Read)?;
 
         Ok(Self(bytes.try_into().unwrap()))
     }
