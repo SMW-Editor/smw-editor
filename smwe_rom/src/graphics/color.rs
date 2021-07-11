@@ -1,7 +1,7 @@
 #![allow(clippy::unusual_byte_groupings)]
 #![allow(dead_code)]
 
-pub const BGR555_SIZE: usize = std::mem::size_of::<Abgr1555>();
+pub const ABGR1555_SIZE: usize = std::mem::size_of::<Abgr1555>();
 
 const SNES_BGR_CHANNEL_MAX: u16 = 0b11111;
 

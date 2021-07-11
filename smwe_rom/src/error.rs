@@ -4,19 +4,20 @@ use nom::{
 };
 use thiserror::Error;
 
-use crate::{
-    addr::{AddrPc, AddrSnes},
-    internal_header::MapMode,
-};
+use crate::addr::{AddrPc, AddrSnes};
 
 // -------------------------------------------------------------------------------------------------
 
 #[derive(Debug, Error)]
-pub enum AddressConversionError {
-    #[error("PC address {0:#x} is too big for LoROM.")]
-    PcToSnes(AddrPc),
-    #[error("Invalid SNES {1} address: ${0:x}")]
-    SnesToPc(AddrSnes, MapMode),
+pub enum AddressError {
+    #[error("Invalid PC LoROM address {0:#x}")]
+    InvalidPcLoRom(AddrPc),
+    #[error("Invalid PC LoROM address {0:#x}")]
+    InvalidPcHiRom(AddrPc),
+    #[error("Invalid SNES LoROM address {0:#x}")]
+    InvalidSnesLoRom(AddrSnes),
+    #[error("Invalid SNES LoROM address {0:#x}")]
+    InvalidSnesHiRom(AddrSnes),
 }
 
 #[derive(Debug, Error)]
@@ -114,7 +115,7 @@ pub enum ColorPaletteParseError {
 #[derive(Debug, Error)]
 pub enum GfxFileParseError {
     #[error("Address conversion: {0}")]
-    AddressConversion(AddressConversionError),
+    AddressConversion(AddressError),
     #[error("Isolating data")]
     IsolatingData,
     #[error("Decompressing data: {0}")]
@@ -134,7 +135,7 @@ pub enum SecondaryEntranceParseError {
 #[derive(Debug, Error)]
 pub enum SecondaryHeaderParseError {
     #[error("Converting SNES address of Secondary Header Tables to PC")]
-    AddressConversion(AddressConversionError),
+    AddressConversion(AddressError),
     #[error("Reading Secondary Header data")]
     Read,
 }
