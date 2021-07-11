@@ -15,9 +15,9 @@ use crate::{
 };
 
 pub mod address_spaces {
-    use crate::addr::{AddrPc, AddrSpacePc};
-    pub const HEADER_LOROM: AddrSpacePc = AddrPc(0x007FC0)..=AddrPc(0x008000);
-    pub const HEADER_HIROM: AddrSpacePc = AddrPc(0x00FFC0)..=AddrPc(0x010000);
+    use crate::{addr::AddrPc, rom_slice::PcSlice};
+    pub const HEADER_LOROM: PcSlice = PcSlice::new(AddrPc(0x007FC0), 64);
+    pub const HEADER_HIROM: PcSlice = PcSlice::new(AddrPc(0x00FFC0), 64);
 }
 
 #[rustfmt::skip]
@@ -165,8 +165,8 @@ impl RomInternalHeader {
     }
 
     fn find(rom_data: &[u8]) -> Result<AddrPc, InternalHeaderParseError> {
-        let lo_cpl_idx: usize = (*HEADER_LOROM.start() + offsets::COMPLEMENT_CHECK).into();
-        let hi_cpl_idx: usize = (*HEADER_HIROM.start() + offsets::COMPLEMENT_CHECK).into();
+        let lo_cpl_idx: usize = (HEADER_LOROM.begin + offsets::COMPLEMENT_CHECK).into();
+        let hi_cpl_idx: usize = (HEADER_HIROM.begin + offsets::COMPLEMENT_CHECK).into();
 
         let mut read_lorom_checksum = preceded(take(lo_cpl_idx), pair(le_u16, le_u16));
         let mut read_hirom_checksum = preceded(take(hi_cpl_idx), pair(le_u16, le_u16));
@@ -177,11 +177,11 @@ impl RomInternalHeader {
             read_hirom_checksum(rom_data).map_err(|_: ParseErr| InternalHeaderParseError::ReadHiRomChecksum)?;
 
         if (lo_csm ^ lo_cpl) == 0xFFFF {
-            log::info!("Internal ROM header found at LoROM location: {:#X}", *HEADER_LOROM.start());
-            Ok(*HEADER_LOROM.start())
+            log::info!("Internal ROM header found at LoROM location: {:#X}", HEADER_LOROM.begin);
+            Ok(HEADER_LOROM.begin)
         } else if (hi_csm ^ hi_cpl) == 0xFFFF {
-            log::info!("Internal ROM header found at HiROM location: {:#X}", *HEADER_HIROM.start());
-            Ok(*HEADER_HIROM.start())
+            log::info!("Internal ROM header found at HiROM location: {:#X}", HEADER_HIROM.begin);
+            Ok(HEADER_HIROM.begin)
         } else {
             log::error!("Couldn't find internal ROM header due to invalid checksums");
             log::error!("(LoROM: {:X}^{:X}, HiROM: {:X}^{:X})", lo_cpl, lo_csm, hi_cpl, hi_csm);

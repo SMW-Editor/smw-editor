@@ -15,30 +15,60 @@ pub mod types {
         cmp::{Ordering, PartialEq, PartialOrd},
         convert::TryFrom,
         fmt,
-        ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, RangeInclusive, Rem, Shl, Shr, Sub},
+        ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub},
     };
 
-    use crate::{error::AddressConversionError, internal_header::MapMode};
+    use crate::error::AddressError;
 
-    pub type AddrSpaceSnes = RangeInclusive<AddrSnes>;
-    pub type AddrSpacePc = RangeInclusive<AddrPc>;
+    pub trait Addr:
+        Sized
+        + Copy
+        + Clone
+        + Add<usize, Output = Self>
+        + Add<Self, Output = Self>
+        + BitAnd<usize, Output = Self>
+        + BitAnd<Self, Output = Self>
+        + BitOr<usize, Output = Self>
+        + BitOr<Self, Output = Self>
+        + BitXor<usize, Output = Self>
+        + BitXor<Self, Output = Self>
+        + Div<usize, Output = Self>
+        + Div<Self, Output = Self>
+        + Mul<usize, Output = Self>
+        + Mul<Self, Output = Self>
+        + Rem<usize, Output = Self>
+        + Rem<Self, Output = Self>
+        + Shl<usize, Output = Self>
+        + Shl<Self, Output = Self>
+        + Shr<usize, Output = Self>
+        + Shr<Self, Output = Self>
+        + Sub<usize, Output = Self>
+        + Sub<Self, Output = Self>
+    {
+        type OppositeAddr: Addr;
+        fn try_from_lorom(addr: Self::OppositeAddr) -> Result<Self, AddressError>;
+        fn try_from_hirom(addr: Self::OppositeAddr) -> Result<Self, AddressError>;
+        fn is_valid_lorom(&self) -> bool;
+        fn is_valid_hirom(&self) -> bool;
+    }
+
     pub type Mask = usize;
 
     macro_rules! gen_address_type {
-        ($name:ident, $prim_type:ty) => {
+        ($name:ident) => {
             #[derive(Copy, Clone, Debug)]
-            pub struct $name(pub $prim_type);
+            pub struct $name(pub usize);
 
-            impl From<$prim_type> for $name {
-                fn from(addr: $prim_type) -> Self { Self(addr) }
+            impl From<usize> for $name {
+                fn from(addr: usize) -> Self { Self(addr) }
             }
 
             impl From<u32> for $name {
-                fn from(addr: u32) -> Self { Self(addr as $prim_type) }
+                fn from(addr: u32) -> Self { Self(addr as usize) }
             }
 
-            impl From<$name> for $prim_type {
-                fn from(this: $name) -> $prim_type { this.0 }
+            impl From<$name> for usize {
+                fn from(this: $name) -> usize { this.0 }
             }
 
             impl PartialEq for $name {
@@ -59,11 +89,11 @@ pub mod types {
                         type Output = Self;
                         fn $op_fn_name(self, rhs: Self) -> Self::Output { Self(self.0 $op rhs.0) }
                     }
-                    impl $op_name<$prim_type> for $name {
+                    impl $op_name<usize> for $name {
                         type Output = Self;
-                        fn $op_fn_name(self, rhs: $prim_type) -> Self::Output { Self(self.0 $op rhs) }
+                        fn $op_fn_name(self, rhs: usize) -> Self::Output { Self(self.0 $op rhs) }
                     }
-                    impl $op_name<$name> for $prim_type {
+                    impl $op_name<$name> for usize {
                         type Output = $name;
                         fn $op_fn_name(self, rhs: $name) -> Self::Output { $name(self $op rhs.0) }
                     }
@@ -83,37 +113,39 @@ pub mod types {
         }
     }
 
-    gen_address_type!(AddrPc, usize);
-    gen_address_type!(AddrSnes, usize);
+    gen_address_type!(AddrPc);
+    gen_address_type!(AddrSnes);
 
-    impl AddrPc {
-        pub fn try_from_lorom(addr: AddrSnes) -> Result<Self, AddressConversionError> {
+    impl Addr for AddrPc {
+        type OppositeAddr = AddrSnes;
+
+        fn try_from_lorom(addr: AddrSnes) -> Result<Self, AddressError> {
             if addr.is_valid_lorom() {
                 Ok(Self(((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)))
             } else {
-                Err(AddressConversionError::SnesToPc(addr, MapMode::SlowLoRom))
+                Err(AddressError::InvalidSnesLoRom(addr))
             }
         }
 
-        pub fn try_from_hirom(addr: AddrSnes) -> Result<Self, AddressConversionError> {
+        fn try_from_hirom(addr: AddrSnes) -> Result<Self, AddressError> {
             if addr.is_valid_hirom() {
                 Ok(Self(addr.0 & 0x3FFFFF))
             } else {
-                Err(AddressConversionError::SnesToPc(addr, MapMode::SlowHiRom))
+                Err(AddressError::InvalidSnesHiRom(addr))
             }
         }
 
-        pub fn is_valid_lorom(self) -> bool {
+        fn is_valid_lorom(&self) -> bool {
             self.0 < 0x400000
         }
 
-        pub fn is_valid_hirom(self) -> bool {
+        fn is_valid_hirom(&self) -> bool {
             self.0 < 0x400000
         }
     }
 
     impl TryFrom<AddrSnes> for AddrPc {
-        type Error = AddressConversionError;
+        type Error = AddressError;
 
         fn try_from(value: AddrSnes) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)
@@ -132,31 +164,33 @@ pub mod types {
         }
     }
 
-    impl AddrSnes {
-        pub fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressConversionError> {
+    impl Addr for AddrSnes {
+        type OppositeAddr = AddrPc;
+
+        fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressError> {
             if addr.is_valid_lorom() {
                 Ok(Self(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
             } else {
-                Err(AddressConversionError::PcToSnes(addr))
+                Err(AddressError::InvalidPcLoRom(addr))
             }
         }
 
-        pub fn try_from_hirom(addr: AddrPc) -> Result<Self, AddressConversionError> {
+        fn try_from_hirom(addr: AddrPc) -> Result<Self, AddressError> {
             if addr.is_valid_hirom() {
                 Ok(Self(addr.0 | 0xC00000))
             } else {
-                Err(AddressConversionError::PcToSnes(addr))
+                Err(AddressError::InvalidPcHiRom(addr))
             }
         }
 
-        pub fn is_valid_lorom(self) -> bool {
+        fn is_valid_lorom(&self) -> bool {
             let wram = (self.0 & 0xFE0000) == 0x7E0000;
             let junk = (self.0 & 0x408000) == 0x000000;
             let sram = (self.0 & 0x708000) == 0x700000;
             !wram && !junk && !sram
         }
 
-        pub fn is_valid_hirom(self) -> bool {
+        fn is_valid_hirom(&self) -> bool {
             let wram = (self.0 & 0xFE0000) == 0x7E0000;
             let junk = (self.0 & 0x408000) == 0x000000;
             !wram && !junk
@@ -164,7 +198,7 @@ pub mod types {
     }
 
     impl TryFrom<AddrPc> for AddrSnes {
-        type Error = AddressConversionError;
+        type Error = AddressError;
 
         fn try_from(value: AddrPc) -> Result<Self, Self::Error> {
             Self::try_from_lorom(value)

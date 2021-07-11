@@ -5,22 +5,22 @@ use nom::{bytes::complete::take, multi::count, number::complete::le_u8, sequence
 use crate::{
     addr::{AddrPc, AddrSnes},
     error::{ParseErr, SecondaryEntranceParseError},
+    rom_slice::SnesSlice,
 };
 
-pub const SECONDARY_ENTRANCE_TABLE_ADDR: AddrSnes = AddrSnes(0x05F800);
-pub const SECONDARY_ENTRANCE_TABLE_SIZE: usize = 512;
+pub const SECONDARY_ENTRANCE_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05F800), 512);
 
 pub struct SecondaryEntrance([u8; 4]);
 
 impl SecondaryEntrance {
     pub fn read_from_rom(rom_data: &[u8], entrance_id: usize) -> Result<Self, SecondaryEntranceParseError> {
-        let bytes_before_table = SECONDARY_ENTRANCE_TABLE_SIZE - entrance_id;
-        let pc_addr: usize = AddrPc::try_from(SECONDARY_ENTRANCE_TABLE_ADDR)
+        let bytes_before_table = SECONDARY_ENTRANCE_TABLE.size - entrance_id;
+        let pc_addr: usize = AddrPc::try_from(SECONDARY_ENTRANCE_TABLE.begin)
             .map_err(|_| SecondaryEntranceParseError::TablesAddressConversion)?
             .into();
         let mut read_secondary_entrance = preceded(
             take(pc_addr - bytes_before_table),
-            count(preceded(take(SECONDARY_ENTRANCE_TABLE_SIZE), le_u8), 4),
+            count(preceded(take(SECONDARY_ENTRANCE_TABLE.size), le_u8), 4),
         );
 
         let (_, bytes) = read_secondary_entrance(rom_data).map_err(|_: ParseErr| SecondaryEntranceParseError::Read)?;

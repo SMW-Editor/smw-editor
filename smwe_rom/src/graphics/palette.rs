@@ -1,4 +1,7 @@
-use std::{convert::TryInto, ops::RangeInclusive};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::RangeInclusive,
+};
 
 use nom::{
     bytes::complete::take,
@@ -8,42 +11,13 @@ use nom::{
     sequence::preceded,
 };
 
-use self::constants::*;
 use crate::{
     addr::{AddrPc, AddrSnes},
     error::{ColorPaletteError, ColorPaletteParseError, ParseErr},
-    graphics::color::{Abgr1555, BGR555_SIZE},
+    graphics::color::{Abgr1555, ABGR1555_SIZE},
     level::{headers::PrimaryHeader, Level},
+    rom_slice::SnesSlice,
 };
-
-#[rustfmt::skip]
-pub mod constants {
-    use crate::graphics::color::BGR555_SIZE;
-
-    pub const PALETTE_BG_SIZE:       usize = 0x18;
-    pub const PALETTE_FG_SIZE:       usize = 0x18;
-    pub const PALETTE_SPRITE_SIZE:   usize = 0x18;
-    pub const PALETTE_WTF_SIZE:      usize = BGR555_SIZE * ((0xD - 0x4 + 1) * (0x7 - 0x2 + 1));
-    pub const PALETTE_PLAYER_SIZE:   usize = 4 * 0x14;
-    pub const PALETTE_LAYER3_SIZE:   usize = 0x20;
-    pub const PALETTE_BERRY_SIZE:    usize = 3 * 0x0E;
-    pub const PALETTE_ANIMATED_SIZE: usize = 8 * BGR555_SIZE;
-
-    pub const PALETTE_LENGTH:          usize = 16 * 16;
-    pub const PALETTE_BG_LENGTH:       usize = PALETTE_BG_SIZE / BGR555_SIZE;
-    pub const PALETTE_FG_LENGTH:       usize = PALETTE_FG_SIZE / BGR555_SIZE;
-    pub const PALETTE_SPRITE_LENGTH:   usize = PALETTE_SPRITE_SIZE / BGR555_SIZE;
-    pub const PALETTE_WTF_LENGTH:      usize = PALETTE_WTF_SIZE / BGR555_SIZE;
-    pub const PALETTE_PLAYER_LENGTH:   usize = PALETTE_PLAYER_SIZE / BGR555_SIZE;
-    pub const PALETTE_LAYER3_LENGTH:   usize = PALETTE_LAYER3_SIZE / BGR555_SIZE;
-    pub const PALETTE_BERRY_LENGTH:    usize = PALETTE_BERRY_SIZE / BGR555_SIZE;
-    pub const PALETTE_ANIMATED_LENGTH: usize = PALETTE_ANIMATED_SIZE / BGR555_SIZE;
-
-    pub const OW_LAYER1_PALETTE_LENGTH: usize = 7 * 6;
-    pub const OW_LAYER2_PALETTE_LENGTH: usize = 7 * 4;
-    pub const OW_LAYER3_PALETTE_LENGTH: usize = 8 * 2;
-    pub const OW_SPRITE_PALETTE_LENGTH: usize = 7 * 7;
-}
 
 // -------------------------------------------------------------------------------------------------
 
@@ -187,10 +161,11 @@ pub enum OverworldState {
 
 fn make_color_parser(
     rom_data: &[u8],
-) -> impl Fn(AddrSnes, usize, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
-    move |pos, n, err| {
-        let pos: AddrPc = pos.try_into().unwrap();
-        let mut read_colors = preceded(take(pos.0), count(map(le_u16, Abgr1555), n));
+) -> impl Fn(SnesSlice, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
+    move |slice, err| {
+        let pos: usize = AddrPc::try_from(slice.begin).unwrap().into();
+        let n = slice.size / std::mem::size_of::<Abgr1555>();
+        let mut read_colors = preceded(take(pos), count(map(le_u16, Abgr1555), n));
         let (_, cols) = read_colors(rom_data).map_err(|_: ParseErr| err)?;
         Ok(cols)
     }
@@ -198,30 +173,26 @@ fn make_color_parser(
 
 impl ColorPalettes {
     pub fn parse(rom_data: &[u8], levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
-        const PLAYER_PALETTE: AddrSnes = AddrSnes(0x00B2C8);
-        const OW_LAYER1_PALETTES: AddrSnes = AddrSnes(0x00B528);
-        const OW_LAYER3_PALETTES: AddrSnes = AddrSnes(0x00B5EC);
-        const OW_SPRITE_PALETTES: AddrSnes = AddrSnes(0x00B58A);
-        const LV_WTF_PALETTE: AddrSnes = AddrSnes(0x00B250);
-        const LV_LAYER3_PALETTE: AddrSnes = AddrSnes(0x00B170);
-        const LV_BERRY_PALETTE: AddrSnes = AddrSnes(0x00B674);
-        const LV_ANIMATED_COLOR: AddrSnes = AddrSnes(0x00B60C);
+        const PLAYER_PALETTE: SnesSlice = SnesSlice::new(AddrSnes(0x00B2C8), 4 * 0x14);
+        const OW_LAYER1_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B528), ABGR1555_SIZE * 7 * 6);
+        const OW_LAYER3_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B5EC), ABGR1555_SIZE * 8 * 2);
+        const OW_SPRITE_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B58A), ABGR1555_SIZE * 7 * 7);
+        const LV_WTF_PALETTE: SnesSlice =
+            SnesSlice::new(AddrSnes(0x00B250), ABGR1555_SIZE * ((0xD - 0x4 + 1) * (0x7 - 0x2 + 1)));
+        const LV_LAYER3_PALETTE: SnesSlice = SnesSlice::new(AddrSnes(0x00B170), 0x20);
+        const LV_BERRY_PALETTE: SnesSlice = SnesSlice::new(AddrSnes(0x00B674), 3 * 0x0E);
+        const LV_ANIMATED_COLOR: SnesSlice = SnesSlice::new(AddrSnes(0x00B60C), ABGR1555_SIZE * 8);
 
         let parse_colors = make_color_parser(rom_data);
 
-        let players = parse_colors(PLAYER_PALETTE, PALETTE_PLAYER_LENGTH, ColorPaletteParseError::PlayerPalette)?;
-        let ow_layer1_colors =
-            parse_colors(OW_LAYER1_PALETTES, OW_LAYER1_PALETTE_LENGTH, ColorPaletteParseError::OverworldLayer1Palette)?;
-        let ow_layer3_colors =
-            parse_colors(OW_LAYER3_PALETTES, OW_LAYER3_PALETTE_LENGTH, ColorPaletteParseError::OverworldLayer3Palette)?;
-        let ow_sprite_colors =
-            parse_colors(OW_SPRITE_PALETTES, OW_SPRITE_PALETTE_LENGTH, ColorPaletteParseError::OverworldSpritePalette)?;
-        let lv_wtf = parse_colors(LV_WTF_PALETTE, PALETTE_WTF_LENGTH, ColorPaletteParseError::LevelMiscPalette)?;
-        let lv_layer3 =
-            parse_colors(LV_LAYER3_PALETTE, PALETTE_LAYER3_LENGTH, ColorPaletteParseError::LevelLayer3Palette)?;
-        let lv_berry = parse_colors(LV_BERRY_PALETTE, PALETTE_BERRY_LENGTH, ColorPaletteParseError::LevelBerryPalette)?;
-        let lv_animated =
-            parse_colors(LV_ANIMATED_COLOR, PALETTE_ANIMATED_LENGTH, ColorPaletteParseError::LevelAnimatedColor)?;
+        let players = parse_colors(PLAYER_PALETTE, ColorPaletteParseError::PlayerPalette)?;
+        let ow_layer1_colors = parse_colors(OW_LAYER1_PALETTES, ColorPaletteParseError::OverworldLayer1Palette)?;
+        let ow_layer3_colors = parse_colors(OW_LAYER3_PALETTES, ColorPaletteParseError::OverworldLayer3Palette)?;
+        let ow_sprite_colors = parse_colors(OW_SPRITE_PALETTES, ColorPaletteParseError::OverworldSpritePalette)?;
+        let lv_wtf = parse_colors(LV_WTF_PALETTE, ColorPaletteParseError::LevelMiscPalette)?;
+        let lv_layer3 = parse_colors(LV_LAYER3_PALETTE, ColorPaletteParseError::LevelLayer3Palette)?;
+        let lv_berry = parse_colors(LV_BERRY_PALETTE, ColorPaletteParseError::LevelBerryPalette)?;
+        let lv_animated = parse_colors(LV_ANIMATED_COLOR, ColorPaletteParseError::LevelAnimatedColor)?;
         let lv_specific_set = LevelColorPaletteSet::parse(rom_data, levels)?;
         let ow_specific_set = OverworldColorPaletteSet::parse(rom_data)?;
 
@@ -252,10 +223,10 @@ impl ColorPalettes {
 
 impl LevelColorPaletteSet {
     fn parse(rom_data: &[u8], levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
-        const BACK_AREA_COLORS: AddrSnes = AddrSnes(0x00B0A0);
-        const BG_PALETTES: AddrSnes = AddrSnes(0x00B0B0);
-        const FG_PALETTES: AddrSnes = AddrSnes(0x00B190);
-        const SPRITE_PALETTES: AddrSnes = AddrSnes(0x00B318);
+        const BACK_AREA_COLORS: SnesSlice = SnesSlice::new(AddrSnes(0x00B0A0), ABGR1555_SIZE);
+        const BG_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B0B0), 0x18);
+        const FG_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B190), 0x18);
+        const SPRITE_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B318), 0x18);
 
         let parse_colors = make_color_parser(rom_data);
 
@@ -275,23 +246,19 @@ impl LevelColorPaletteSet {
             let idx_sp = header.palette_sprite() as usize;
 
             let bc = parse_colors(
-                BACK_AREA_COLORS + (BGR555_SIZE * idx_bc),
-                1,
+                BACK_AREA_COLORS.skip_forward(idx_bc),
                 ColorPaletteParseError::LevelBackAreaColor(level_num),
             )?;
             let bg = parse_colors(
-                BG_PALETTES + (PALETTE_BG_SIZE * idx_bg),
-                PALETTE_BG_LENGTH,
+                BG_PALETTES.skip_forward(idx_bg),
                 ColorPaletteParseError::LevelBackgroundPalette(level_num),
             )?;
             let fg = parse_colors(
-                FG_PALETTES + (PALETTE_FG_SIZE * idx_fg),
-                PALETTE_FG_LENGTH,
+                FG_PALETTES.skip_forward(idx_fg),
                 ColorPaletteParseError::LevelForegroundPalette(level_num),
             )?;
             let sp = parse_colors(
-                SPRITE_PALETTES + (PALETTE_SPRITE_SIZE * idx_sp),
-                PALETTE_SPRITE_LENGTH,
+                SPRITE_PALETTES.skip_forward(idx_sp),
                 ColorPaletteParseError::LevelSpritePalette(level_num),
             )?;
 
@@ -300,15 +267,15 @@ impl LevelColorPaletteSet {
                 palette_set.back_area_colors.resize(idx_bc + 1, value);
             }
             if palette_set.bg_palettes.len() < idx_bg + 1 {
-                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_BG_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); BG_PALETTES.size / ABGR1555_SIZE].into();
                 palette_set.bg_palettes.resize(idx_bg + 1, value);
             }
             if palette_set.fg_palettes.len() < idx_fg + 1 {
-                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_FG_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); FG_PALETTES.size / ABGR1555_SIZE].into();
                 palette_set.fg_palettes.resize(idx_fg + 1, value);
             }
             if palette_set.sprite_palettes.len() < idx_sp + 1 {
-                let value: Box<[Abgr1555]> = [Abgr1555::default(); PALETTE_SPRITE_LENGTH].into();
+                let value: Box<[Abgr1555]> = [Abgr1555::default(); SPRITE_PALETTES.size / ABGR1555_SIZE].into();
                 palette_set.sprite_palettes.resize(idx_sp + 1, value);
             }
 
@@ -357,8 +324,8 @@ impl OverworldColorPaletteSet {
     fn parse(rom_data: &[u8]) -> Result<OverworldColorPaletteSet, ColorPaletteParseError> {
         let parse_colors = make_color_parser(rom_data);
 
-        const LAYER2_NORMAL_PALETTES: AddrSnes = AddrSnes(0x00B3D8);
-        const LAYER2_SPECIAL_PALETTES: AddrSnes = AddrSnes(0x00B732);
+        const LAYER2_NORMAL_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B3D8), ABGR1555_SIZE * 7 * 4);
+        const LAYER2_SPECIAL_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B732), ABGR1555_SIZE * 7 * 4);
         const LAYER2_PALETTE_INDIRECT1: AddrSnes = AddrSnes(0x00AD1E);
         const LAYER2_PALETTE_INDIRECT2: AddrSnes = AddrSnes(0x00ABDF);
 
@@ -369,13 +336,11 @@ impl OverworldColorPaletteSet {
         for i in 0..6 {
             let subworld_pal_idx = i * 14 * 4;
             let layer2_colors_normal = parse_colors(
-                LAYER2_NORMAL_PALETTES + subworld_pal_idx,
-                OW_LAYER2_PALETTE_LENGTH,
+                LAYER2_NORMAL_PALETTES.shift_forward(subworld_pal_idx),
                 ColorPaletteParseError::OverworldLayer2NormalPalette(i),
             )?;
             let layer2_colors_special = parse_colors(
-                LAYER2_SPECIAL_PALETTES + subworld_pal_idx,
-                OW_LAYER2_PALETTE_LENGTH,
+                LAYER2_SPECIAL_PALETTES.shift_forward(subworld_pal_idx),
                 ColorPaletteParseError::OverworldLayer2SpecialPalette(i),
             )?;
 
