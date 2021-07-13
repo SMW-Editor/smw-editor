@@ -4,7 +4,7 @@ use nom::{
 };
 use thiserror::Error;
 
-use crate::addr::{AddrPc, AddrSnes};
+use crate::snes_utils::addr::{AddrPc, AddrSnes};
 
 // -------------------------------------------------------------------------------------------------
 

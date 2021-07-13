@@ -1,4 +1,4 @@
-use crate::addr::{Addr, AddrPc, AddrSnes};
+use crate::snes_utils::addr::{Addr, AddrPc, AddrSnes};
 
 #[derive(Copy, Clone, Debug)]
 pub struct RomSlice<A: Addr> {

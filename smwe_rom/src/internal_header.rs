@@ -10,12 +10,13 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 pub use self::address_spaces::*;
 use crate::{
-    addr::AddrPc,
     error::{InternalHeaderParseError, ParseErr},
+    snes_utils::addr::AddrPc,
 };
 
 pub mod address_spaces {
-    use crate::{addr::AddrPc, rom_slice::PcSlice};
+    use crate::snes_utils::{addr::AddrPc, rom_slice::PcSlice};
+
     pub const HEADER_LOROM: PcSlice = PcSlice::new(AddrPc(0x007FC0), 64);
     pub const HEADER_HIROM: PcSlice = PcSlice::new(AddrPc(0x00FFC0), 64);
 }

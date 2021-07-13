@@ -1,9 +1,3 @@
-pub mod background;
-pub mod headers;
-pub mod object_layer;
-pub mod secondary_entrance;
-pub mod sprite_layer;
-
 use std::convert::TryFrom;
 
 use nom::{
@@ -20,9 +14,15 @@ pub use self::{
     sprite_layer::SpriteLayer,
 };
 use crate::{
-    addr::{AddrPc, AddrSnes},
     error::{LevelParseError, ParseErr},
+    snes_utils::addr::{AddrPc, AddrSnes},
 };
+
+pub mod background;
+pub mod headers;
+pub mod object_layer;
+pub mod secondary_entrance;
+pub mod sprite_layer;
 
 pub const LEVEL_COUNT: usize = 0x200;
 

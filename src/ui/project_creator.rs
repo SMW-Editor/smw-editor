@@ -3,7 +3,7 @@ use std::{cell::RefCell, path::Path, rc::Rc};
 use imgui::{im_str, ImString, Ui, Window};
 use inline_tweak::tweak;
 use smwe_project::Project;
-use smwe_rom::Rom;
+use smwe_rom::SmwRom;
 
 use crate::{
     frame_context::FrameContext,
@@ -138,7 +138,7 @@ impl UiProjectCreator {
     }
 
     fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
-        match Rom::from_file(self.base_rom_path.to_str()) {
+        match SmwRom::from_file(self.base_rom_path.to_str()) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
                 let project = Project { title: self.project_title.to_string(), rom_data };
