@@ -7,11 +7,13 @@ use std::{
 use nom::{bytes::complete::take, combinator::map_parser, multi::count, sequence::preceded, IResult};
 
 use crate::{
-    addr::{AddrPc, AddrSnes},
     compression::lc_lz2,
     error::{GfxFileParseError, ParseErr},
     graphics::color::{Abgr1555, Rgba32},
-    rom_slice::SnesSlice,
+    snes_utils::{
+        addr::{AddrPc, AddrSnes},
+        rom_slice::SnesSlice,
+    },
 };
 
 #[derive(Copy, Clone, Debug)]

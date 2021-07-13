@@ -5,7 +5,7 @@ mod ui;
 use std::{cell::RefCell, env, rc::Rc};
 
 use smwe_project::{Project, ProjectRef};
-use smwe_rom::Rom;
+use smwe_rom::SmwRom;
 
 use crate::{backend::Backend, ui::UiMainWindow};
 
@@ -16,7 +16,7 @@ fn main() {
         log::info!("Opening ROM from path defined in ROM_PATH");
         Some(Rc::new(RefCell::new(Project {
             title:    String::from("Test Project"),
-            rom_data: Rom::from_file(rom_path).expect("Couldn't load ROM"),
+            rom_data: SmwRom::from_file(rom_path).expect("Couldn't load ROM"),
         })))
     } else {
         log::info!("No path defined in ROM_PATH");

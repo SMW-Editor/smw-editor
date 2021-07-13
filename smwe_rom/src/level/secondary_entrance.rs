@@ -3,9 +3,11 @@ use std::convert::{TryFrom, TryInto};
 use nom::{bytes::complete::take, multi::count, number::complete::le_u8, sequence::preceded};
 
 use crate::{
-    addr::{AddrPc, AddrSnes},
     error::{ParseErr, SecondaryEntranceParseError},
-    rom_slice::SnesSlice,
+    snes_utils::{
+        addr::{AddrPc, AddrSnes},
+        rom_slice::SnesSlice,
+    },
 };
 
 pub const SECONDARY_ENTRANCE_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05F800), 512);

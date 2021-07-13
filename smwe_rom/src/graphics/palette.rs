@@ -12,11 +12,13 @@ use nom::{
 };
 
 use crate::{
-    addr::{AddrPc, AddrSnes},
     error::{ColorPaletteError, ColorPaletteParseError, ParseErr},
     graphics::color::{Abgr1555, ABGR1555_SIZE},
     level::{headers::PrimaryHeader, Level},
-    rom_slice::SnesSlice,
+    snes_utils::{
+        addr::{AddrPc, AddrSnes},
+        rom_slice::SnesSlice,
+    },
 };
 
 // -------------------------------------------------------------------------------------------------

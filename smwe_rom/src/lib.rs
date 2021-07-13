@@ -1,13 +1,5 @@
 #![allow(clippy::identity_op)]
 
-pub mod addr;
-pub mod compression;
-pub mod error;
-pub mod graphics;
-pub mod internal_header;
-pub mod level;
-pub mod rom_slice;
-
 use std::{fs, path::Path};
 
 pub use crate::{constants::*, internal_header::RomInternalHeader};
@@ -24,13 +16,20 @@ use crate::{
     },
 };
 
+pub mod compression;
+pub mod error;
+pub mod graphics;
+pub mod internal_header;
+pub mod level;
+pub mod snes_utils;
+
 pub mod constants {
     pub const SMC_HEADER_SIZE: usize = 0x200;
 }
 
 type RpResult<T> = Result<T, RomParseError>;
 
-pub struct Rom {
+pub struct SmwRom {
     pub internal_header:     RomInternalHeader,
     pub levels:              Vec<Level>,
     pub secondary_entrances: Vec<SecondaryEntrance>,
@@ -38,8 +37,8 @@ pub struct Rom {
     pub gfx_files:           Vec<GfxFile>,
 }
 
-impl Rom {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, RomParseError> {
+impl SmwRom {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> RpResult<Self> {
         log::info!("Reading ROM from file: {}", path.as_ref().display());
         match fs::read(path) {
             Ok(rom_data) => match Self::from_raw(&rom_data) {

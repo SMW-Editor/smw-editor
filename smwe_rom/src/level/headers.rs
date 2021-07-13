@@ -3,8 +3,8 @@ use std::convert::{TryFrom, TryInto};
 use nom::{bytes::complete::take, number::complete::le_u8, sequence::preceded, IResult};
 
 use crate::{
-    addr::{AddrPc, AddrSnes},
     error::{ParseErr, SecondaryHeaderParseError},
+    snes_utils::addr::{AddrPc, AddrSnes},
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;

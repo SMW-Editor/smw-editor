@@ -1,5 +1,5 @@
 use imgui::{im_str, ImString, Ui, Window};
-use smwe_rom::addr::{Addr, AddrPc, AddrSnes};
+use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
 
 use self::{helpers::*, modes::*};
 use crate::{
