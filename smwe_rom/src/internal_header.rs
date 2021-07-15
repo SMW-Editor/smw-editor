@@ -172,10 +172,10 @@ impl RomInternalHeader {
 
         let (lo_cpl, lo_csm) = rom
             .parse_slice_pc(lo_cpl_csm, pair(le_u16, le_u16))
-            .map_err(|_| InternalHeaderParseError::ReadLoRomChecksum)?;
+            .map_err(InternalHeaderParseError::ReadLoRomChecksum)?;
         let (hi_cpl, hi_csm) = rom
             .parse_slice_pc(hi_cpl_csm, pair(le_u16, le_u16))
-            .map_err(|_| InternalHeaderParseError::ReadHiRomChecksum)?;
+            .map_err(InternalHeaderParseError::ReadHiRomChecksum)?;
 
         if (lo_csm ^ lo_cpl) == 0xFFFF {
             log::info!("Internal ROM header found at LoROM location: {:#X}", HEADER_LOROM.begin);
