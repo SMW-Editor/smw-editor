@@ -52,10 +52,10 @@ pub enum InternalHeaderParseError {
     #[error("Isolating Internal ROM Header:\n- {0}")]
     IsolatingData(RomError),
 
-    #[error("Reading checksum and complement at LoROM location")]
-    ReadLoRomChecksum,
-    #[error("Reading checksum and complement at HiROM location")]
-    ReadHiRomChecksum,
+    #[error("Reading checksum and complement at LoROM location:\n- {0}")]
+    ReadLoRomChecksum(RomError),
+    #[error("Reading checksum and complement at HiROM location:\n- {0}")]
+    ReadHiRomChecksum(RomError),
     #[error("Reading Internal ROM Name:\n- {0}")]
     ReadRomName(RomError),
     #[error("Reading Map Mode:\n- {0}")]
