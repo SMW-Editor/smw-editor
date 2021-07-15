@@ -1,10 +1,9 @@
-use nom::{
-    error::{Error as NomError, ErrorKind},
-    Err as NomErr,
-};
 use thiserror::Error;
 
-use crate::snes_utils::addr::{AddrPc, AddrSnes};
+use crate::snes_utils::{
+    addr::{AddrPc, AddrSnes},
+    rom_slice::{PcSlice, SnesSlice},
+};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -50,29 +49,29 @@ pub enum ColorPaletteError {
 pub enum InternalHeaderParseError {
     #[error("Couldn't find internal ROM header")]
     NotFound,
-    #[error("Isolating Internal ROM Header")]
-    IsolatingData,
+    #[error("Isolating Internal ROM Header:\n- {0}")]
+    IsolatingData(RomError),
 
     #[error("Reading checksum and complement at LoROM location")]
     ReadLoRomChecksum,
     #[error("Reading checksum and complement at HiROM location")]
     ReadHiRomChecksum,
-    #[error("Reading Internal ROM Name")]
-    ReadRomName,
-    #[error("Reading Map Mode")]
-    ReadMapMode,
-    #[error("Reading ROM Type")]
-    ReadRomType,
-    #[error("Reading ROM Size")]
-    ReadRomSize,
-    #[error("Reading SRAM Size")]
-    ReadSramSize,
-    #[error("Reading Region Code")]
-    ReadRegionCode,
-    #[error("Reading Developer ID")]
-    ReadDeveloperId,
-    #[error("Reading Version Number")]
-    ReadVersionNumber,
+    #[error("Reading Internal ROM Name:\n- {0}")]
+    ReadRomName(RomError),
+    #[error("Reading Map Mode:\n- {0}")]
+    ReadMapMode(RomError),
+    #[error("Reading ROM Type:\n- {0}")]
+    ReadRomType(RomError),
+    #[error("Reading ROM Size:\n- {0}")]
+    ReadRomSize(RomError),
+    #[error("Reading SRAM Size:\n- {0}")]
+    ReadSramSize(RomError),
+    #[error("Reading Region Code:\n- {0}")]
+    ReadRegionCode(RomError),
+    #[error("Reading Developer ID:\n- {0}")]
+    ReadDeveloperId(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadVersionNumber(RomError),
 }
 
 #[derive(Debug, Error)]
@@ -89,9 +88,9 @@ pub enum ColorPaletteParseError {
     OverworldLayer2NormalPalette(usize),
     #[error("Overworld Submap {0}'s Special Layer2 Color Palette")]
     OverworldLayer2SpecialPalette(usize),
-    #[error("Overworld Layer2's Indirect Indices Table (${0:X})")]
-    OverworldLayer2IndicesIndirect1Read(AddrSnes),
-    #[error("Overworld Layer2's Index (${0:X})")]
+    #[error("Overworld Layer2's Indirect Indices Table (${0})")]
+    OverworldLayer2IndicesIndirect1Read(SnesSlice),
+    #[error("Overworld Layer2's Index (${0})")]
     OverworldLayer2IndexRead(usize),
 
     #[error("Level Misc. Color Palette")]
@@ -114,30 +113,12 @@ pub enum ColorPaletteParseError {
 
 #[derive(Debug, Error)]
 pub enum GfxFileParseError {
-    #[error("Address conversion: {0}")]
-    AddressConversion(AddressError),
-    #[error("Isolating data")]
-    IsolatingData,
-    #[error("Decompressing data: {0}")]
+    #[error("Isolating data:\n- {0}")]
+    IsolatingData(RomError),
+    #[error("Decompressing data:\n- {0}")]
     DecompressingData(DecompressionError),
     #[error("Parsing tile")]
     ParsingTile,
-}
-
-#[derive(Debug, Error)]
-pub enum SecondaryEntranceParseError {
-    #[error("Converting SNES address of Secondary Entrance Tables to PC")]
-    TablesAddressConversion,
-    #[error("Reading Secondary Entrance data")]
-    Read,
-}
-
-#[derive(Debug, Error)]
-pub enum SecondaryHeaderParseError {
-    #[error("Converting SNES address of Secondary Header Tables to PC")]
-    AddressConversion(AddressError),
-    #[error("Reading Secondary Header data")]
-    Read,
 }
 
 #[derive(Debug, Error)]
@@ -155,61 +136,87 @@ pub enum LevelParseError {
     #[error("Converting SNES address of sprite header to PC")]
     SpriteAddressConversion,
 
-    #[error("Reading address of Layer1")]
-    Layer1AddressRead,
-    #[error("Reading address of Layer2")]
-    Layer2AddressRead,
-    #[error("Reading address of Sprite data")]
-    SpriteAddressRead,
+    #[error("Reading address of Layer1:\n- {0}")]
+    Layer1AddressRead(RomError),
+    #[error("Reading address of Layer2:\n- {0}")]
+    Layer2AddressRead(RomError),
+    #[error("Reading address of Sprite data:\n- {0}")]
+    SpriteAddressRead(RomError),
 
     #[error("Isolating Layer1 data")]
     Layer1Isolate,
-    #[error("Isolating Layer2 data")]
-    Layer2Isolate,
-    #[error("Isolating Sprite data")]
-    SpriteIsolate,
+    #[error("Isolating Layer2 data:\n- {0}")]
+    Layer2Isolate(RomError),
+    #[error("Isolating Sprite data:\n- {0}")]
+    SpriteIsolate(RomError),
 
-    #[error("Reading Primary Header")]
-    PrimaryHeaderRead,
-    #[error("Reading Secondary Header")]
-    SecondaryHeaderRead(SecondaryHeaderParseError),
-    #[error("Reading Sprite Header")]
-    SpriteHeaderRead,
+    #[error("Reading Primary Header:\n- {0}")]
+    PrimaryHeaderRead(RomError),
+    #[error("Reading Secondary Header:\n- {0}")]
+    SecondaryHeaderRead(RomError),
+    #[error("Reading Sprite Header:\n- {0}")]
+    SpriteHeaderRead(RomError),
 
-    #[error("Reading Layer1 object data")]
-    Layer1Read,
-    #[error("Parsing Layer2 object data")]
-    Layer2Read,
-    #[error("Reading Layer2 background: {0}")]
+    #[error("Reading Layer1 object data:\n- {0}")]
+    Layer1Read(RomError),
+    #[error("Parsing Layer2 object data:\n- {0}")]
+    Layer2Read(RomError),
+    #[error("Reading Layer2 background:\n- {0}")]
     Layer2BackgroundRead(DecompressionError),
-    #[error("Reading Sprite data")]
-    SpriteRead,
+    #[error("Reading Sprite data:\n- {0}")]
+    SpriteRead(RomError),
+
+    #[error("Parsing Layer1 object data")]
+    Layer1Parse,
+}
+
+#[derive(Debug, Error)]
+pub enum RomError {
+    #[error("Invalid ROM size: {0} ({0:#x})")]
+    Size(usize),
+
+    #[error("Invalid PC slice: {0}")]
+    SlicePc(PcSlice),
+    #[error("Invalid LoROM slice: {0}")]
+    SliceLoRom(SnesSlice),
+    #[error("Invalid HiROM slice: {0}")]
+    SliceHiRom(SnesSlice),
+
+    #[error("Could not parse PC slice: {0}")]
+    ParsePc(PcSlice),
+    #[error("Could not parse LoROM slice: {0}")]
+    ParseLoRom(SnesSlice),
+    #[error("Could not parse HiROM slice: {0}")]
+    ParseHiRom(SnesSlice),
+
+    #[error("Address conversion in LoROM slicing:\n- {0}")]
+    AddressSliceLoRom(AddressError),
+    #[error("Address conversion in HiROM slicing:\n- {0}")]
+    AddressSliceHiRom(AddressError),
+    #[error("Address conversion in LoROM parsing:\n- {0}")]
+    AddressParseLoRom(AddressError),
+    #[error("Address conversion in HiROM parsing:\n- {0}")]
+    AddressParseHiRom(AddressError),
 }
 
 #[derive(Debug, Error)]
 pub enum RomParseError {
+    #[error("ROM error:\n- {0}")]
+    BadRom(RomError),
     #[error("ROM doesn't contain PC address {0:#x}")]
     BadAddress(usize),
-    #[error("Invalid ROM size: {0} ({0:#x})")]
-    BadSize(usize),
-    #[error("Invalid GFX file {0:X}: {1}")]
+    #[error("Invalid GFX file {0:X}:\n- {1}")]
     GfxFile(usize, GfxFileParseError),
-    #[error("Parsing internal header failed")]
+    #[error("Parsing internal header failed:\n- {0}")]
     InternalHeader(InternalHeaderParseError),
     #[error("File IO Error")]
     IoError,
-    #[error("Failed to parse level {0:#X}: {1}")]
+    #[error("Failed to parse level {0:#X}:\n- {1}")]
     Level(usize, LevelParseError),
-    #[error("Failed to read secondary entrance {0:#X}: {1}")]
-    SecondaryEntrance(usize, SecondaryEntranceParseError),
+    #[error("Failed to read secondary entrance {0:#X}:\n- {1}")]
+    SecondaryEntrance(usize, RomError),
     #[error("Could not parse color palettes")]
     ColorPalettes(ColorPaletteParseError),
 }
 
 pub type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
-
-// -------------------------------------------------------------------------------------------------
-
-pub fn nom_error(input: &[u8], kind: ErrorKind) -> NomErr<NomError<&[u8]>> {
-    NomErr::Error(NomError::new(input, kind))
-}

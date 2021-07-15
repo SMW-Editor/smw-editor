@@ -1,10 +1,10 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 
-use nom::{bytes::complete::take, number::complete::le_u8, sequence::preceded, IResult};
+use nom::{bytes::complete::take, IResult};
 
 use crate::{
-    error::{ParseErr, SecondaryHeaderParseError},
-    snes_utils::addr::{AddrPc, AddrSnes},
+    error::RomError,
+    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
@@ -21,9 +21,8 @@ pub struct SecondaryHeader([u8; SECONDARY_HEADER_SIZE]);
 pub struct SpriteHeader(u8);
 
 impl PrimaryHeader {
-    pub fn read_from(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = take(PRIMARY_HEADER_SIZE)(input)?;
-        Ok((input, Self(bytes.try_into().unwrap())))
+    pub fn new(bytes: &[u8]) -> Self {
+        Self(bytes.try_into().unwrap())
     }
 
     pub fn palette_bg(&self) -> u8 {
@@ -106,15 +105,13 @@ impl PrimaryHeader {
 }
 
 impl SecondaryHeader {
-    pub fn read_from_rom(rom_data: &[u8], level_num: usize) -> Result<Self, SecondaryHeaderParseError> {
+    pub fn read_from_rom(rom: &Rom, level_num: usize) -> Result<Self, RomError> {
         let take_byte = |addr| {
-            let addr: usize =
-                AddrPc::try_from(AddrSnes(addr)).map_err(SecondaryHeaderParseError::AddressConversion)?.into();
-            let mut read_byte = preceded(take(addr + level_num), le_u8);
-            read_byte(rom_data).map_err(|_: ParseErr| SecondaryHeaderParseError::Read)
+            let slice = SnesSlice::new(AddrSnes(addr), 0x200);
+            let byte_table = rom.slice_lorom(slice)?;
+            Ok(byte_table[level_num])
         };
-        let bytes = [take_byte(0x05F000)?.1, take_byte(0x05F200)?.1, take_byte(0x05F400)?.1, take_byte(0x05F600)?.1];
-        Ok(Self(bytes))
+        Ok(Self([take_byte(0x05F000)?, take_byte(0x05F200)?, take_byte(0x05F400)?, take_byte(0x05F600)?]))
     }
 
     pub fn layer2_scroll(&self) -> u8 {

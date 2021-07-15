@@ -180,7 +180,7 @@ mod modes {
 }
 
 mod helpers {
-    use smwe_rom::SMC_HEADER_SIZE;
+    use smwe_rom::snes_utils::rom::SMC_HEADER_SIZE;
 
     pub fn adjust_to_header(addr: usize, include_header: bool) -> usize {
         if include_header {

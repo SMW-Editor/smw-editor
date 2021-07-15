@@ -16,7 +16,12 @@ fn main() {
         log::info!("Opening ROM from path defined in ROM_PATH");
         Some(Rc::new(RefCell::new(Project {
             title:    String::from("Test Project"),
-            rom_data: SmwRom::from_file(rom_path).expect("Couldn't load ROM"),
+            rom_data: SmwRom::from_file(rom_path)
+                .map_err(|e| {
+                    log::error!("{}", e);
+                    e
+                })
+                .expect("Couldn't load ROM"),
         })))
     } else {
         log::info!("No path defined in ROM_PATH");
