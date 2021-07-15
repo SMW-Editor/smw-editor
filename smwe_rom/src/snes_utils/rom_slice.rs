@@ -24,24 +24,36 @@ impl SnesSlice {
 }
 
 impl<A: Addr> RomSlice<A> {
-    pub fn end(&self) -> A {
-        self.begin + self.size
+    pub fn end(&self) -> Option<A> {
+        if self.is_infinite() {
+            None
+        } else {
+            Some(self.begin + self.size)
+        }
     }
 
-    pub fn shift_forward(self, offset: usize) -> Self {
+    pub fn offset_forward(self, offset: usize) -> Self {
         Self { begin: self.begin + offset, ..self }
     }
 
-    pub fn shift_backward(self, offset: usize) -> Self {
+    pub fn offset_backward(self, offset: usize) -> Self {
         Self { begin: self.begin - offset, ..self }
     }
 
-    pub fn skip_forward(self, times_size: usize) -> Self {
-        Self { begin: self.begin + (self.size * times_size), ..self }
+    pub fn skip_forward(self, lengths: usize) -> Self {
+        if self.is_infinite() {
+            self
+        } else {
+            Self { begin: self.begin + (self.size * lengths), ..self }
+        }
     }
 
-    pub fn skip_backward(self, times_size: usize) -> Self {
-        Self { begin: self.begin - (self.size * times_size), ..self }
+    pub fn skip_backward(self, lengths: usize) -> Self {
+        if self.is_infinite() {
+            self
+        } else {
+            Self { begin: self.begin - (self.size * lengths), ..self }
+        }
     }
 
     pub fn move_to(self, new_address: A) -> Self {
@@ -49,7 +61,11 @@ impl<A: Addr> RomSlice<A> {
     }
 
     pub fn expand(self, diff: usize) -> Self {
-        Self { size: self.size + diff, ..self }
+        if self.is_infinite() {
+            self
+        } else {
+            Self { size: self.size + diff, ..self }
+        }
     }
 
     pub fn shrink(self, diff: usize) -> Self {
@@ -61,11 +77,11 @@ impl<A: Addr> RomSlice<A> {
     }
 
     pub fn infinite(self) -> Self {
-        Self { size: 0, ..self }
+        Self { size: usize::MAX, ..self }
     }
 
     pub fn is_infinite(&self) -> bool {
-        self.size == 0
+        self.size == usize::MAX
     }
 }
 

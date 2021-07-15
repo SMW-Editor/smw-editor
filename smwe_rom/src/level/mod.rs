@@ -76,12 +76,12 @@ impl Level {
             .map_err(LevelParseError::Layer2AddressRead)?;
 
         if (l2_ptr.0 >> 16) == 0xFF {
-            let slice = SnesSlice::new(((l2_ptr & 0xFFFF) | 0x0C0000) + PRIMARY_HEADER_SIZE, 0);
+            let slice = SnesSlice::new(((l2_ptr & 0xFFFF) | 0x0C0000) + PRIMARY_HEADER_SIZE, usize::MAX);
             let layer2 = rom.slice_lorom(slice).map_err(LevelParseError::Layer2Isolate)?;
             let background = BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
             Ok(Layer2Data::Background(background))
         } else {
-            let slice = SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, 0);
+            let slice = SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX);
             let objects = rom.parse_slice_lorom(slice, ObjectLayer::parse).map_err(LevelParseError::Layer2Read)?;
             Ok(Layer2Data::Objects(objects))
         }
@@ -98,7 +98,7 @@ impl Level {
         let sprite_header =
             rom.parse_slice_lorom(sh_slice, SpriteHeader::read_from).map_err(LevelParseError::SpriteHeaderRead)?;
 
-        let sl_slice = SnesSlice::new(sh_addr + 1, 0);
+        let sl_slice = SnesSlice::new(sh_addr + 1, usize::MAX);
         let sprite_layer = rom.parse_slice_lorom(sl_slice, SpriteLayer::parse).map_err(LevelParseError::SpriteRead)?;
 
         Ok((sprite_header, sprite_layer))

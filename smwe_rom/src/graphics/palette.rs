@@ -323,11 +323,11 @@ impl OverworldColorPaletteSet {
         for i in 0..6 {
             let subworld_pal_idx = i * 14 * 4;
             let layer2_colors_normal = parse_colors(
-                LAYER2_NORMAL_PALETTES.shift_forward(subworld_pal_idx),
+                LAYER2_NORMAL_PALETTES.offset_forward(subworld_pal_idx),
                 ColorPaletteParseError::OverworldLayer2NormalPalette(i),
             )?;
             let layer2_colors_special = parse_colors(
-                LAYER2_SPECIAL_PALETTES.shift_forward(subworld_pal_idx),
+                LAYER2_SPECIAL_PALETTES.offset_forward(subworld_pal_idx),
                 ColorPaletteParseError::OverworldLayer2SpecialPalette(i),
             )?;
 
@@ -339,12 +339,12 @@ impl OverworldColorPaletteSet {
             .slice_lorom(LAYER2_PALETTE_INDIRECT1)
             .map_err(|_| ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1))?;
 
-        for offset in indirect_table_1 {
-            let index_offset = LAYER2_PALETTE_INDIRECT2.shift_forward(2 * (*offset) as usize).begin;
+        for &offset in indirect_table_1 {
+            let index_offset = LAYER2_PALETTE_INDIRECT2.offset_forward(2 * offset as usize).begin;
             let ptr16_slice = SnesSlice::new(index_offset, 2);
             let ptr16 = rom
                 .parse_slice_lorom(ptr16_slice, le_u16)
-                .map_err(|_| ColorPaletteParseError::OverworldLayer2IndexRead(*offset as usize))?;
+                .map_err(|_| ColorPaletteParseError::OverworldLayer2IndexRead(offset as usize))?;
 
             let idx = ptr16 / 0x38;
             layer2_indices.push(idx as usize);

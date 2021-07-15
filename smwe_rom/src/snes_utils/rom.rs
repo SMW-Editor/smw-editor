@@ -14,13 +14,17 @@ pub struct Rom(Vec<u8>);
 
 impl Rom {
     pub fn new(mut data: Vec<u8>) -> Result<Self, RomError> {
-        let size = data.len() % 0x400;
-        if size == SMC_HEADER_SIZE {
-            Ok(Self(data.drain(SMC_HEADER_SIZE..).collect()))
-        } else if size == 0 {
-            Ok(Self(data))
+        if !data.is_empty() {
+            let modulo_1k = data.len() % 0x400;
+            if modulo_1k == 0 {
+                Ok(Self(data))
+            } else if modulo_1k == SMC_HEADER_SIZE {
+                Ok(Self(data.drain(SMC_HEADER_SIZE..).collect()))
+            } else {
+                Err(RomError::Size(data.len()))
+            }
         } else {
-            Err(RomError::Size(size))
+            Err(RomError::Empty)
         }
     }
 

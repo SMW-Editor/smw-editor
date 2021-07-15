@@ -152,7 +152,9 @@ pub enum LevelParseError {
 
 #[derive(Debug, Error)]
 pub enum RomError {
-    #[error("Invalid ROM size: {0} ({0:#x})")]
+    #[error("Empty ROM file")]
+    Empty,
+    #[error("Invalid ROM size (not a multiple of 512 bytes): {0} ({0:#x})")]
     Size(usize),
 
     #[error("Invalid PC slice: {0}")]
