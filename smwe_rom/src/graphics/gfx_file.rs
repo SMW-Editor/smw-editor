@@ -1,19 +1,16 @@
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     fmt,
     fmt::{Display, Formatter},
 };
 
-use nom::{bytes::complete::take, combinator::map_parser, multi::count, sequence::preceded, IResult};
+use nom::{bytes::complete::take, combinator::map_parser, multi::count, IResult};
 
 use crate::{
     compression::lc_lz2,
     error::{GfxFileParseError, ParseErr},
     graphics::color::{Abgr1555, Rgba32},
-    snes_utils::{
-        addr::{AddrPc, AddrSnes},
-        rom_slice::SnesSlice,
-    },
+    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -101,7 +98,7 @@ impl Tile {
 }
 
 impl GfxFile {
-    pub fn new(rom_data: &[u8], file_num: usize) -> Result<Self, GfxFileParseError> {
+    pub fn new(rom: &Rom, file_num: usize) -> Result<Self, GfxFileParseError> {
         debug_assert!(file_num < GFX_FILES_META.len());
 
         use TileFormat::*;
@@ -115,10 +112,7 @@ impl GfxFile {
             TileMode7 => (Tile::from_mode7, 8 * 8),
         };
 
-        let addr: usize = AddrPc::try_from(slice.begin).map_err(GfxFileParseError::AddressConversion)?.into();
-        let mut read_gfx_file = preceded(take(addr), take(slice.size));
-
-        let (_, bytes) = read_gfx_file(rom_data).map_err(|_: ParseErr| GfxFileParseError::IsolatingData)?;
+        let bytes = rom.slice_lorom(slice).map_err(GfxFileParseError::IsolatingData)?;
         let decomp_bytes = lc_lz2::decompress(bytes).map_err(GfxFileParseError::DecompressingData)?;
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
 
