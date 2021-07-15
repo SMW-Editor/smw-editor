@@ -167,8 +167,8 @@ impl RomInternalHeader {
         const HEADER_LOROM: PcSlice = PcSlice::new(AddrPc(0x007FC0), 64);
         const HEADER_HIROM: PcSlice = PcSlice::new(AddrPc(0x00FFC0), 64);
 
-        let lo_cpl_csm = PcSlice::new(HEADER_LOROM.begin + offsets::COMPLEMENT_CHECK, 4);
-        let hi_cpl_csm = PcSlice::new(HEADER_HIROM.begin + offsets::COMPLEMENT_CHECK, 4);
+        let lo_cpl_csm = HEADER_LOROM.shift_forward(offsets::COMPLEMENT_CHECK).resize(4);
+        let hi_cpl_csm = HEADER_HIROM.shift_forward(offsets::COMPLEMENT_CHECK).resize(4);
 
         let (lo_cpl, lo_csm) = rom
             .parse_slice_pc(lo_cpl_csm, pair(le_u16, le_u16))
