@@ -153,7 +153,7 @@ fn make_color_parser(
     rom: &Rom,
 ) -> impl Fn(SnesSlice, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
     move |slice, err| {
-        let read_colors = many0::<_, _, nom::error::Error<&[u8]>, _>(map(le_u16, Abgr1555));
+        let read_colors = many0(map(le_u16, Abgr1555));
         rom.parse_slice_lorom(slice, read_colors).map_err(|_| err)
     }
 }

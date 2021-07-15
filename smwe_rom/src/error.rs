@@ -113,29 +113,16 @@ pub enum ColorPaletteParseError {
 
 #[derive(Debug, Error)]
 pub enum GfxFileParseError {
-    #[error("Isolating data:\n- {0}")]
+    #[error("Isolating GFX data:\n- {0}")]
     IsolatingData(RomError),
-    #[error("Decompressing data:\n- {0}")]
+    #[error("Decompressing GFX data:\n- {0}")]
     DecompressingData(DecompressionError),
-    #[error("Parsing tile")]
+    #[error("Parsing GFX tile")]
     ParsingTile,
 }
 
 #[derive(Debug, Error)]
 pub enum LevelParseError {
-    #[error("Converting SNES address of Layer1 data into PC")]
-    Layer1AddressConversion,
-    #[error("Converting SNES address of Layer2 data to PC")]
-    Layer2AddressConversion,
-    #[error("Converting SNES address of Layer2 pointer to PC")]
-    Layer2PtrAddressConversion,
-    #[error("Converting SNES address of primary header into PC")]
-    PrimaryHeaderAddressConversion,
-    #[error("Converting SNES address of address of Sprite data to PC")]
-    SpritePtrAddressConversion,
-    #[error("Converting SNES address of sprite header to PC")]
-    SpriteAddressConversion,
-
     #[error("Reading address of Layer1:\n- {0}")]
     Layer1AddressRead(RomError),
     #[error("Reading address of Layer2:\n- {0}")]
@@ -143,12 +130,8 @@ pub enum LevelParseError {
     #[error("Reading address of Sprite data:\n- {0}")]
     SpriteAddressRead(RomError),
 
-    #[error("Isolating Layer1 data")]
-    Layer1Isolate,
     #[error("Isolating Layer2 data:\n- {0}")]
     Layer2Isolate(RomError),
-    #[error("Isolating Sprite data:\n- {0}")]
-    SpriteIsolate(RomError),
 
     #[error("Reading Primary Header:\n- {0}")]
     PrimaryHeaderRead(RomError),
@@ -165,9 +148,6 @@ pub enum LevelParseError {
     Layer2BackgroundRead(DecompressionError),
     #[error("Reading Sprite data:\n- {0}")]
     SpriteRead(RomError),
-
-    #[error("Parsing Layer1 object data")]
-    Layer1Parse,
 }
 
 #[derive(Debug, Error)]
@@ -203,8 +183,6 @@ pub enum RomError {
 pub enum RomParseError {
     #[error("ROM error:\n- {0}")]
     BadRom(RomError),
-    #[error("ROM doesn't contain PC address {0:#x}")]
-    BadAddress(usize),
     #[error("Invalid GFX file {0:X}:\n- {1}")]
     GfxFile(usize, GfxFileParseError),
     #[error("Parsing internal header failed:\n- {0}")]
@@ -215,7 +193,7 @@ pub enum RomParseError {
     Level(usize, LevelParseError),
     #[error("Failed to read secondary entrance {0:#X}:\n- {1}")]
     SecondaryEntrance(usize, RomError),
-    #[error("Could not parse color palettes")]
+    #[error("Could not parse color palettes:\n- {0}")]
     ColorPalettes(ColorPaletteParseError),
 }
 
