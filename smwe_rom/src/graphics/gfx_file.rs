@@ -68,8 +68,8 @@ impl Tile {
             let (row, col) = (i / 8, 7 - (i % 8));
             let mut color_idx = 0;
             for bit_idx in 0..x {
-                let byte_idx = (2 * row) + (0x10 * (bit_idx / 2)) + (bit_idx % 2);
-                let color_idx_bit = if (bytes[byte_idx] & (1 << col)) > 0 { 1u8 } else { 0u8 };
+                let byte_idx = (2 * row) + (16 * (bit_idx / 2)) + (bit_idx % 2);
+                let color_idx_bit = (bytes[byte_idx] >> col) & 1;
                 color_idx |= color_idx_bit << bit_idx;
             }
             tile.color_indices[i] = color_idx;
@@ -79,7 +79,7 @@ impl Tile {
     }
 
     pub fn from_mode7(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = take(8usize * 8usize)(input)?;
+        let (input, bytes) = take(64usize)(input)?;
         let tile = Tile { color_indices: bytes.try_into().unwrap() };
         Ok((input, tile))
     }
@@ -115,6 +115,12 @@ impl GfxFile {
         let bytes = rom.slice_lorom(slice).map_err(GfxFileParseError::IsolatingData)?;
         let decomp_bytes = lc_lz2::decompress(bytes).map_err(GfxFileParseError::DecompressingData)?;
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
+
+        if file_num == 0 {
+            for (i, byte) in bytes.iter().enumerate() {
+                print!("{:08b}{}", byte, if i % 8 == 7 { '\n' } else { ' ' }); // 47
+            }
+        }
 
         let tile_count = decomp_bytes.len() / tile_size_bytes;
         let mut read_tiles = count(map_parser(take(tile_size_bytes), parser), tile_count);

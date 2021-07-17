@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use num_enum::TryFromPrimitive;
 
-use crate::error::DecompressionError;
+use crate::error::LcRle1Error;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
@@ -11,7 +11,7 @@ enum Command {
     ByteFill   = 1,
 }
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
+pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcRle1Error> {
     assert!(!input.is_empty());
     assert!(!input.len() >= 2);
     let mut output = Vec::with_capacity(input.len() * 2);
@@ -22,17 +22,21 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
         }
         in_it = &in_it[1..];
         let command = (chunk_header >> 7) & 1;
-        let command = Command::try_from(command).map_err(|_| DecompressionError("Reading command"))?;
+        let command = Command::try_from(command).map_err(|_| LcRle1Error::Command(command))?;
         let length = (chunk_header & 0b01111111) as usize + 1;
 
         match command {
             Command::DirectCopy => {
-                let (bytes, rest) = in_it.split_at(length);
-                output.extend_from_slice(bytes);
-                in_it = rest;
+                if length < in_it.len() {
+                    let (bytes, rest) = in_it.split_at(length);
+                    output.extend_from_slice(bytes);
+                    in_it = rest;
+                } else {
+                    return Err(LcRle1Error::DirectCopy(length));
+                }
             }
             Command::ByteFill => {
-                let byte = *in_it.first().ok_or(DecompressionError("Reading byte to fill"))?;
+                let byte = *in_it.first().ok_or(LcRle1Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
             }

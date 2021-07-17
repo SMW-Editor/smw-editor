@@ -20,8 +20,36 @@ pub enum AddressError {
 }
 
 #[derive(Debug, Error)]
-#[error("Failed to decompress data: {0}")]
-pub struct DecompressionError(pub &'static str);
+pub enum LcRle1Error {
+    #[error("Wrong command: {0:03b}")]
+    Command(u8),
+    #[error("Direcy Copy - Cannot read {0} bytes")]
+    DirectCopy(usize),
+    #[error("Byte Fill - Cannot read byte")]
+    ByteFill,
+}
+
+#[derive(Debug, Error)]
+pub enum LcLz2Error {
+    #[error("Wrong command: {0:03b}")]
+    Command(u8),
+    #[error("Long Length - Wrong command: {0:03b}")]
+    LongLengthCommand(u8),
+    #[error("Long Length - Cannot read second byte of header")]
+    LongLength,
+    #[error("Direcy Copy - Cannot read {0} bytes")]
+    DirectCopy(usize),
+    #[error("Byte Fill - Cannot read byte")]
+    ByteFill,
+    #[error("Word Fill - Cannot read word")]
+    WordFill,
+    #[error("Increasing Fill - Cannot read byte")]
+    IncreasingFill,
+    #[error("Repeat - Cannot read offset")]
+    Repeat,
+    #[error("Double Long Length")]
+    DoubleLongLength,
+}
 
 #[derive(Debug, Error)]
 pub enum GfxTileError {
@@ -116,7 +144,7 @@ pub enum GfxFileParseError {
     #[error("Isolating GFX data:\n- {0}")]
     IsolatingData(RomError),
     #[error("Decompressing GFX data:\n- {0}")]
-    DecompressingData(DecompressionError),
+    DecompressingData(LcLz2Error),
     #[error("Parsing GFX tile")]
     ParsingTile,
 }
@@ -145,7 +173,7 @@ pub enum LevelParseError {
     #[error("Parsing Layer2 object data:\n- {0}")]
     Layer2Read(RomError),
     #[error("Reading Layer2 background:\n- {0}")]
-    Layer2BackgroundRead(DecompressionError),
+    Layer2BackgroundRead(LcRle1Error),
     #[error("Reading Sprite data:\n- {0}")]
     SpriteRead(RomError),
 }
