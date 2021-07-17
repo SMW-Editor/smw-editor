@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use num_enum::TryFromPrimitive;
 
-use crate::error::DecompressionError;
+use crate::error::LcLz2Error;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
@@ -34,7 +34,7 @@ enum Command {
     LongLength     = 0b111,
 }
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
+pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
     assert!(!input.is_empty());
     let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
@@ -43,40 +43,48 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
             break;
         }
         in_it = &in_it[1..];
-        let command_bits = (chunk_header >> 5) & 0b00000111;
-        let length = chunk_header & 0b00011111;
+        let command = (chunk_header >> 5) & 0b111;
+        let length = chunk_header & 0b11111;
 
-        let mut command = Command::try_from(command_bits).map_err(|_| DecompressionError("Reading command"))?;
+        let mut command = Command::try_from(command).map_err(|_| LcLz2Error::Command(command))?;
         let mut length = length as usize + 1;
 
         if let Command::LongLength = command {
-            let real_command_bits = (chunk_header & 0b00011100) >> 2;
-            command = Command::try_from(real_command_bits).map_err(|_| DecompressionError("Reading long command"))?;
-            let length_part_1 = chunk_header & 0b00000011;
-            let length_part_2 = *in_it.first().ok_or(DecompressionError("Reading long length"))?;
+            let real_command_bits = (chunk_header >> 2) & 0b111;
+            command = Command::try_from(real_command_bits)
+                .map_err(|_| LcLz2Error::LongLengthCommand(real_command_bits))?;
+            let length_part_1 = chunk_header & 0b11;
+            let length_part_2 = *in_it.first().ok_or(LcLz2Error::LongLength)?;
             length = (((length_part_1 as usize) << 8) | (length_part_2 as usize)) + 1;
             in_it = &in_it[1..];
         }
 
-        use Command::*;
         match command {
-            DirectCopy => {
-                let (bytes, rest) = in_it.split_at(length);
-                output.extend_from_slice(bytes);
-                in_it = rest;
+            Command::DirectCopy => {
+                if length < in_it.len() {
+                    let (bytes, rest) = in_it.split_at(length);
+                    output.extend_from_slice(bytes);
+                    in_it = rest;
+                } else {
+                    return Err(LcLz2Error::DirectCopy(length));
+                }
             }
-            ByteFill => {
-                let byte = *in_it.first().ok_or(DecompressionError("Reading byte to fill"))?;
+            Command::ByteFill => {
+                let byte = *in_it.first().ok_or(LcLz2Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
             }
-            WordFill => {
-                let (bytes, rest) = in_it.split_at(2);
-                output.extend(bytes.iter().cycle().take(length));
-                in_it = rest;
+            Command::WordFill => {
+                if in_it.len() >= 2 {
+                    let (bytes, rest) = in_it.split_at(2);
+                    output.extend(bytes.iter().cycle().take(length));
+                    in_it = rest;
+                } else {
+                    return Err(LcLz2Error::WordFill);
+                }
             }
-            IncreasingFill => {
-                let mut byte = *in_it.first().ok_or(DecompressionError("Reading byte to increasingly fill"))?;
+            Command::IncreasingFill => {
+                let mut byte = *in_it.first().ok_or(LcLz2Error::IncreasingFill)?;
                 output.extend(
                     std::iter::repeat_with(|| {
                         let temp = byte;
@@ -87,15 +95,19 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                 );
                 in_it = &in_it[1..];
             }
-            Repeat => {
-                let (bytes, rest) = in_it.split_at(2);
-                let read_start = ((bytes[0] as usize) << 8) | (bytes[1] as usize);
-                let write_start = output.len();
-                output.resize(output.len() + length, 0);
-                output.copy_within(read_start..(read_start + length), write_start);
-                in_it = rest;
+            Command::Repeat => {
+                if in_it.len() >= 2 {
+                    let (bytes, rest) = in_it.split_at(2);
+                    let read_start = ((bytes[0] as usize) << 8) | (bytes[1] as usize);
+                    let write_start = output.len();
+                    output.resize(output.len() + length, 0);
+                    output.copy_within(read_start..(read_start + length), write_start);
+                    in_it = rest;
+                } else {
+                    return Err(LcLz2Error::Repeat);
+                }
             }
-            LongLength => return Err(DecompressionError("Double long length command")),
+            Command::LongLength => return Err(LcLz2Error::DoubleLongLength),
         }
     }
 
