@@ -43,7 +43,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
             break;
         }
         in_it = &in_it[1..];
-        let command = (chunk_header >> 5) & 0b111;
+        let command = chunk_header >> 5;
         let length = chunk_header & 0b11111;
 
         let mut command = Command::try_from(command).map_err(|_| LcLz2Error::Command(command))?;
@@ -99,12 +99,17 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
                 if in_it.len() >= 2 {
                     let (bytes, rest) = in_it.split_at(2);
                     let read_start = ((bytes[0] as usize) << 8) | (bytes[1] as usize);
+                    let read_end = read_start + length;
                     let write_start = output.len();
-                    output.resize(output.len() + length, 0);
-                    output.copy_within(read_start..(read_start + length), write_start);
-                    in_it = rest;
+                    if read_start < output.len() {
+                        output.resize(output.len() + length, 0);
+                        output.copy_within(read_start..read_end, write_start);
+                        in_it = rest;
+                    } else {
+                        return Err(LcLz2Error::RepeatRangeOutOfBounds(read_start..read_end, output.len()));
+                    }
                 } else {
-                    return Err(LcLz2Error::Repeat);
+                    return Err(LcLz2Error::RepeatIncomplete);
                 }
             }
             Command::LongLength => return Err(LcLz2Error::DoubleLongLength),

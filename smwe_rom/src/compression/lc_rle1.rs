@@ -21,9 +21,11 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcRle1Error> {
             break;
         }
         in_it = &in_it[1..];
-        let command = (chunk_header >> 7) & 1;
+        let command = chunk_header >> 7;
+        let length = chunk_header & 0b1111111;
+
         let command = Command::try_from(command).map_err(|_| LcRle1Error::Command(command))?;
-        let length = (chunk_header & 0b01111111) as usize + 1;
+        let length = length as usize + 1;
 
         match command {
             Command::DirectCopy => {
