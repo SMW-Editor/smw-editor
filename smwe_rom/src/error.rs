@@ -1,10 +1,11 @@
+use std::ops::Range;
+
 use thiserror::Error;
 
 use crate::snes_utils::{
     addr::{AddrPc, AddrSnes},
     rom_slice::{PcSlice, SnesSlice},
 };
-use std::ops::Range;
 
 // -------------------------------------------------------------------------------------------------
 
