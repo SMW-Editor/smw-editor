@@ -25,7 +25,7 @@ pub enum AddressError {
 pub enum LcRle1Error {
     #[error("Wrong command: {0:03b}")]
     Command(u8),
-    #[error("Direcy Copy - Cannot read {0} bytes")]
+    #[error("Direct Copy - Cannot read {0} bytes")]
     DirectCopy(usize),
     #[error("Byte Fill - Cannot read byte")]
     ByteFill,
@@ -39,7 +39,7 @@ pub enum LcLz2Error {
     LongLengthCommand(u8),
     #[error("Long Length - Cannot read second byte of header")]
     LongLength,
-    #[error("Direcy Copy - Cannot read {0} bytes")]
+    #[error("Direct Copy - Cannot read {0} bytes")]
     DirectCopy(usize),
     #[error("Byte Fill - Cannot read byte")]
     ByteFill,
