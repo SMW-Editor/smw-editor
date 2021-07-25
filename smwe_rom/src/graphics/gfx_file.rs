@@ -16,6 +16,7 @@ use crate::{
 #[derive(Copy, Clone, Debug)]
 pub enum TileFormat {
     Tile2bpp,
+    Tile3bpp,
     Tile4bpp,
     Tile8bpp,
     TileMode7,
@@ -39,6 +40,7 @@ impl Display for TileFormat {
         use TileFormat::*;
         f.write_str(match self {
             Tile2bpp => "2BPP",
+            Tile3bpp => "3BPP",
             Tile4bpp => "4BPP",
             Tile8bpp => "8BPP",
             TileMode7 => "Mode7",
@@ -49,6 +51,21 @@ impl Display for TileFormat {
 impl Tile {
     pub fn from_2bpp(input: &[u8]) -> IResult<&[u8], Self> {
         Self::from_xbpp(input, 2)
+    }
+
+    pub fn from_3bpp(input: &[u8]) -> IResult<&[u8], Self> {
+        let (input, bytes) = take(24usize)(input)?;
+        let mut tile = Tile { color_indices: [0; N_PIXELS_IN_TILE].into() };
+
+        for i in 0..N_PIXELS_IN_TILE {
+            let (row, col) = (i / 8, 7 - (i % 8));
+            let bit1 = (bytes[2 * row] >> col) & 1;
+            let bit2 = (bytes[2 * row + 1] >> col) & 1;
+            let bit3 = (bytes[16 + row] >> col) & 1;
+            tile.color_indices[i] = (bit1 << 2) | (bit2 << 1) | bit3;
+        }
+
+        Ok((input, tile))
     }
 
     pub fn from_4bpp(input: &[u8]) -> IResult<&[u8], Self> {
@@ -107,6 +124,7 @@ impl GfxFile {
         let (tile_format, slice) = GFX_FILES_META[file_num];
         let (parser, tile_size_bytes): (ParserFn, usize) = match tile_format {
             Tile2bpp => (Tile::from_2bpp, 2 * 8),
+            Tile3bpp => (Tile::from_3bpp, 3 * 8),
             Tile4bpp => (Tile::from_4bpp, 4 * 8),
             Tile8bpp => (Tile::from_8bpp, 8 * 8),
             TileMode7 => (Tile::from_mode7, 8 * 8),
@@ -115,12 +133,6 @@ impl GfxFile {
         let bytes = rom.slice_lorom(slice).map_err(GfxFileParseError::IsolatingData)?;
         let decomp_bytes = lc_lz2::decompress(bytes).map_err(GfxFileParseError::DecompressingData)?;
         assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
-
-        if file_num == 0 {
-            for (i, byte) in bytes.iter().enumerate() {
-                print!("{:08b}{}", byte, if i % 8 == 7 { '\n' } else { ' ' }); // 47
-            }
-        }
 
         let tile_count = decomp_bytes.len() / tile_size_bytes;
         let mut read_tiles = count(map_parser(take(tile_size_bytes), parser), tile_count);
@@ -139,56 +151,56 @@ impl GfxFile {
 pub const N_PIXELS_IN_TILE: usize = 8 * 8;
 #[rustfmt::skip]
 pub(crate) static GFX_FILES_META: [(TileFormat, SnesSlice); 0x34] = [
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08D9F9), 2104)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08E231), 2698)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08ECBB), 2199)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08F552), 2603)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08FF7D), 2534)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x098963), 2569)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09936C), 2468)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x099D10), 2375)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09A657), 2378)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09AFA1), 2676)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09BA15), 2439)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09C39C), 2503)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09CD63), 2159)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09D5D2), 2041)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09DDCB), 2330)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09E6E5), 2105)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09EF1E), 2193)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09F7AF), 2062)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x09FFBD), 2387)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0A8910), 2616)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0A9348), 1952)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0A9AE8), 2188)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AA374), 1600)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AA9B4), 2297)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AB2AD), 2359)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0ABBE4), 1948)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AC380), 2278)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0ACC66), 2072)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AD47E), 2058)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0ADC88), 2551)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AE67F), 1988)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AEE43), 2142)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AF6A1), 2244)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0AFF65), 2408)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0B88CD), 2301)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0B91CA), 2331)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0B9AE5), 2256)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BA3B5), 2668)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BAE21), 2339)),
-    (TileFormat::TileMode7, SnesSlice::new(AddrSnes(0x0BB744), 2344)),
-    (TileFormat::Tile2bpp,  SnesSlice::new(AddrSnes(0x0BC06C), 1591)),
-    (TileFormat::Tile2bpp,  SnesSlice::new(AddrSnes(0x0BC6A3), 1240)),
-    (TileFormat::Tile2bpp,  SnesSlice::new(AddrSnes(0x0BCB7B), 1397)),
-    (TileFormat::Tile2bpp,  SnesSlice::new(AddrSnes(0x0BD0F0), 1737)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BD7B9), 2125)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BE006), 2352)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BE936), 2127)),
-    (TileFormat::Tile2bpp,  SnesSlice::new(AddrSnes(0x0BF185), 566)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BF3BB), 1093)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x0BF800), 1293)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x088000), 16320)),
-    (TileFormat::Tile4bpp,  SnesSlice::new(AddrSnes(0x08BFC0), 6713)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08D9F9), 2104)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08E231), 2698)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08ECBB), 2199)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08F552), 2603)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08FF7D), 2534)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x098963), 2569)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09936C), 2468)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x099D10), 2375)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09A657), 2378)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09AFA1), 2676)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09BA15), 2439)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09C39C), 2503)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09CD63), 2159)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09D5D2), 2041)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09DDCB), 2330)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09E6E5), 2105)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09EF1E), 2193)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09F7AF), 2062)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x09FFBD), 2387)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0A8910), 2616)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0A9348), 1952)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0A9AE8), 2188)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AA374), 1600)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AA9B4), 2297)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AB2AD), 2359)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0ABBE4), 1948)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AC380), 2278)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0ACC66), 2072)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AD47E), 2058)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0ADC88), 2551)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AE67F), 1988)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AEE43), 2142)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AF6A1), 2244)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0AFF65), 2408)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0B88CD), 2301)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0B91CA), 2331)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0B9AE5), 2256)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BA3B5), 2668)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BAE21), 2339)),
+    (TileFormat::Tile4bpp, SnesSlice::new(AddrSnes(0x0BB744), 2344)),
+    (TileFormat::Tile2bpp, SnesSlice::new(AddrSnes(0x0BC06C), 1591)),
+    (TileFormat::Tile2bpp, SnesSlice::new(AddrSnes(0x0BC6A3), 1240)),
+    (TileFormat::Tile2bpp, SnesSlice::new(AddrSnes(0x0BCB7B), 1397)),
+    (TileFormat::Tile2bpp, SnesSlice::new(AddrSnes(0x0BD0F0), 1737)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BD7B9), 2125)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BE006), 2352)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BE936), 2127)),
+    (TileFormat::Tile2bpp, SnesSlice::new(AddrSnes(0x0BF185), 566)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BF3BB), 1093)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x0BF800), 1293)),
+    (TileFormat::Tile4bpp, SnesSlice::new(AddrSnes(0x088000), 16320)),
+    (TileFormat::Tile3bpp, SnesSlice::new(AddrSnes(0x08BFC0), 6713)),
 ];

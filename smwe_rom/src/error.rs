@@ -4,6 +4,7 @@ use crate::snes_utils::{
     addr::{AddrPc, AddrSnes},
     rom_slice::{PcSlice, SnesSlice},
 };
+use std::ops::Range;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -46,7 +47,9 @@ pub enum LcLz2Error {
     #[error("Increasing Fill - Cannot read byte")]
     IncreasingFill,
     #[error("Repeat - Cannot read offset")]
-    Repeat,
+    RepeatIncomplete,
+    #[error("Repeat - Range ({}..{}) out of bounds (out buffer size: {1})", .0.start, .0.end)]
+    RepeatRangeOutOfBounds(Range<usize>, usize),
     #[error("Double Long Length")]
     DoubleLongLength,
 }
