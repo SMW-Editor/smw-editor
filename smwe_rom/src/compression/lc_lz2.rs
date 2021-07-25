@@ -51,8 +51,8 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
 
         if let Command::LongLength = command {
             let real_command_bits = (chunk_header >> 2) & 0b111;
-            command = Command::try_from(real_command_bits)
-                .map_err(|_| LcLz2Error::LongLengthCommand(real_command_bits))?;
+            command =
+                Command::try_from(real_command_bits).map_err(|_| LcLz2Error::LongLengthCommand(real_command_bits))?;
             let length_part_1 = chunk_header & 0b11;
             let length_part_2 = *in_it.first().ok_or(LcLz2Error::LongLength)?;
             length = (((length_part_1 as usize) << 8) | (length_part_2 as usize)) + 1;
