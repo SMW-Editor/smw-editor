@@ -198,13 +198,13 @@ impl ColorPalettes {
     }
 
     pub fn get_level_palette(&self, header: &PrimaryHeader) -> Result<SpecificLevelColorPalette, ColorPaletteError> {
-        self.lv_specific_set.get_level_palette(header, &self)
+        self.lv_specific_set.get_level_palette(header, self)
     }
 
     pub fn get_submap_palette(
         &self, submap: usize, ow_state: OverworldState,
     ) -> Result<SpecificOverworldColorPalette, ColorPaletteError> {
-        self.ow_specific_set.get_submap_palette(submap, ow_state, &self)
+        self.ow_specific_set.get_submap_palette(submap, ow_state, self)
     }
 }
 

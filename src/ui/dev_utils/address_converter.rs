@@ -76,8 +76,8 @@ impl UiAddressConverter {
     }
 
     fn conversions(&mut self, ui: &Ui) {
-        self.address_input(&ui, ConvDir::PcToSnes);
-        self.address_input(&ui, ConvDir::SnesToPc);
+        self.address_input(ui, ConvDir::PcToSnes);
+        self.address_input(ui, ConvDir::SnesToPc);
         if !self.text_error.is_empty() {
             ui.text_colored(color::TEXT_ERROR, self.text_error.to_str());
         }
