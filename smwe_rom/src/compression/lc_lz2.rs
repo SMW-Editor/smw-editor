@@ -61,7 +61,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
 
         match command {
             Command::DirectCopy => {
-                if length < in_it.len() {
+                if length <= in_it.len() {
                     let (bytes, rest) = in_it.split_at(length);
                     output.extend_from_slice(bytes);
                     in_it = rest;
