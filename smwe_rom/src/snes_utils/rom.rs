@@ -42,6 +42,12 @@ pub trait RomView<'r> {
     fn as_bytes(&self) -> Result<&'r [u8], RomError>;
 }
 
+pub trait IsDecompressed {
+    fn as_decompressed(&self) -> &Decompressed;
+}
+
+// -------------------------------------------------------------------------------------------------
+
 pub struct Rom(Vec<u8>);
 
 pub struct RomWithErrorMapper<'r, EM, ET>
@@ -77,6 +83,8 @@ pub struct Decompressed {
 pub struct DecompressedView<'r> {
     decompressed: &'r Decompressed,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl Rom {
     pub fn new(mut data: Vec<u8>) -> Result<Self, RomError> {
@@ -173,10 +181,6 @@ where
     }
 }
 
-pub trait IsDecompressed {
-    fn as_decompressed(&self) -> &Decompressed;
-}
-
 impl<'r, EM, ET, RV> RomViewWithErrorMapper<'r, EM, ET, RV>
 where
     EM: Fn(RomError) -> ET,
@@ -206,9 +210,9 @@ impl<'r> RomView<'r> for PcSliced<'r> {
     }
 }
 
-impl Decompressed {
-    pub fn view(&self) -> DecompressedView {
-        DecompressedView { decompressed: self }
+impl<'r> RomView<'r> for DecompressedView<'r> {
+    fn as_bytes(&self) -> Result<&'r [u8], RomError> {
+        Ok(&self.decompressed.bytes)
     }
 }
 
@@ -218,8 +222,8 @@ impl IsDecompressed for Decompressed {
     }
 }
 
-impl<'r> RomView<'r> for DecompressedView<'r> {
-    fn as_bytes(&self) -> Result<&'r [u8], RomError> {
-        Ok(&self.decompressed.bytes)
+impl Decompressed {
+    pub fn view(&self) -> DecompressedView {
+        DecompressedView { decompressed: self }
     }
 }
