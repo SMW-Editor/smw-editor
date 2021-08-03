@@ -54,15 +54,18 @@ impl Level {
 
         let l1_ptr_slice = SnesSlice::new(LAYER1_DATA + (3 * level_num), 3);
         let ph_addr = rom
-            .parse_slice_lorom(l1_ptr_slice, map(le_u24, AddrSnes::from))
-            .map_err(LevelParseError::Layer1AddressRead)?;
+            .with_error_mapper(LevelParseError::Layer1AddressRead)
+            .slice_lorom(l1_ptr_slice)?
+            .parse(map(le_u24, AddrSnes::from))?;
 
         let ph_slice = SnesSlice::new(ph_addr, PRIMARY_HEADER_SIZE);
-        let primary_header = rom.slice_lorom(ph_slice).map_err(LevelParseError::PrimaryHeaderRead)?;
-        let primary_header = PrimaryHeader::new(primary_header);
+        let primary_header =
+            rom.with_error_mapper(LevelParseError::PrimaryHeaderRead).slice_lorom(ph_slice)?.into_bytes()?;
+        let primary_header = PrimaryHeader::new(&primary_header);
 
         let layer1_slice = ph_slice.skip_forward(1).infinite();
-        let layer1 = rom.parse_slice_lorom(layer1_slice, ObjectLayer::parse).map_err(LevelParseError::Layer1Read)?;
+        let layer1 =
+            rom.with_error_mapper(LevelParseError::Layer1Read).slice_lorom(layer1_slice)?.parse(ObjectLayer::parse)?;
 
         Ok((primary_header, layer1))
     }
@@ -72,17 +75,19 @@ impl Level {
 
         let l2_addr_slice = SnesSlice::new(LAYER2_DATA + (3 * level_num), 3);
         let l2_ptr = rom
-            .parse_slice_lorom(l2_addr_slice, map(le_u24, AddrSnes::from))
-            .map_err(LevelParseError::Layer2AddressRead)?;
+            .with_error_mapper(LevelParseError::Layer2AddressRead)
+            .slice_lorom(l2_addr_slice)?
+            .parse(map(le_u24, AddrSnes::from))?;
 
         if (l2_ptr.0 >> 16) == 0xFF {
             let slice = SnesSlice::new(((l2_ptr & 0xFFFF) | 0x0C0000) + PRIMARY_HEADER_SIZE, usize::MAX);
-            let layer2 = rom.slice_lorom(slice).map_err(LevelParseError::Layer2Isolate)?;
-            let background = BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
+            let layer2 = rom.with_error_mapper(LevelParseError::Layer2Isolate).slice_lorom(slice)?.into_bytes()?;
+            let background = BackgroundData::read_from(&layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
             Ok(Layer2Data::Background(background))
         } else {
             let slice = SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX);
-            let objects = rom.parse_slice_lorom(slice, ObjectLayer::parse).map_err(LevelParseError::Layer2Read)?;
+            let objects =
+                rom.with_error_mapper(LevelParseError::Layer2Read).slice_lorom(slice)?.parse(ObjectLayer::parse)?;
             Ok(Layer2Data::Objects(objects))
         }
     }
@@ -91,15 +96,19 @@ impl Level {
         const SPRITE_DATA: AddrSnes = AddrSnes(0x05EC00);
 
         let sprite_ptr_slice = SnesSlice::new(SPRITE_DATA + (2 * level_num), 2);
-        let sh_addr = rom.parse_slice_lorom(sprite_ptr_slice, le_u16).map_err(LevelParseError::SpriteAddressRead)?;
+        let sh_addr =
+            rom.with_error_mapper(LevelParseError::SpriteAddressRead).slice_lorom(sprite_ptr_slice)?.parse(le_u16)?;
         let sh_addr = AddrSnes((sh_addr as u32 | 0x07_0000) as usize);
 
         let sh_slice = SnesSlice::new(sh_addr, SPRITE_HEADER_SIZE);
-        let sprite_header =
-            rom.parse_slice_lorom(sh_slice, SpriteHeader::read_from).map_err(LevelParseError::SpriteHeaderRead)?;
+        let sprite_header = rom
+            .with_error_mapper(LevelParseError::SpriteHeaderRead)
+            .slice_lorom(sh_slice)?
+            .parse(SpriteHeader::read_from)?;
 
         let sl_slice = SnesSlice::new(sh_addr + 1, usize::MAX);
-        let sprite_layer = rom.parse_slice_lorom(sl_slice, SpriteLayer::parse).map_err(LevelParseError::SpriteRead)?;
+        let sprite_layer =
+            rom.with_error_mapper(LevelParseError::SpriteRead).slice_lorom(sl_slice)?.parse(SpriteLayer::parse)?;
 
         Ok((sprite_header, sprite_layer))
     }

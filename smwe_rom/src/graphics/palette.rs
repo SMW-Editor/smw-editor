@@ -1,6 +1,6 @@
 use std::{convert::TryInto, ops::RangeInclusive};
 
-use nom::{combinator::map, multi::many0, number::complete::le_u16};
+use nom::{combinator::map, multi::many1, number::complete::le_u16};
 
 use crate::{
     error::{ColorPaletteError, ColorPaletteParseError},
@@ -152,10 +152,7 @@ pub enum OverworldState {
 fn make_color_parser(
     rom: &Rom,
 ) -> impl Fn(SnesSlice, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
-    move |slice, err| {
-        let read_colors = many0(map(le_u16, Abgr1555));
-        rom.parse_slice_lorom(slice, read_colors).map_err(|_| err)
-    }
+    move |slice, err| rom.with_error_mapper(move |_| err).slice_lorom(slice)?.parse(many1(map(le_u16, Abgr1555)))
 }
 
 impl ColorPalettes {
@@ -336,15 +333,19 @@ impl OverworldColorPaletteSet {
         }
 
         let indirect_table_1 = rom
-            .slice_lorom(LAYER2_PALETTE_INDIRECT1)
-            .map_err(|_| ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1))?;
+            .with_error_mapper(|_| {
+                ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1)
+            })
+            .slice_lorom(LAYER2_PALETTE_INDIRECT1)?
+            .into_bytes()?;
 
-        for &offset in indirect_table_1 {
+        for &offset in indirect_table_1.iter() {
             let index_offset = LAYER2_PALETTE_INDIRECT2.offset_forward(2 * offset as usize).begin;
             let ptr16_slice = SnesSlice::new(index_offset, 2);
             let ptr16 = rom
-                .parse_slice_lorom(ptr16_slice, le_u16)
-                .map_err(|_| ColorPaletteParseError::OverworldLayer2IndexRead(offset as usize))?;
+                .with_error_mapper(|_| ColorPaletteParseError::OverworldLayer2IndexRead(offset as usize))
+                .slice_lorom(ptr16_slice)?
+                .parse(le_u16)?;
 
             let idx = ptr16 / 0x38;
             layer2_indices.push(idx as usize);

@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use num_enum::TryFromPrimitive;
 
-use crate::error::LcRle1Error;
+use crate::error::{DecompressionError, LcRle1Error};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
@@ -11,7 +11,7 @@ enum Command {
     ByteFill   = 1,
 }
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcRle1Error> {
+pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
     assert!(!input.len() >= 2);
     let mut output = Vec::with_capacity(input.len() * 2);
@@ -34,7 +34,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcRle1Error> {
                     output.extend_from_slice(bytes);
                     in_it = rest;
                 } else {
-                    return Err(LcRle1Error::DirectCopy(length));
+                    return Err(LcRle1Error::DirectCopy(length).into());
                 }
             }
             Command::ByteFill => {

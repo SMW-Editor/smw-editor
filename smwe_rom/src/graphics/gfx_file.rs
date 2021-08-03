@@ -4,11 +4,11 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-use nom::{bytes::complete::take, combinator::map_parser, multi::count, IResult};
+use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
 
 use crate::{
     compression::lc_lz2,
-    error::{GfxFileParseError, ParseErr},
+    error::{DecompressionError, GfxFileParseError, RomError},
     graphics::color::{Abgr1555, Rgba32},
     snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
 };
@@ -130,14 +130,18 @@ impl GfxFile {
             TileMode7 => (Tile::from_mode7, 8 * 8),
         };
 
-        let bytes = rom.slice_lorom(slice).map_err(GfxFileParseError::IsolatingData)?;
-        let decomp_bytes = lc_lz2::decompress(bytes).map_err(GfxFileParseError::DecompressingData)?;
-        assert_eq!(0, decomp_bytes.len() % tile_size_bytes);
+        let tiles = rom
+            .with_error_mapper(|e| match e {
+                RomError::SliceSnes(_) | RomError::SlicePc(_) => GfxFileParseError::IsolatingData(e),
+                RomError::Decompress(DecompressionError::LcLz2(l)) => GfxFileParseError::DecompressingData(l),
+                RomError::Parse => GfxFileParseError::ParsingTile,
+                _ => unreachable!(),
+            })
+            .slice_lorom(slice)?
+            .decompress(lc_lz2::decompress)
+            .unwrap()
+            .parse(many1(map_parser(take(tile_size_bytes), parser)))?;
 
-        let tile_count = decomp_bytes.len() / tile_size_bytes;
-        let mut read_tiles = count(map_parser(take(tile_size_bytes), parser), tile_count);
-
-        let (_, tiles) = read_tiles(&decomp_bytes).map_err(|_: ParseErr| GfxFileParseError::ParsingTile)?;
         Ok(Self { tile_format, tiles })
     }
 

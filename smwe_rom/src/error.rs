@@ -22,6 +22,14 @@ pub enum AddressError {
 }
 
 #[derive(Debug, Error)]
+pub enum DecompressionError {
+    #[error("Decompression with LC-RLE1:\n- {0}")]
+    LcRle1(LcRle1Error),
+    #[error("Decompression with LC-LZ2:\n- {0}")]
+    LcLz2(LcLz2Error),
+}
+
+#[derive(Debug, Error)]
 pub enum LcRle1Error {
     #[error("Wrong command: {0:03b}")]
     Command(u8),
@@ -106,7 +114,7 @@ pub enum InternalHeaderParseError {
     ReadVersionNumber(RomError),
 }
 
-#[derive(Debug, Error)]
+#[derive(Copy, Clone, Debug, Error)]
 pub enum ColorPaletteParseError {
     #[error("Player Color Palette")]
     PlayerPalette,
@@ -177,7 +185,7 @@ pub enum LevelParseError {
     #[error("Parsing Layer2 object data:\n- {0}")]
     Layer2Read(RomError),
     #[error("Reading Layer2 background:\n- {0}")]
-    Layer2BackgroundRead(LcRle1Error),
+    Layer2BackgroundRead(DecompressionError),
     #[error("Reading Sprite data:\n- {0}")]
     SpriteRead(RomError),
 }
@@ -188,29 +196,14 @@ pub enum RomError {
     Empty,
     #[error("Invalid ROM size (not a multiple of 512 bytes): {0} ({0:#x})")]
     Size(usize),
-
-    #[error("Invalid PC slice: {0}")]
+    #[error("Could not PC slice ROM: {0}")]
     SlicePc(PcSlice),
-    #[error("Invalid LoROM slice: {0}")]
-    SliceLoRom(SnesSlice),
-    #[error("Invalid HiROM slice: {0}")]
-    SliceHiRom(SnesSlice),
-
-    #[error("Could not parse PC slice: {0}")]
-    ParsePc(PcSlice),
-    #[error("Could not parse LoROM slice: {0}")]
-    ParseLoRom(SnesSlice),
-    #[error("Could not parse HiROM slice: {0}")]
-    ParseHiRom(SnesSlice),
-
-    #[error("Address conversion in LoROM slicing:\n- {0}")]
-    AddressSliceLoRom(AddressError),
-    #[error("Address conversion in HiROM slicing:\n- {0}")]
-    AddressSliceHiRom(AddressError),
-    #[error("Address conversion in LoROM parsing:\n- {0}")]
-    AddressParseLoRom(AddressError),
-    #[error("Address conversion in HiROM parsing:\n- {0}")]
-    AddressParseHiRom(AddressError),
+    #[error("Could not SNES slice ROM: {0}")]
+    SliceSnes(SnesSlice),
+    #[error("Could not decompress ROM slice:\n- {0}")]
+    Decompress(DecompressionError),
+    #[error("Could not parse ROM slice")]
+    Parse,
 }
 
 #[derive(Debug, Error)]
@@ -232,3 +225,15 @@ pub enum RomParseError {
 }
 
 pub type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
+
+impl From<LcLz2Error> for DecompressionError {
+    fn from(e: LcLz2Error) -> Self {
+        DecompressionError::LcLz2(e)
+    }
+}
+
+impl From<LcRle1Error> for DecompressionError {
+    fn from(e: LcRle1Error) -> Self {
+        DecompressionError::LcRle1(e)
+    }
+}
