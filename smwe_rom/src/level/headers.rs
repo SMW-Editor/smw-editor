@@ -108,7 +108,7 @@ impl SecondaryHeader {
     pub fn read_from_rom(rom: &Rom, level_num: usize) -> Result<Self, RomError> {
         let take_byte = |addr| {
             let slice = SnesSlice::new(AddrSnes(addr), 0x200);
-            let byte_table = rom.view().slice_lorom(slice)?.into_bytes()?;
+            let byte_table = rom.view().slice_lorom(slice)?.as_bytes()?;
             Ok(byte_table[level_num])
         };
         Ok(Self([take_byte(0x05F000)?, take_byte(0x05F200)?, take_byte(0x05F400)?, take_byte(0x05F600)?]))

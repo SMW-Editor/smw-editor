@@ -337,7 +337,7 @@ impl OverworldColorPaletteSet {
                 ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1)
             })
             .slice_lorom(LAYER2_PALETTE_INDIRECT1)?
-            .into_bytes()?;
+            .as_bytes()?;
 
         for &offset in indirect_table_1.iter() {
             let index_offset = LAYER2_PALETTE_INDIRECT2.offset_forward(2 * offset as usize).begin;
