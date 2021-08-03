@@ -139,6 +139,7 @@ impl GfxFile {
             })
             .slice_lorom(slice)?
             .decompress(lc_lz2::decompress)?
+            .view()
             .parse(many1(map_parser(take(tile_size_bytes), parser)))?;
 
         Ok(Self { tile_format, tiles })

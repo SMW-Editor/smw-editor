@@ -10,7 +10,7 @@ pub struct SecondaryEntrance([u8; 4]);
 impl SecondaryEntrance {
     pub fn read_from_rom(rom: &Rom, entrance_id: usize) -> Result<Self, RomError> {
         let take_table =
-            |table_num| rom.view().slice_lorom(SECONDARY_ENTRANCE_TABLE.skip_forward(table_num))?.into_bytes();
+            |table_num| rom.view().slice_lorom(SECONDARY_ENTRANCE_TABLE.skip_forward(table_num))?.as_bytes();
 
         let bytes = [
             take_table(0)?[entrance_id],

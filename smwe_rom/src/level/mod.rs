@@ -60,8 +60,8 @@ impl Level {
 
         let ph_slice = SnesSlice::new(ph_addr, PRIMARY_HEADER_SIZE);
         let primary_header =
-            rom.with_error_mapper(LevelParseError::PrimaryHeaderRead).slice_lorom(ph_slice)?.into_bytes()?;
-        let primary_header = PrimaryHeader::new(&primary_header);
+            rom.with_error_mapper(LevelParseError::PrimaryHeaderRead).slice_lorom(ph_slice)?.as_bytes()?;
+        let primary_header = PrimaryHeader::new(primary_header);
 
         let layer1_slice = ph_slice.skip_forward(1).infinite();
         let layer1 =
@@ -81,8 +81,8 @@ impl Level {
 
         if (l2_ptr.0 >> 16) == 0xFF {
             let slice = SnesSlice::new(((l2_ptr & 0xFFFF) | 0x0C0000) + PRIMARY_HEADER_SIZE, usize::MAX);
-            let layer2 = rom.with_error_mapper(LevelParseError::Layer2Isolate).slice_lorom(slice)?.into_bytes()?;
-            let background = BackgroundData::read_from(&layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
+            let layer2 = rom.with_error_mapper(LevelParseError::Layer2Isolate).slice_lorom(slice)?.as_bytes()?;
+            let background = BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
             Ok(Layer2Data::Background(background))
         } else {
             let slice = SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX);
