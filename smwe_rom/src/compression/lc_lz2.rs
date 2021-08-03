@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use num_enum::TryFromPrimitive;
 
-use crate::error::LcLz2Error;
+use crate::error::{DecompressionError, LcLz2Error};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]
@@ -34,7 +34,7 @@ enum Command {
     LongLength     = 0b111,
 }
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
+pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
     let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
@@ -66,7 +66,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
                     output.extend_from_slice(bytes);
                     in_it = rest;
                 } else {
-                    return Err(LcLz2Error::DirectCopy(length));
+                    return Err(LcLz2Error::DirectCopy(length).into());
                 }
             }
             Command::ByteFill => {
@@ -80,7 +80,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
                     output.extend(bytes.iter().cycle().take(length));
                     in_it = rest;
                 } else {
-                    return Err(LcLz2Error::WordFill);
+                    return Err(LcLz2Error::WordFill.into());
                 }
             }
             Command::IncreasingFill => {
@@ -106,13 +106,13 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, LcLz2Error> {
                         output.copy_within(read_start..read_end, write_start);
                         in_it = rest;
                     } else {
-                        return Err(LcLz2Error::RepeatRangeOutOfBounds(read_start..read_end, output.len()));
+                        return Err(LcLz2Error::RepeatRangeOutOfBounds(read_start..read_end, output.len()).into());
                     }
                 } else {
-                    return Err(LcLz2Error::RepeatIncomplete);
+                    return Err(LcLz2Error::RepeatIncomplete.into());
                 }
             }
-            Command::LongLength => return Err(LcLz2Error::DoubleLongLength),
+            Command::LongLength => return Err(LcLz2Error::DoubleLongLength.into()),
         }
     }
 
