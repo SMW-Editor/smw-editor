@@ -222,9 +222,17 @@ pub enum RomParseError {
     SecondaryEntrance(usize, RomError),
     #[error("Could not parse color palettes:\n- {0}")]
     ColorPalettes(ColorPaletteParseError),
+    #[error("Could not parse Map16 tiles:\n- {0}")]
+    Map16Tilesets(TilesetParseError),
 }
 
+#[derive(Debug, Error)]
+#[error("Could not parse Map16 tiles at:\n- {0}")]
+pub struct TilesetParseError(pub SnesSlice);
+
 pub type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
+
+// -------------------------------------------------------------------------------------------------
 
 impl From<LcLz2Error> for DecompressionError {
     fn from(e: LcLz2Error) -> Self {
