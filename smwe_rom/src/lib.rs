@@ -14,6 +14,7 @@ use crate::{
         Level,
         LEVEL_COUNT,
     },
+    objects::tilesets::Tilesets,
     snes_utils::rom::Rom,
 };
 
@@ -31,6 +32,7 @@ pub struct SmwRom {
     pub secondary_entrances: Vec<SecondaryEntrance>,
     pub color_palettes:      ColorPalettes,
     pub gfx_files:           Vec<GfxFile>,
+    pub map16_tilesets:      Tilesets,
 }
 
 impl SmwRom {
@@ -67,7 +69,10 @@ impl SmwRom {
         log::info!("Parsing GFX files");
         let gfx_files = Self::parse_gfx_files(&rom)?;
 
-        Ok(Self { internal_header, levels, secondary_entrances, color_palettes, gfx_files })
+        log::info!("Parsing Map16 tilesets");
+        let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
+
+        Ok(Self { internal_header, levels, secondary_entrances, color_palettes, gfx_files, map16_tilesets })
     }
 
     fn parse_levels(rom: &Rom) -> Result<Vec<Level>, RomParseError> {
