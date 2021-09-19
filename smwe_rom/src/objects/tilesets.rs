@@ -25,7 +25,7 @@ pub enum Tile {
 impl Tilesets {
     pub fn parse(rom: &Rom) -> Result<Self, TilesetParseError> {
         let parse_16x16 = |slice| {
-            Ok(rom
+            let it = rom
                 .with_error_mapper(|_| TilesetParseError(slice))
                 .slice_lorom(slice)?
                 .parse(many0(map(le_u16, Tile8x8)))?
@@ -36,37 +36,45 @@ impl Tilesets {
                     lower_left,
                     upper_right,
                     lower_right,
-                }))
+                });
+            Ok(it)
+        };
+
+        let parse_shared = |slice| {
+            parse_16x16(slice)?.map(Tile::Shared)
         };
 
         let parse_tileset_specific = |slices: [SnesSlice; 5]| {
-            Ok(itertools::izip!(
+            let it = itertools::izip!(
                 parse_16x16(slices[0])?,
                 parse_16x16(slices[1])?,
                 parse_16x16(slices[2])?,
                 parse_16x16(slices[3])?,
                 parse_16x16(slices[4])?,
             )
-            .map(|(e0, e1, e2, e3, e4)| Tile::TilesetSpecific([e0, e1, e2, e3, e4])))
+            .map(|(e0, e1, e2, e3, e4)| Tile::TilesetSpecific([e0, e1, e2, e3, e4]));
+            Ok(it)
         };
 
         let mut tiles: Vec<Tile> = Vec::with_capacity(0x200);
 
-        tiles.extend(parse_16x16(TILES_000_072)?.map(Tile::Shared));
+        tiles.extend(parse_shared(TILES_000_072)?);
         tiles.extend(parse_tileset_specific(TILES_073_0FF)?);
         tiles.extend(parse_tileset_specific(TILES_100_106)?);
-        tiles.extend(parse_16x16(TILES_107_110)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_111_152)?.map(Tile::Shared));
+        tiles.extend(parse_shared(TILES_107_110)?);
+        tiles.extend(parse_shared(TILES_111_152)?);
         tiles.extend(parse_tileset_specific(TILES_153_16D)?);
-        tiles.extend(parse_16x16(TILES_16E_1C3)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1C4_1C7)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1C8_1EB)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1EC_1EF)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1F0_1FF)?.map(Tile::Shared));
+        tiles.extend(parse_shared(TILES_16E_1C3)?);
+        tiles.extend(parse_shared(TILES_1C4_1C7)?);
+        tiles.extend(parse_shared(TILES_1C8_1EB)?);
+        tiles.extend(parse_shared(TILES_1EC_1EF)?);
+        tiles.extend(parse_shared(TILES_1F0_1FF)?);
 
         Ok(Tilesets { tiles })
     }
 }
+
+// -------------------------------------------------------------------------------------------------
 
 const fn map16_data_slice(addr: usize, range: RangeInclusive<usize>) -> SnesSlice {
     const MAP16_TILE_SIZE: usize = 8;
