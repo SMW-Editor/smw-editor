@@ -41,7 +41,7 @@ impl Tilesets {
         };
 
         let parse_shared = |slice| {
-            parse_16x16(slice)?.map(Tile::Shared)
+            Ok(parse_16x16(slice)?.map(Tile::Shared))
         };
 
         let parse_tileset_specific = |slices: [SnesSlice; 5]| {
@@ -71,6 +71,18 @@ impl Tilesets {
         tiles.extend(parse_shared(TILES_1F0_1FF)?);
 
         Ok(Tilesets { tiles })
+    }
+
+    pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Map16Tile> {
+        if tile_num < self.tiles.len() && tileset < 5 {
+            match self.tiles[tile_num] {
+                Tile::Shared(tile) => Some(tile),
+                Tile::TilesetSpecific(tiles) => Some(tiles[tileset]),
+            }
+        } else {
+            log::error!("Invalid tile_num ({:#X}) or tileset ({})", tile_num, tileset);
+            None
+        }
     }
 }
 
