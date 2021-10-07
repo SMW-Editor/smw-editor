@@ -1,4 +1,4 @@
-// Format: TTTTTTTT YXPCCCTT
+// Format: YXPCCCTT TTTTTTTT
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile8x8(pub u16);
 
@@ -14,32 +14,32 @@ pub struct Map16Tile {
 
 impl Tile8x8 {
     pub fn tile_number(&self) -> u16 {
-        // TTTTTTTT ------tt
-        // tile_number = TTTTTTTTtt
-        (self.0 >> 6) | (self.0 & 0b11)
+        // ------tt TTTTTTTT
+        // tile_number = ttTTTTTTTT
+        self.0.to_be() & 0x3FF
     }
 
     pub fn flip_y(&self) -> bool {
-        // -------- Y-------
+        // Y------- --------
         // flip_y = Y
-        (self.0 >> 7) != 0
+        (self.0.to_be() >> 15) != 0
     }
 
     pub fn flip_x(&self) -> bool {
-        // -------- -X------
+        // -X------ --------
         // flip_x = X
-        ((self.0 >> 6) & 1) != 0
+        ((self.0.to_be() >> 14) & 1) != 0
     }
 
     pub fn priority(&self) -> bool {
-        // -------- --P-----
+        // --P----- --------
         // priority = P
-        ((self.0 >> 5) & 1) != 0
+        ((self.0.to_be() >> 13) & 1) != 0
     }
 
     pub fn palette(&self) -> u8 {
-        // -------- ---CCC--
+        // ---CCC-- --------
         // palette = CCC
-        ((self.0 >> 2) & 0b111) as u8
+        ((self.0.to_be() >> 10) & 0b111) as u8
     }
 }
