@@ -75,11 +75,12 @@ impl Rgba32 {
 impl From<Abgr1555> for Rgba32 {
     fn from(color: Abgr1555) -> Self {
         let cmf = SNES_BGR_CHANNEL_MAX as f32;
+        let Abgr1555(color) = color;
         Rgba32 {
-            r: ((color.0 >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            g: ((color.0 >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            b: ((color.0 >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            a: 1.0 - ((color.0 >> 0xF) & 1) as f32,
+            r: ((color >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
+            g: ((color >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
+            b: ((color >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
+            a: 1.0 - ((color >> 0xF) & 1) as f32,
         }
     }
 }
