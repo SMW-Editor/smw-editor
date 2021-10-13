@@ -40,9 +40,7 @@ impl Tilesets {
             Ok(it)
         };
 
-        let parse_shared = |slice| {
-            Ok(parse_16x16(slice)?.map(Tile::Shared))
-        };
+        let parse_shared = |slice| Ok(parse_16x16(slice)?.map(Tile::Shared));
 
         let parse_tileset_specific = |slices: [SnesSlice; 5]| {
             let it = itertools::izip!(
