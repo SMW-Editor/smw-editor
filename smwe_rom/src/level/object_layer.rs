@@ -26,7 +26,7 @@ pub enum ObjectInstance {
 
 #[derive(Clone)]
 pub struct ObjectLayer {
-    objects: Vec<ObjectInstance>,
+    _objects: Vec<ObjectInstance>,
 }
 
 impl ExitInstance {
@@ -134,6 +134,6 @@ impl ObjectLayer {
                     },
                 })),
             tag!(&[0xFFu8]))?;
-        Ok((input, Self { objects }))
+        Ok((input, Self { _objects: objects }))
     }
 }
