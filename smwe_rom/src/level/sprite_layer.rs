@@ -15,7 +15,7 @@ pub struct SpriteInstance([u8; SPRITE_INSTANCE_SIZE]);
 
 #[derive(Clone)]
 pub struct SpriteLayer {
-    sprites: Vec<SpriteInstance>,
+    _sprites: Vec<SpriteInstance>,
 }
 
 impl SpriteInstance {
@@ -57,6 +57,6 @@ impl SpriteLayer {
         let mut read_sprite_layer = many_till(take(SPRITE_INSTANCE_SIZE), tag(&[0xFFu8]));
         let (input, (sprites_raw, _)) = read_sprite_layer(input)?;
         let sprites = sprites_raw.into_iter().map(|spr| SpriteInstance(spr.try_into().unwrap())).collect();
-        Ok((input, Self { sprites }))
+        Ok((input, Self { _sprites: sprites }))
     }
 }
