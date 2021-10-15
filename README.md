@@ -9,7 +9,7 @@ and none of the main features are there yet.
 
 ## Currently in progress
 
-Parsing the ROM and generating project files from it.
+ROM disassembler, primarily for dividing the code and data portions of the ROM.
 
 You can track the progress [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
