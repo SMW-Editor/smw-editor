@@ -1,13 +1,14 @@
 // A lot of this code is "borrowed" from DiztinGUIsh, an SNES ROM disassembler and debugger written in C#.
-// All AddressingMode names are basically stolen from there:
-// https://github.com/Dotsarecool/DiztinGUIsh/blob/master/Diz.Core/arch/CPU65C816.cs
+// https://github.com/Dotsarecool/DiztinGUIsh
 
 use std::fmt;
 
 use AddressingMode::*;
 use Mnemonic::*;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+use crate::snes_utils::addr::*;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AddressingMode {
     Accumulator,
     Address,
@@ -21,13 +22,13 @@ pub enum AddressingMode {
     DirectPage,
     DirectPageIndirect,
     DirectPageIndirectYIndex,
-    DirectPageSIndex,
-    DirectPageSIndexIndirectYIndex,
+    DirectPageLongIndirect,
+    DirectPageLongIndirectYIndex,
     DirectPageXIndex,
     DirectPageXIndexIndirect,
     DirectPageYIndex,
-    DirectPageLongIndirect,
-    DirectPageLongIndirectYIndex,
+    DirectPageSIndex,
+    DirectPageSIndexIndirectYIndex,
     Implied,
     Immediate8,
     Immediate16,
@@ -39,7 +40,7 @@ pub enum AddressingMode {
     Relative16,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mnemonic {
     ADC, // Add with carry
     AND, // AND Accumulator
@@ -151,78 +152,150 @@ impl Instruction {
         Self { mnemonic, mode }
     }
 
-    pub const fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         match self.mode {
-            Immediate16
-            | Address
-            | AddressXIndex
-            | AddressYIndex
-            | AddressIndirect
-            | AddressXIndexIndirect
-            | AddressLongIndirect
-            | Relative16 => 3,
-
-            Accumulator | BlockMove | Implied | ImmediateXFlagDependent | ImmediateMFlagDependent => 1,
+            Accumulator | Implied | ImmediateXFlagDependent | ImmediateMFlagDependent => 1,
             Long | LongXIndex => 4,
+            Immediate16 | Relative16 | BlockMove => 3,
+            m if (Address..=AddressXIndexIndirect).contains(&m) => 3,
             _ => 2,
         }
     }
 
-    pub fn asm_instruction(&self, operands: &[u8]) -> String {
+    fn get_intermediate_address(&self, offset: usize, op_bytes: &[u8], resolve: bool) -> u32 {
         match self.mode {
+            m if (DirectPage..=DirectPageYIndex).contains(&m) => {
+                if resolve {
+                    let operand = op_bytes[0] as u32;
+                    let direct_page: u32 = todo!();
+                    ((direct_page + operand) & 0xFFFF) as u32
+                } else {
+                    op_bytes[0] as u32
+                }
+            }
+            DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as u32,
+            Address | AddressXIndex | AddressYIndex | AddressXIndexIndirect => {
+                let bank = if self.mnemonic == JSR || self.mnemonic == JMP {
+                    let offset_pc = AddrPc(offset);
+                    (AddrSnes::try_from_lorom(offset_pc).unwrap().0 >> 16) as u32
+                } else {
+                    todo!()
+                };
+                let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
+                (bank << 16) | (operand as u32)
+            }
+            AddressIndirect | AddressLongIndirect => u16::from_le_bytes([op_bytes[0], op_bytes[1]]) as u32,
+            Long | LongXIndex => u32::from_le_bytes([op_bytes[0], op_bytes[1], op_bytes[3], 0]),
+            Relative8 | Relative16 => {
+                let op_size = if self.mode == Relative8 { 1 } else { 2 };
+
+                let program_counter = {
+                    let offset_pc = AddrPc(offset + 1 + op_size);
+                    AddrSnes::try_from_lorom(offset_pc).unwrap().0 as u32
+                };
+                let bank = program_counter >> 16;
+                let address = if self.mode == Relative8 {
+                    op_bytes[0] as u32
+                } else {
+                    u16::from_le_bytes([op_bytes[0], op_bytes[1]]) as u32
+                };
+
+                (bank << 16) | ((program_counter + address) & 0xFFFF)
+            }
+            _ => 0,
+        }
+    }
+
+    pub fn asm_instruction(&self, offset: usize, op_bytes: &[u8]) -> String {
+        let address = self.get_intermediate_address(offset, op_bytes, false);
+        format!("CODE_{:06X}: {}{}", offset, self.mnemonic, match self.mode {
             Implied => {
-                format!("{}", self.mnemonic)
+                "".to_string()
             }
             Accumulator => {
-                format!("{} A", self.mnemonic)
+                " A".to_string()
             }
             Constant8 | Immediate8 => {
-                format!("{} #{:02X}", self.mnemonic, operands[0])
+                format!(" #${:02X}", op_bytes[0])
             }
             Immediate16 => {
-                let operand_bytes = [operands[0], operands[1]];
-                format!("{} #{:04X}", self.mnemonic, u16::from_le_bytes(operand_bytes))
+                format!(" #${:04X}", u16::from_le_bytes([op_bytes[0], op_bytes[1]]))
             }
             ImmediateXFlagDependent => {
-                todo!()
+                let x_flag: bool = todo!();
+                if x_flag {
+                    format!(" #${:02X}", op_bytes[0])
+                } else {
+                    format!(" #${:04X}", u16::from_le_bytes([op_bytes[0], op_bytes[1]]))
+                }
             }
             ImmediateMFlagDependent => {
-                todo!()
+                let m_flag: bool = todo!();
+                if m_flag {
+                    format!(" #${:02X}", op_bytes[0])
+                } else {
+                    format!(" #${:04X}", u16::from_le_bytes([op_bytes[0], op_bytes[1]]))
+                }
             }
-            DirectPage | Address | Long | Relative8 | Relative16 => {
-                format!("{} {}", self.mnemonic, todo!())
+            DirectPage => {
+                format!(" ${:02X}", address)
+            }
+            Relative8 => {
+                let address = op_bytes[0] as u32;
+                let address = address & !(-1 << 8) as u32;
+                format!(" ${:02X}", address)
+            }
+            Relative16 => {
+                let address = u16::from_le_bytes([op_bytes[0], op_bytes[1]]) as u32;
+                let address = address & !(-1 << 16) as u32;
+                format!(" ${:04X}", address)
+            }
+            Address => {
+                format!(" ${:04X}", address)
+            }
+            Long => {
+                format!(" ${:06X}", address)
             }
             DirectPageXIndex | AddressXIndex | LongXIndex => {
-                format!("{} {},X", self.mnemonic, todo!())
+                format!(" ${:02X}, X", address)
             }
             DirectPageYIndex | AddressYIndex => {
-                format!("{} {},Y", self.mnemonic, todo!())
+                format!(" ${:02X}, Y", address)
             }
             DirectPageSIndex => {
-                format!("{} {},S", self.mnemonic, todo!())
+                format!(" ${:02X}, S", address)
             }
-            DirectPageIndirect | AddressIndirect => {
-                format!("{} ({})", self.mnemonic, todo!())
+            DirectPageIndirect => {
+                format!(" (${:02X})", address)
             }
-            DirectPageXIndexIndirect | AddressXIndexIndirect => {
-                format!("{} ({},X)", self.mnemonic, todo!())
+            AddressIndirect => {
+                format!(" (${:04X})", address)
+            }
+            DirectPageXIndexIndirect => {
+                format!(" (${:02X}, X)", address)
+            }
+            AddressXIndexIndirect => {
+                format!(" (${:04X}, X)", address)
             }
             DirectPageIndirectYIndex => {
-                format!("{} ({}),Y", self.mnemonic, todo!())
+                format!(" (${:02X}), Y", address)
             }
             DirectPageSIndexIndirectYIndex => {
-                format!("{} ({},S),Y", self.mnemonic, todo!())
+                format!(" (${:02X}, S), Y", address)
             }
-            DirectPageLongIndirect | AddressLongIndirect => {
-                format!("{} [{}]", self.mnemonic, todo!())
+            DirectPageLongIndirect => {
+                format!(" [${:02X}]", address)
+            }
+            AddressLongIndirect => {
+                format!(" [${:04X}]", address)
             }
             DirectPageLongIndirectYIndex => {
-                format!("{} [{}],Y", self.mnemonic, todo!())
+                format!(" [${:02X}], Y", address)
             }
             BlockMove => {
-                format!("{} ${:02X},${:02X}", self.mnemonic, operands[0], operands[1])
+                format!(" ${:02X}, ${:02X}", op_bytes[0], op_bytes[1])
             }
-        }
+        })
     }
 }
 
