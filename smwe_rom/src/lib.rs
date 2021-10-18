@@ -19,6 +19,7 @@ use crate::{
 };
 
 pub mod compression;
+pub mod disassembler;
 pub mod error;
 pub mod graphics;
 pub mod internal_header;
