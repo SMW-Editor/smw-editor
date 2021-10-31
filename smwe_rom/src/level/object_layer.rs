@@ -1,6 +1,11 @@
 use std::convert::TryInto;
 
-use nom::{cond, do_parse, many_till, tag, take, IResult};
+use nom::{
+    bytes::complete::{tag, take},
+    combinator::cond,
+    multi::many_till,
+    IResult,
+};
 
 pub const NON_EXIT_INSTANCE_SIZE: usize = 3;
 pub const EXIT_INSTANCE_SIZE: usize = 4;
@@ -113,27 +118,29 @@ impl ObjectInstance {
 }
 
 impl ObjectLayer {
+    fn parse_object(input: &[u8]) -> IResult<&[u8], ObjectInstance> {
+        let (input, first_three) = take(3usize)(input)?;
+        let (input, last) = cond((first_three[0] & 0b11100000) == 0 && first_three[2] == 0, take(1usize))(input)?;
+        match last {
+            Some(l) => {
+                let instance = ExitInstance([first_three, l].concat().try_into().unwrap());
+                Ok((input, ObjectInstance::Exit(instance)))
+            }
+            None => {
+                if first_three[2] == 1 {
+                    let instance = ScreenJumpInstance(first_three.try_into().unwrap());
+                    Ok((input, ObjectInstance::ScreenJump(instance)))
+                } else {
+                    let instance = NonExitInstance(first_three.try_into().unwrap());
+                    Ok((input, ObjectInstance::NonExit(instance)))
+                }
+            }
+        }
+    }
+
     #[rustfmt::skip]
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, (objects, _)) = many_till!(
-            input,
-            do_parse!(
-                first_three: take!(3) >>
-                last: cond!((first_three[0] & 0b11100000) == 0 && first_three[2] == 0, take!(1)) >>
-                (match last {
-                    Some(l) => {
-                        let instance = ExitInstance([first_three, l].concat().try_into().unwrap());
-                        ObjectInstance::Exit(instance)
-                    },
-                    None => if first_three[2] == 1 {
-                        let instance = ScreenJumpInstance(first_three.try_into().unwrap());
-                        ObjectInstance::ScreenJump(instance)
-                    } else {
-                        let instance = NonExitInstance(first_three.try_into().unwrap());
-                        ObjectInstance::NonExit(instance)
-                    },
-                })),
-            tag!(&[0xFFu8]))?;
+        let (input, (objects, _)) = many_till(Self::parse_object, tag(&[0xFFu8]))(input)?;
         Ok((input, Self { _objects: objects }))
     }
 }
