@@ -18,11 +18,6 @@ impl UiTool for UiDisassembler {
         let mut running = true;
 
         let ui = ctx.ui;
-        let proj = if let Some(proj) = ctx.project_ref {
-            proj.borrow()
-        } else {
-            return false;
-        };
         let title = std::mem::take(&mut self.title);
         Window::new(&title)
             .always_auto_resize(false)
@@ -32,40 +27,8 @@ impl UiTool for UiDisassembler {
             .size_constraints([512.0, 128.0], [1.0e9, 1.0e9])
             .opened(&mut running)
             .build(ui, || {
-                //self.display_data.iter().for_each(|t| ctx.ui.text(t));
-                let disas = &proj.rom_data.disassembly;
-                let [available_w, available_h] = ui.content_region_avail();
-                let [xoff, yoff] = ui.cursor_screen_pos();
-                {
-                    let mut str_buf = String::with_capacity(256);
-                    let mut addr = self.current_address_scroll as usize;
-                    let x = 24.0;
-                    let mut y = 8.0;
-                    let yadv = ui.text_line_height_with_spacing();
-                    // VSliders are upside down in imgui
-                    let mut virtual_address_scroll = disas.rom_bytes().len() as u32 - self.current_address_scroll;
-                    imgui::VerticalSlider::new("", [16.0, available_h - 16.0], 16u32, disas.rom_bytes().len() as u32)
-                        .flags(imgui::SliderFlags::ALWAYS_CLAMP)
-                        .display_format("")
-                        .build(ui, &mut virtual_address_scroll);
-                    self.current_address_scroll = (disas.rom_bytes().len() as u32 - virtual_address_scroll) & !3;
-                    let draw_list = ui.get_window_draw_list();
-                    while y < available_h - yadv {
-                        let bytes = if let Some(bytes) = disas.rom_bytes().get(addr..addr + 4) { bytes } else { break };
-                        str_buf.clear();
-                        write!(str_buf, "{:06x}: ", addr).unwrap();
-                        draw_list.add_text([xoff + x, yoff + y], ImColor32::from(0xff_aa_aa_aa), &str_buf);
-                        let [xadv, _] = ui.calc_text_size(&str_buf);
-                        str_buf.clear();
-                        write!(str_buf, "{:02x} {:02x} {:02x} {:02x}", bytes[0], bytes[1], bytes[2], bytes[3]).unwrap();
-                        draw_list.add_text([xoff + x + xadv, yoff + y], ImColor32::from(0xff_dd_dd_dd), &str_buf);
-                        y += yadv;
-                        addr += 4;
-                    }
-                }
-                // self.display_code(ctx, 0usize);
+                self.display_code(ctx);
             });
-        drop(proj);
         self.title = title;
 
         if !running {
@@ -81,16 +44,37 @@ impl UiDisassembler {
         Self { title: title_with_id("Disassembler", id), current_address_scroll: 0 }
     }
 
-    pub fn display_code(&self, ctx: &mut FrameContext, max_lines: usize) {
+    pub fn display_code(&mut self, ctx: &mut FrameContext) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
-        let disasm = &project.rom_data.disassembly;
-        for (_offset, block) in disasm.chunks.iter() {
-            match block {
-                BinaryBlock::Code(_meta) => {}
-                BinaryBlock::Data(_meta) => {}
-                BinaryBlock::Unused => {}
-                BinaryBlock::Unknown => {}
-                BinaryBlock::EndOfRom => break,
+        let disas = &project.rom_data.disassembly;
+        let ui = ctx.ui;
+        let [available_w, available_h] = ui.content_region_avail();
+        let [xoff, yoff] = ui.cursor_screen_pos();
+        {
+            let mut str_buf = String::with_capacity(256);
+            let mut addr = self.current_address_scroll as usize;
+            let x = 24.0;
+            let mut y = 8.0;
+            let yadv = ui.text_line_height_with_spacing();
+            // VSliders are upside down in imgui
+            let mut virtual_address_scroll = disas.rom_bytes().len() as u32 - self.current_address_scroll;
+            imgui::VerticalSlider::new("", [16.0, available_h - 16.0], 16u32, disas.rom_bytes().len() as u32)
+                .flags(imgui::SliderFlags::ALWAYS_CLAMP)
+                .display_format("")
+                .build(ui, &mut virtual_address_scroll);
+            self.current_address_scroll = (disas.rom_bytes().len() as u32 - virtual_address_scroll) & !3;
+            let draw_list = ui.get_window_draw_list();
+            while y < available_h - yadv {
+                let bytes = if let Some(bytes) = disas.rom_bytes().get(addr..addr + 4) { bytes } else { break };
+                str_buf.clear();
+                write!(str_buf, "{:06x}: ", addr).unwrap();
+                draw_list.add_text([xoff + x, yoff + y], ImColor32::from(0xff_aa_aa_aa), &str_buf);
+                let [xadv, _] = ui.calc_text_size(&str_buf);
+                str_buf.clear();
+                write!(str_buf, "{:02x} {:02x} {:02x} {:02x}", bytes[0], bytes[1], bytes[2], bytes[3]).unwrap();
+                draw_list.add_text([xoff + x + xadv, yoff + y], ImColor32::from(0xff_dd_dd_dd), &str_buf);
+                y += yadv;
+                addr += 4;
             }
         }
     }
