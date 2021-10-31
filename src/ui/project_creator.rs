@@ -1,6 +1,6 @@
 use std::{cell::RefCell, path::Path, rc::Rc};
 
-use imgui::{im_str, ImString, Ui, Window};
+use imgui::{PopupModal, Ui, Window};
 use inline_tweak::tweak;
 use smwe_project::Project;
 use smwe_rom::SmwRom;
@@ -11,14 +11,14 @@ use crate::{
 };
 
 pub struct UiProjectCreator {
-    title: ImString,
+    title: String,
 
-    project_title: ImString,
-    base_rom_path: ImString,
+    project_title: String,
+    base_rom_path: String,
 
-    err_project_title:    ImString,
-    err_base_rom_path:    ImString,
-    err_project_creation: ImString,
+    err_project_title:    String,
+    err_base_rom_path:    String,
+    err_project_creation: String,
 }
 
 impl UiTool for UiProjectCreator {
@@ -54,20 +54,20 @@ impl UiProjectCreator {
         let mut myself = UiProjectCreator {
             title: title_with_id("Create new project", id),
 
-            project_title: ImString::new("My SMW hack"),
-            base_rom_path: ImString::new(""),
+            project_title: String::from("My SMW hack"),
+            base_rom_path: String::new(),
 
-            err_project_title:    ImString::new(""),
-            err_base_rom_path:    ImString::new(""),
-            err_project_creation: ImString::new(""),
+            err_project_title:    String::new(),
+            err_base_rom_path:    String::new(),
+            err_project_creation: String::new(),
         };
         myself.handle_rom_file_path();
         myself
     }
 
     fn input_project_title(&mut self, ui: &Ui) {
-        ui.text(im_str!("Project title:"));
-        if ui.input_text(im_str!("##project_title"), &mut self.project_title).build() {
+        ui.text("Project title:");
+        if ui.input_text("##project_title", &mut self.project_title).build() {
             self.handle_project_title();
         }
 
@@ -78,19 +78,19 @@ impl UiProjectCreator {
 
     fn handle_project_title(&mut self) {
         if self.project_title.is_empty() {
-            self.err_project_title = ImString::new("Project title cannot be empty.");
+            self.err_project_title = String::from("Project title cannot be empty.");
         } else {
             self.err_project_title.clear();
         }
     }
 
     fn input_rom_file_path(&mut self, ui: &Ui) {
-        ui.text(im_str!("Base ROM file:"));
-        if ui.input_text(im_str!("##rom_file"), &mut self.base_rom_path).build() {
+        ui.text("Base ROM file:");
+        if ui.input_text("##rom_file", &mut self.base_rom_path).build() {
             self.handle_rom_file_path();
         }
-        ui.same_line(0.0);
-        if ui.small_button(im_str!("Browse...")) {
+        ui.same_line();
+        if ui.small_button("Browse...") {
             self.open_file_selector();
         }
 
@@ -100,11 +100,11 @@ impl UiProjectCreator {
     }
 
     fn handle_rom_file_path(&mut self) {
-        let file_path = Path::new(self.base_rom_path.to_str());
+        let file_path = Path::new(&self.base_rom_path);
         if !file_path.exists() {
-            self.err_base_rom_path = ImString::new(format!("File '{}' does not exist.", self.base_rom_path));
+            self.err_base_rom_path = format!("File '{}' does not exist.", self.base_rom_path);
         } else if file_path.is_dir() {
-            self.err_base_rom_path = ImString::new(format!("'{}' is not a file.", self.base_rom_path));
+            self.err_base_rom_path = format!("'{}' is not a file.", self.base_rom_path);
         } else {
             self.err_base_rom_path.clear();
         }
@@ -116,29 +116,29 @@ impl UiProjectCreator {
         if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None) //
             .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
         {
-            self.base_rom_path = ImString::new(path.to_str().unwrap());
+            self.base_rom_path = String::from(path.to_str().unwrap());
             self.handle_rom_file_path();
         }
     }
 
     fn create_or_cancel(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
         if self.no_creation_errors() {
-            if ctx.ui.small_button(im_str!("Create")) {
+            if ctx.ui.small_button("Create") {
                 log::info!("Attempting to create a new project");
                 self.handle_project_creation(ctx, created_or_cancelled);
             }
         } else {
-            ctx.ui.text_disabled(im_str!("Create"));
+            ctx.ui.text_disabled("Create");
         }
-        ctx.ui.same_line(0.0);
-        if ctx.ui.small_button(im_str!("Cancel")) {
+        ctx.ui.same_line();
+        if ctx.ui.small_button("Cancel") {
             log::info!("Cancelled project creation");
             *created_or_cancelled = true;
         }
     }
 
     fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
-        match SmwRom::from_file(self.base_rom_path.to_str()) {
+        match SmwRom::from_file(self.base_rom_path) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
                 let project = Project { title: self.project_title.to_string(), rom_data };
@@ -148,23 +148,22 @@ impl UiProjectCreator {
             }
             Err(err) => {
                 log::info!("Failed to create a new project: {}", err);
-                self.err_project_creation = ImString::from(err.to_string());
-                ctx.ui.open_popup(im_str!("Error!##project_error"));
+                self.err_project_creation = err.to_string();
+                ctx.ui.open_popup("Error!##project_error");
             }
         }
     }
 
     fn project_error_popup(&self, ui: &Ui) {
-        ui.popup_modal(im_str!("Error!##project_error"))
-            .always_auto_resize(true)
-            .resizable(false)
-            .collapsible(false)
-            .build(|| {
+        PopupModal::new("Error!##project_error").always_auto_resize(true).resizable(false).collapsible(false).build(
+            ui,
+            || {
                 ui.text_wrapped(&self.err_project_creation);
-                if ui.button(im_str!("OK"), [tweak!(300.0), tweak!(20.0)]) {
+                if ui.button_with_size("OK", [tweak!(300.0), tweak!(20.0)]) {
                     ui.close_current_popup();
                 }
-            });
+            },
+        );
     }
 
     fn no_creation_errors(&self) -> bool {

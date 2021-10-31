@@ -1,4 +1,4 @@
-use imgui::{ImString, Window};
+use imgui::Window;
 use smwe_rom::RomInternalHeader;
 
 use crate::{
@@ -7,8 +7,8 @@ use crate::{
 };
 
 pub struct UiRomInfo {
-    title:        ImString,
-    display_data: Vec<ImString>,
+    title:        String,
+    display_data: Vec<String>,
 }
 
 impl UiTool for UiRomInfo {
@@ -40,14 +40,14 @@ impl UiRomInfo {
         UiRomInfo {
             title:        title_with_id("ROM info", id),
             display_data: vec![
-                ImString::new(format!("Internal ROM name: {}", header.internal_rom_name)),
-                ImString::new(format!("Map mode:          {}", header.map_mode)),
-                ImString::new(format!("ROM type:          {}", header.rom_type)),
-                ImString::new(format!("ROM size:          {} kB", header.rom_size_in_kb())),
-                ImString::new(format!("SRAM size:         {} kB", header.sram_size_in_kb())),
-                ImString::new(format!("Region:            {}", header.region_code)),
-                ImString::new(format!("Developer ID:      ${:x}", header.developer_id)),
-                ImString::new(format!("Version:           1.{}", header.version_number)),
+                format!("Internal ROM name: {}", header.internal_rom_name),
+                format!("Map mode:          {}", header.map_mode),
+                format!("ROM type:          {}", header.rom_type),
+                format!("ROM size:          {} kB", header.rom_size_in_kb()),
+                format!("SRAM size:         {} kB", header.sram_size_in_kb()),
+                format!("Region:            {}", header.region_code),
+                format!("Developer ID:      ${:x}", header.developer_id),
+                format!("Version:           1.{}", header.version_number),
             ],
         }
     }

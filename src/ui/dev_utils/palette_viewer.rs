@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use imgui::{im_str, ComboBox, ImString, Ui, Window};
+use imgui::{Ui, Window};
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::{
     color::Rgba32,
@@ -20,7 +20,7 @@ pub enum PaletteContext {
 }
 
 pub struct UiPaletteViewer {
-    title:             ImString,
+    title:             String,
     palette_context:   PaletteContext,
     // Level viewer
     level_num:         i32,
@@ -42,8 +42,7 @@ impl UiTool for UiPaletteViewer {
             .opened(&mut running)
             .build(ctx.ui, || {
                 let mut context_raw = self.palette_context as usize;
-                ComboBox::new(im_str!("Context"))
-                    .build_simple_string(ctx.ui, &mut context_raw, &[im_str!("Level"), im_str!("Overworld")]);
+                ctx.ui.combo_simple_string("Context", &mut context_raw, &["Level", "Overworld"]);
                 self.palette_context = PaletteContext::try_from(context_raw).unwrap_or(PaletteContext::Level);
                 match self.palette_context {
                     PaletteContext::Level => self.viewer_level(ctx),
@@ -84,7 +83,7 @@ impl UiPaletteViewer {
     }
 
     fn viewer_level(&mut self, ctx: &mut FrameContext) {
-        if ctx.ui.input_int(im_str!("Level number"), &mut self.level_num).chars_hexadecimal(true).build() {
+        if ctx.ui.input_int("Level number", &mut self.level_num).chars_hexadecimal(true).build() {
             self.adjust_level_num(ctx);
             log::info!("Showing color palette for level {:X}", self.level_num);
         }
@@ -93,13 +92,13 @@ impl UiPaletteViewer {
     }
 
     fn viewer_overworld(&mut self, ctx: &mut FrameContext) {
-        if ctx.ui.checkbox(im_str!("Special world completed"), &mut self.special_completed) {
+        if ctx.ui.checkbox("Special world completed", &mut self.special_completed) {
             log::info!(
                 "Showing color palette for {}",
                 if self.special_completed { "post-special world" } else { "pre-special world" }
             );
         }
-        if ctx.ui.input_int(im_str!("Submap number"), &mut self.submap_num).chars_hexadecimal(true).build() {
+        if ctx.ui.input_int("Submap number", &mut self.submap_num).chars_hexadecimal(true).build() {
             self.adjust_ow_submap_num(ctx);
             log::info!("Showing color palette for submap {:X}", self.submap_num);
         }
