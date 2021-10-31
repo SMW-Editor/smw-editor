@@ -10,7 +10,7 @@ name = "smw-editor"
 version = "0.1.0"
 authors = ["Adam Gąsior (Adanos020)", "Jakub Szewczyk (kubasz)"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 
 [dependencies]
