@@ -56,7 +56,7 @@ impl UiAddressConverter {
             include_header:  false,
             text_pc:         String::from("0"),
             text_snes:       String::from("8000"),
-            text_error:      String::from(""),
+            text_error:      String::new(),
         }
     }
 

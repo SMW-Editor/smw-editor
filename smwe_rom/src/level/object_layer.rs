@@ -138,7 +138,6 @@ impl ObjectLayer {
         }
     }
 
-    #[rustfmt::skip]
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
         let (input, (objects, _)) = many_till(Self::parse_object, tag(&[0xFFu8]))(input)?;
         Ok((input, Self { _objects: objects }))
