@@ -1,5 +1,7 @@
-use imgui::{im_str, ImString, Ui, Window};
-use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
+use std::fmt::Write;
+
+use imgui::{Ui, Window};
+use smwe_rom::addr::{Addr, AddrPc, AddrSnes};
 
 use self::{helpers::*, modes::*};
 use crate::{
@@ -11,14 +13,14 @@ use crate::{
 };
 
 pub struct UiAddressConverter {
-    title: ImString,
+    title: String,
 
     conversion_mode: ConversionMode,
     include_header:  bool,
 
-    text_pc:    ImString,
-    text_snes:  ImString,
-    text_error: ImString,
+    text_pc:    String,
+    text_snes:  String,
+    text_error: String,
 }
 
 impl UiTool for UiAddressConverter {
@@ -52,25 +54,26 @@ impl UiAddressConverter {
             title:           title_with_id("Address converter", id),
             conversion_mode: ConversionMode::LoRom,
             include_header:  false,
-            text_pc:         ImString::new("0"),
-            text_snes:       ImString::new("8000"),
-            text_error:      ImString::new(""),
+            text_pc:         String::from("0"),
+            text_snes:       String::from("8000"),
+            text_error:      String::from(""),
         }
     }
 
     fn mode_selection(&mut self, ui: &Ui) {
-        let lorom_changed = ui.radio_button(im_str!("PC and LoROM"), &mut self.conversion_mode, ConversionMode::LoRom);
-        let hirom_changed = ui.radio_button(im_str!("PC and HiROM"), &mut self.conversion_mode, ConversionMode::HiRom);
+        let lorom_changed = ui.radio_button("PC and LoROM", &mut self.conversion_mode, ConversionMode::LoRom);
+        let hirom_changed = ui.radio_button("PC and HiROM", &mut self.conversion_mode, ConversionMode::HiRom);
         if lorom_changed || hirom_changed {
             log::info!("Conversion mode changed to {}", self.conversion_mode);
             self.update_addresses(ConvDir::PcToSnes);
         }
 
-        if ui.checkbox(im_str!("Include header"), &mut self.include_header) {
+        if ui.checkbox("Include header", &mut self.include_header) {
             log::info!("Inclusion of SMC header: {}", if self.include_header { "ON" } else { "OFF" });
-            let addr_pc = usize::from_str_radix(self.text_pc.to_str(), 16).unwrap_or(0);
+            let addr_pc = usize::from_str_radix(&self.text_pc, 16).unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
-            self.text_pc = ImString::new(format!("{:x}", addr_pc));
+            self.text_pc.clear();
+            write!(&mut self.text_pc, "{:x}", addr_pc).unwrap();
             self.update_addresses(ConvDir::PcToSnes);
         }
     }
@@ -79,14 +82,14 @@ impl UiAddressConverter {
         self.address_input(ui, ConvDir::PcToSnes);
         self.address_input(ui, ConvDir::SnesToPc);
         if !self.text_error.is_empty() {
-            ui.text_colored(color::TEXT_ERROR, self.text_error.to_str());
+            ui.text_colored(color::TEXT_ERROR, &self.text_error);
         }
     }
 
     fn address_input(&mut self, ui: &Ui, direction: ConvDir) {
         let (label, buf) = match direction {
-            ConvDir::PcToSnes => (im_str!("PC"), &mut self.text_pc),
-            ConvDir::SnesToPc => (im_str!("SNES"), &mut self.text_snes),
+            ConvDir::PcToSnes => ("PC", &mut self.text_pc),
+            ConvDir::SnesToPc => ("SNES", &mut self.text_snes),
         };
 
         if ui.input_text(label, buf).chars_hexadecimal(true).chars_noblank(true).auto_select_all(true).build() {
@@ -102,7 +105,7 @@ impl UiAddressConverter {
         };
 
         let addr_src = {
-            let addr = usize::from_str_radix(buf_src.to_str(), 16).unwrap_or(0);
+            let addr = usize::from_str_radix(buf_src, 16).unwrap_or(0);
             if self.include_header {
                 match direction {
                     ConvDir::PcToSnes => adjust_to_header(addr, false),
@@ -137,10 +140,11 @@ impl UiAddressConverter {
         };
 
         if let Err(msg) = addr_dst {
-            self.text_error = ImString::new(msg.to_string());
+            self.text_error = msg.to_string();
         } else {
             let addr_dst = addr_dst.unwrap();
-            *buf_dst = ImString::new(format!("{:x}", addr_dst));
+            buf_dst.clear();
+            write!(buf_dst, "{:x}", addr_dst).unwrap();
             self.text_error.clear();
         }
     }

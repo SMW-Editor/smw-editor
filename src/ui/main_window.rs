@@ -1,4 +1,4 @@
-use imgui::{im_str, MenuItem};
+use imgui::MenuItem;
 
 use crate::{
     frame_context::FrameContext,
@@ -42,12 +42,12 @@ impl UiMainWindow {
     }
 
     fn menu_file(&mut self, ctx: &mut FrameContext) {
-        ctx.ui.menu(im_str!("File"), true, || {
+        ctx.ui.menu("File", || {
             let menu_item = |label| MenuItem::new(label).build(ctx.ui);
-            if menu_item(im_str!("New project")) {
+            if menu_item("New project") {
                 self.open_tool(UiProjectCreator::new);
             }
-            if menu_item(im_str!("Exit")) {
+            if menu_item("Exit") {
                 self.running = false;
             }
         });
@@ -57,26 +57,26 @@ impl UiMainWindow {
         let FrameContext { ui, project_ref, .. } = ctx;
         let project = project_ref.as_ref().map(|p| p.borrow_mut());
 
-        ui.menu(im_str!("Tools"), true, || {
-            if MenuItem::new(im_str!("Address converter")) //
+        ui.menu("Tools", || {
+            if MenuItem::new("Address converter") //
                 .build(ui)
             {
                 self.open_tool(UiAddressConverter::new);
             }
-            if MenuItem::new(im_str!("ROM info")) //
+            if MenuItem::new("ROM info") //
                 .enabled(project.is_some())
                 .build(ui)
             {
                 let internal_header = &project.as_ref().unwrap().rom_data.internal_header;
                 self.open_tool(|id| UiRomInfo::new(id, internal_header));
             }
-            if MenuItem::new(im_str!("Color palettes")) //
+            if MenuItem::new("Color palettes") //
                 .enabled(project.is_some())
                 .build(ui)
             {
                 self.open_tool(UiPaletteViewer::new);
             }
-            if MenuItem::new(im_str!("GFX")) //
+            if MenuItem::new("GFX") //
                 .enabled(project.is_some())
                 .build(ui)
             {

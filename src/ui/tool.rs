@@ -1,5 +1,3 @@
-use imgui::ImString;
-
 use crate::frame_context::FrameContext;
 
 pub trait UiTool {
@@ -8,6 +6,6 @@ pub trait UiTool {
 
 pub type WindowId = i32;
 
-pub fn title_with_id(title: &str, id: WindowId) -> ImString {
-    ImString::new(format!("{}##{}", title, id))
+pub fn title_with_id(title: &str, id: WindowId) -> String {
+    format!("{}##{}", title, id)
 }

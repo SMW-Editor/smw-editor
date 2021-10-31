@@ -7,7 +7,7 @@ use glium::{
     Rect,
     Texture2d,
 };
-use imgui::{im_str, ImString, Image, TextureId, Window};
+use imgui::{Image, TextureId, Window};
 use imgui_glium_renderer::Texture;
 use smwe_rom::graphics::{color::Rgba32, gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
 
@@ -21,8 +21,6 @@ use crate::{
 #[allow(dead_code)]
 #[rustfmt::skip]
 mod constants {
-    use imgui::{im_str, ImStr};
-
     pub const N_TILES_IN_ROW: usize = 16;
 
     pub const I_PAL_LEVEL_WTF:        usize = 0;
@@ -32,14 +30,14 @@ mod constants {
     pub const I_PAL_LEVEL_BACKGROUND: usize = 4;
     pub const I_PAL_LEVEL_FOREGROUND: usize = 5;
     pub const I_PAL_LEVEL_SPRITE:     usize = 6;
-    pub const PALETTE_CATEGORIES: [&ImStr; 7] = [
-        im_str!("Level: Wtf"),
-        im_str!("Level: Players"),
-        im_str!("Level: Layer3"),
-        im_str!("Level: Berry"),
-        im_str!("Level: Background"),
-        im_str!("Level: Foreground"),
-        im_str!("Level: Sprite"),
+    pub const PALETTE_CATEGORIES: [&str; 7] = [
+        "Level: Wtf",
+        "Level: Players",
+        "Level: Layer3",
+        "Level: Berry",
+        "Level: Background",
+        "Level: Foreground",
+        "Level: Sprite",
     ];
 }
 use constants::*;
@@ -52,7 +50,7 @@ struct BufferInfo {
 }
 
 pub struct UiGfxViewer {
-    title:                ImString,
+    title:                String,
     buffer_info:          Option<BufferInfo>,
     curr_image_size:      (usize, usize),
     curr_gfx_file_num:    i32,
@@ -83,7 +81,7 @@ impl UiTool for UiGfxViewer {
             .opened(&mut running)
             .build(ctx.ui, || {
                 ctx.ui.group(|| self.switches(ctx));
-                ctx.ui.same_line(0.0);
+                ctx.ui.same_line();
                 self.gfx_image(ctx);
             });
         self.title = title;
@@ -115,12 +113,12 @@ impl UiGfxViewer {
         let mut changed_any = false;
         let mut input_int = |label, var| changed_any |= ctx.ui.input_int(label, var).chars_hexadecimal(true).build();
 
-        input_int(im_str!("GFX file number"), &mut self.curr_gfx_file_num);
-        input_int(im_str!("Palette row index"), &mut self.curr_palette_row_idx);
-        input_int(im_str!("Background palette index"), &mut self.curr_bg_palette_num);
-        input_int(im_str!("Foreground palette index"), &mut self.curr_fg_palette_num);
-        input_int(im_str!("Sprite palette index"), &mut self.curr_sp_palette_num);
-        input_int(im_str!("Player palette index"), &mut self.curr_pl_palette_num);
+        input_int("GFX file number", &mut self.curr_gfx_file_num);
+        input_int("Palette row index", &mut self.curr_palette_row_idx);
+        input_int("Background palette index", &mut self.curr_bg_palette_num);
+        input_int("Foreground palette index", &mut self.curr_fg_palette_num);
+        input_int("Sprite palette index", &mut self.curr_sp_palette_num);
+        input_int("Player palette index", &mut self.curr_pl_palette_num);
 
         if changed_any {
             self.adjust_nums(ctx);
