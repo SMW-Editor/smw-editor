@@ -138,7 +138,7 @@ impl UiProjectCreator {
     }
 
     fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
-        match SmwRom::from_file(self.base_rom_path) {
+        match SmwRom::from_file(&self.base_rom_path) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
                 let project = Project { title: self.project_title.to_string(), rom_data };
