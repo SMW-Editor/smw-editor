@@ -83,6 +83,14 @@ impl<A: Addr> RomSlice<A> {
     pub fn is_infinite(&self) -> bool {
         self.size == usize::MAX
     }
+
+    pub fn contains(&self, addr: A) -> bool {
+        if let Some(end) = self.end() {
+            (self.begin..end).contains(&addr)
+        } else {
+            false
+        }
+    }
 }
 
 impl<A: Addr> fmt::Display for RomSlice<A> {

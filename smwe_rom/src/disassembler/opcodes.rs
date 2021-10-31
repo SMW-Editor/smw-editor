@@ -133,6 +133,7 @@ pub enum Mnemonic {
     XCE, // Exchange Carry with Emulation
 }
 
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Opcode {
     pub mnemonic: Mnemonic,
     pub mode:     AddressingMode,

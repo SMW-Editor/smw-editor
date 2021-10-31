@@ -24,6 +24,7 @@ pub mod types {
         Sized
         + Copy
         + Clone
+        + PartialOrd
         + fmt::LowerHex
         + fmt::UpperHex
         + Add<usize, Output = Self>

@@ -1,5 +1,7 @@
 use crate::disassembler::instruction::Instruction;
 
+// -------------------------------------------------------------------------------------------------
+
 pub enum DataKind {
     Empty,
     Graphics,
