@@ -6,6 +6,7 @@ use Mnemonic::*;
 // -------------------------------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
 pub enum AddressingMode {
     Accumulator,
     Address,
@@ -38,6 +39,7 @@ pub enum AddressingMode {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Mnemonic {
     ADC, // Add with carry
     AND, // AND Accumulator
@@ -147,19 +149,27 @@ impl fmt::Display for Mnemonic {
     }
 }
 
+impl AddressingMode {
+    #[inline]
+    pub fn operands_size(self) -> usize {
+        match self {
+            Accumulator | Implied | ImmediateXFlagDependent | ImmediateMFlagDependent => 0,
+            Long | LongXIndex => 3,
+            Immediate16 | Relative16 | BlockMove => 2,
+            m if (Address..=AddressXIndexIndirect).contains(&m) => 2,
+            _ => 1,
+        }
+    }
+}
+
 impl Opcode {
     pub const fn new(mnemonic: Mnemonic, mode: AddressingMode) -> Self {
         Self { mnemonic, mode }
     }
 
-    pub fn instruction_size(&self) -> usize {
-        match self.mode {
-            Accumulator | Implied | ImmediateXFlagDependent | ImmediateMFlagDependent => 1,
-            Long | LongXIndex => 4,
-            Immediate16 | Relative16 | BlockMove => 3,
-            m if (Address..=AddressXIndexIndirect).contains(&m) => 3,
-            _ => 2,
-        }
+    #[inline]
+    pub fn instruction_size(self) -> usize {
+        1 + self.mode.operands_size()
     }
 }
 

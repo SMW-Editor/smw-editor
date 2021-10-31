@@ -1,4 +1,9 @@
-use crate::disassembler::instruction::Instruction;
+use std::{collections::BTreeMap, sync::Arc};
+
+use crate::{
+    disassembler::instruction::Instruction,
+    snes_utils::addr::{AddrPc, AddrSnes},
+};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -18,13 +23,34 @@ pub enum DataKind {
     Text,
 }
 
-pub enum BinaryChunk {
-    Code(Instruction),
-    Data(DataKind, Vec<u8>),
+#[derive(Clone)]
+pub struct CodeBlockMetadata {}
+
+#[derive(Clone)]
+pub struct DataBlockMetadata {}
+
+#[derive(Clone)]
+pub enum BinaryBlock {
+    Code(CodeBlockMetadata),
+    Data(DataBlockMetadata),
+    Unused,
+    Unknown,
+    EndOfRom,
 }
 
 pub struct RomDisassembly {
-    chunks: Vec<BinaryChunk>,
+    rom_bytes: Arc<[u8]>,
+    /// Map Start index -> Block data
+    chunks:    BTreeMap<AddrPc, BinaryBlock>,
 }
 
 // -------------------------------------------------------------------------------------------------
+
+impl RomDisassembly {
+    pub fn new(rom_bytes: Arc<[u8]>) -> Self {
+        let mut chunks = BTreeMap::new();
+        chunks.insert(AddrPc(0), BinaryBlock::Unknown);
+        chunks.insert(AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom);
+        Self { rom_bytes, chunks }
+    }
+}

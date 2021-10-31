@@ -5,16 +5,22 @@ use crate::{
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Instruction {
-    pub opcode:   Opcode,
-    pub operands: Vec<u8>,
+    pub opcode: Opcode,
+    // Length might be shorter than 4, needs to be looked up by opcode
+    operands:   [u8; 4],
 }
 
 // -------------------------------------------------------------------------------------------------
 
 impl Instruction {
+    pub fn operands(&self) -> &[u8] {
+        &self.operands[0..self.opcode.mode.operands_size()]
+    }
+
     pub fn format_to_string(&self, offset: usize, x_flag: bool, m_flag: bool) -> String {
-        let address = self.get_intermediate_address(offset, &self.operands, false);
+        let address = self.get_intermediate_address(offset, false);
         format!("{}{}", self.opcode.mnemonic, match self.opcode.mode {
             Implied => {
                 String::new()
@@ -98,7 +104,8 @@ impl Instruction {
         })
     }
 
-    fn get_intermediate_address(&self, offset: usize, op_bytes: &[u8], resolve: bool) -> u32 {
+    fn get_intermediate_address(&self, offset: usize, resolve: bool) -> u32 {
+        let op_bytes = self.operands();
         match self.opcode.mode {
             m if (DirectPage..=DirectPageYIndex).contains(&m) => {
                 if resolve {

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     error::{DecompressionError, ParseErr, RomError},
     snes_utils::{
@@ -48,7 +50,7 @@ pub trait IsDecompressed {
 
 // -------------------------------------------------------------------------------------------------
 
-pub struct Rom(Vec<u8>);
+pub struct Rom(pub Arc<[u8]>);
 
 pub struct RomWithErrorMapper<'r, EM, ET>
 where
@@ -91,9 +93,10 @@ impl Rom {
         if !data.is_empty() {
             let modulo_1k = data.len() % 0x400;
             if modulo_1k == 0 {
-                Ok(Self(data))
+                Ok(Self(Arc::from(data)))
             } else if modulo_1k == SMC_HEADER_SIZE {
-                Ok(Self(data.drain(SMC_HEADER_SIZE..).collect()))
+                data.drain(SMC_HEADER_SIZE..);
+                Ok(Self(Arc::from(data)))
             } else {
                 Err(RomError::Size(data.len()))
             }

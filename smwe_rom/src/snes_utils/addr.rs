@@ -59,7 +59,7 @@ pub mod types {
 
     macro_rules! gen_address_type {
         ($name:ident) => {
-            #[derive(Copy, Clone, Debug)]
+            #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $name(pub usize);
 
             impl From<usize> for $name {
@@ -72,14 +72,6 @@ pub mod types {
 
             impl From<$name> for usize {
                 fn from(this: $name) -> usize { this.0 }
-            }
-
-            impl PartialEq for $name {
-                fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
-            }
-
-            impl PartialOrd for $name {
-                fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.0.cmp(&other.0)) }
             }
 
             impl fmt::Display for $name {
