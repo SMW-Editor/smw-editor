@@ -1,9 +1,10 @@
 #![allow(clippy::identity_op)]
 
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 pub use crate::internal_header::RomInternalHeader;
 use crate::{
+    disassembler::rom_disassembly::RomDisassembly,
     error::RomParseError,
     graphics::{
         gfx_file::{GfxFile, GFX_FILES_META},
@@ -28,6 +29,7 @@ pub mod objects;
 pub mod snes_utils;
 
 pub struct SmwRom {
+    pub disassembly:         RomDisassembly,
     pub internal_header:     RomInternalHeader,
     pub levels:              Vec<Level>,
     pub secondary_entrances: Vec<SecondaryEntrance>,
@@ -73,7 +75,18 @@ impl SmwRom {
         log::info!("Parsing Map16 tilesets");
         let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
 
-        Ok(Self { internal_header, levels, secondary_entrances, color_palettes, gfx_files, map16_tilesets })
+        log::info!("Creating disassembly map");
+        let disassembly = RomDisassembly::new(Arc::clone(&rom.0));
+
+        Ok(Self {
+            disassembly,
+            internal_header,
+            levels,
+            secondary_entrances,
+            color_palettes,
+            gfx_files,
+            map16_tilesets,
+        })
     }
 
     fn parse_levels(rom: &Rom) -> Result<Vec<Level>, RomParseError> {

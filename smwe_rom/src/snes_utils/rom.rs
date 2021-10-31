@@ -95,7 +95,7 @@ impl Rom {
             if modulo_1k == 0 {
                 Ok(Self(Arc::from(data)))
             } else if modulo_1k == SMC_HEADER_SIZE {
-                data.drain(SMC_HEADER_SIZE..);
+                data.drain(..SMC_HEADER_SIZE);
                 Ok(Self(Arc::from(data)))
             } else {
                 Err(RomError::Size(data.len()))

@@ -37,7 +37,7 @@ impl UiTool for UiRomInfo {
 impl UiRomInfo {
     pub fn new(id: WindowId, header: &RomInternalHeader) -> Self {
         log::info!("Opened ROM Info");
-        UiRomInfo {
+        Self {
             title:        title_with_id("ROM info", id),
             display_data: vec![
                 format!("Internal ROM name: {}", header.internal_rom_name),

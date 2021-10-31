@@ -2,7 +2,15 @@ use imgui::MenuItem;
 
 use crate::{
     frame_context::FrameContext,
-    ui::{UiAddressConverter, UiGfxViewer, UiPaletteViewer, UiProjectCreator, UiRomInfo, UiTool},
+    ui::{
+        dev_utils::disassembler::UiDisassembler,
+        UiAddressConverter,
+        UiGfxViewer,
+        UiPaletteViewer,
+        UiProjectCreator,
+        UiRomInfo,
+        UiTool,
+    },
 };
 
 pub struct UiMainWindow {
@@ -81,6 +89,12 @@ impl UiMainWindow {
                 .build(ui)
             {
                 self.open_tool(UiGfxViewer::new);
+            }
+            if MenuItem::new("Disassembler") //
+                .enabled(project.is_some())
+                .build(ui)
+            {
+                self.open_tool(UiDisassembler::new);
             }
         });
     }

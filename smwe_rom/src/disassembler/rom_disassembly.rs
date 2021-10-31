@@ -39,9 +39,9 @@ pub enum BinaryBlock {
 }
 
 pub struct RomDisassembly {
-    rom_bytes: Arc<[u8]>,
+    rom_bytes:  Arc<[u8]>,
     /// Map Start index -> Block data
-    chunks:    BTreeMap<AddrPc, BinaryBlock>,
+    pub chunks: BTreeMap<AddrPc, BinaryBlock>,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -52,5 +52,9 @@ impl RomDisassembly {
         chunks.insert(AddrPc(0), BinaryBlock::Unknown);
         chunks.insert(AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom);
         Self { rom_bytes, chunks }
+    }
+
+    pub fn rom_bytes(&self) -> &[u8] {
+        &self.rom_bytes
     }
 }
