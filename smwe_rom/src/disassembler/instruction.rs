@@ -1,16 +1,12 @@
 use crate::{
-    disassembler::opcodes::{
-        AddressingMode::*,
-        Mnemonic,
-        Opcode,
-    },
+    disassembler::opcodes::{AddressingMode::*, Mnemonic, Opcode},
     snes_utils::addr::*,
 };
 
 // -------------------------------------------------------------------------------------------------
 
 pub struct Instruction {
-    pub opcode: Opcode,
+    pub opcode:   Opcode,
     pub operands: Vec<u8>,
 }
 

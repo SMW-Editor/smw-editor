@@ -1,7 +1,4 @@
-use crate::snes_utils::{
-    addr::AddrSnes,
-    rom_slice::SnesSlice,
-};
+use crate::snes_utils::{addr::AddrSnes, rom_slice::SnesSlice};
 
 // -------------------------------------------------------------------------------------------------
 
