@@ -10,8 +10,9 @@ and none of the main features are there yet.
 ## Currently in progress
 
 ROM disassembler, primarily for dividing the code and data portions of the ROM.
+You can track the progress in the [disassembler branch](https://github.com/SMW-Editor/smw-editor/tree/disassembler).
 
-You can track the progress [here](https://github.com/SMW-Editor/smw-editor/projects/1).
+The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
 ## Planned features:
 
@@ -42,11 +43,21 @@ more convenient and will be removed later.
 
 # Contribution
 
-I'm working on this project on my own, in my free time. In the current state of things
-the pace of development is pretty slow, and because of that I'm willing to open this
-project for contributions.
+We are a team of two working on this project in our free time. Due to the scale of
+this project and the amount of time available to us, the development is pretty slow.
 
-Since this project is in such an early stage of development, I think creating a small
-team of developers would make the most sense. So if you're willing to join me, and are
-experienced in Rust and SMW romhacking, please
-[contact me](mailto:a.gasior@newcastle.ac.uk), and we'll sort things out. 
+For this reason we encourage you to contribute: simply clone the repository, create
+a branch, push your changes, and create a pull request. Don't forget to run
+`format-apply.sh` before you push!
+
+We also think expanding our development team would speed things up and help us deliver
+a better product. If you want to join us and are experienced in at least one of these
+(but the more the better):
+- [Rust](https://www.rust-lang.org/)
+- Programming for the SNES
+- SMW romhacking
+- UI design
+
+Then please contact me:
+- Discord (Ąhoš#8981)
+- Email: a.gasior@newcastle.ac.uk
