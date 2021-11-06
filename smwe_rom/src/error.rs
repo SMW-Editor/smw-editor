@@ -64,6 +64,14 @@ pub enum LcLz2Error {
 }
 
 #[derive(Debug, Error)]
+pub enum InstructionParseError {
+    #[error("No bytes provided to parse instruction from")]
+    InputEmpty,
+    #[error("Not enough bytes to read operands for instruction {0:08x}")]
+    InputTooShort(u8),
+}
+
+#[derive(Debug, Error)]
 pub enum GfxTileError {
     #[error("Failed to convert an indexed tile to Abgr1555")]
     ToAbgr1555,

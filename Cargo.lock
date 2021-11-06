@@ -1320,6 +1320,7 @@ dependencies = [
  "imgui-glium-renderer",
  "imgui-winit-support",
  "inline_tweak",
+ "itertools",
  "log",
  "log4rs",
  "nfd2",

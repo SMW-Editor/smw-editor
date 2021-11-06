@@ -24,15 +24,17 @@ pub enum DataKind {
 }
 
 #[derive(Clone)]
-pub struct CodeBlockMetadata {}
+pub struct CodeBlock {
+    pub instructions: Vec<(AddrPc, Instruction)>,
+}
 
 #[derive(Clone)]
-pub struct DataBlockMetadata {}
+pub struct DataBlock {}
 
 #[derive(Clone)]
 pub enum BinaryBlock {
-    Code(CodeBlockMetadata),
-    Data(DataBlockMetadata),
+    Code(CodeBlock),
+    Data(DataBlock),
     Unused,
     Unknown,
     EndOfRom,
@@ -40,21 +42,41 @@ pub enum BinaryBlock {
 
 pub struct RomDisassembly {
     rom_bytes:  Arc<[u8]>,
-    /// Map Start index -> Block data
-    pub chunks: BTreeMap<AddrPc, BinaryBlock>,
+    /// Start index, Block data
+    pub chunks: Vec<(AddrPc, BinaryBlock)>,
 }
 
 // -------------------------------------------------------------------------------------------------
 
 impl RomDisassembly {
     pub fn new(rom_bytes: Arc<[u8]>) -> Self {
-        let mut chunks = BTreeMap::new();
-        chunks.insert(AddrPc(0), BinaryBlock::Unknown);
-        chunks.insert(AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom);
+        let mut chunks = Vec::with_capacity(64);
+        // Temporary until code scanning
+        let (first_code, rest) = CodeBlock::from_bytes(AddrPc(0), &rom_bytes);
+        chunks.push((AddrPc(0), BinaryBlock::Code(first_code)));
+        if rest.0 != rom_bytes.len() {
+            chunks.push((rest, BinaryBlock::Unknown));
+        }
+        chunks.push((AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom));
         Self { rom_bytes, chunks }
     }
 
     pub fn rom_bytes(&self) -> &[u8] {
         &self.rom_bytes
+    }
+}
+
+impl CodeBlock {
+    /// Returns parsed code block and the address of the next byte after the block end
+    pub fn from_bytes(base: AddrPc, bytes: &[u8]) -> (Self, AddrPc) {
+        let mut instructions = Vec::with_capacity(bytes.len() / 2);
+        let mut rest = bytes;
+        let mut addr = base;
+        while let Ok((i, new_rest)) = Instruction::parse(rest) {
+            instructions.push((addr, i));
+            rest = new_rest;
+            addr = AddrPc(addr.0 + i.opcode.instruction_size());
+        }
+        (Self { instructions }, addr)
     }
 }
