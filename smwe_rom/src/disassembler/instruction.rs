@@ -1,7 +1,10 @@
 use std::fmt::{Display, Write};
 
 use crate::{
-    disassembler::opcodes::{AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
+    disassembler::{
+        opcodes::{AddressingMode, AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
+        registers::PRegister,
+    },
     error::InstructionParseError,
     snes_utils::addr::*,
 };
@@ -26,9 +29,16 @@ pub struct DisplayInstruction {
 // -------------------------------------------------------------------------------------------------
 
 impl Instruction {
-    pub fn parse(bytes: &[u8]) -> Result<(Instruction, &[u8]), InstructionParseError> {
+    pub fn parse(bytes: &[u8], p_reg: PRegister) -> Result<(Instruction, &[u8]), InstructionParseError> {
         let (&opcode_raw, rest) = bytes.split_first().ok_or(InstructionParseError::InputEmpty)?;
-        let opcode = SNES_OPCODES[opcode_raw as usize];
+        let mut opcode = SNES_OPCODES[opcode_raw as usize];
+
+        if opcode.mode == AddressingMode::ImmediateMFlagDependent {
+            opcode.mode = if p_reg.m_flag() { AddressingMode::Immediate8 } else { AddressingMode::Immediate16 };
+        } else if opcode.mode == AddressingMode::ImmediateXFlagDependent {
+            opcode.mode = if p_reg.x_flag() { AddressingMode::Immediate8 } else { AddressingMode::Immediate16 };
+        }
+
         let operands_size = opcode.mode.operands_size();
         if rest.len() < operands_size {
             return Err(InstructionParseError::InputTooShort(opcode_raw));
@@ -36,6 +46,7 @@ impl Instruction {
         let (operands_v, rest) = rest.split_at(operands_size);
         let mut operands = [0u8; 4];
         operands[..operands_v.len()].copy_from_slice(operands_v);
+
         Ok((Self { opcode, operands }, rest))
     }
 

@@ -153,10 +153,15 @@ impl AddressingMode {
     #[inline]
     pub fn operands_size(self) -> usize {
         match self {
-            Accumulator | Implied | ImmediateXFlagDependent | ImmediateMFlagDependent => 0,
+            Accumulator | Implied => 0,
             Long | LongXIndex => 3,
             Immediate16 | Relative16 | BlockMove => 2,
             m if (Address..=AddressXIndexIndirect).contains(&m) => 2,
+            ImmediateXFlagDependent | ImmediateMFlagDependent => {
+                // These two modes must be replaced with Immediate8 or Immediate16,
+                // depending on the X and M flags.
+                unreachable!()
+            }
             _ => 1,
         }
     }

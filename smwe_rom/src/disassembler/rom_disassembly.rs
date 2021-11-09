@@ -1,8 +1,8 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
-    disassembler::instruction::Instruction,
-    snes_utils::addr::{AddrPc, AddrSnes},
+    disassembler::{instruction::Instruction, processor::Processor},
+    snes_utils::addr::AddrPc,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -50,9 +50,10 @@ pub struct RomDisassembly {
 
 impl RomDisassembly {
     pub fn new(rom_bytes: Arc<[u8]>) -> Self {
+        let mut processor = Processor::new();
         let mut chunks = Vec::with_capacity(64);
         // Temporary until code scanning
-        let (first_code, rest) = CodeBlock::from_bytes(AddrPc(0), &rom_bytes);
+        let (first_code, rest) = CodeBlock::from_bytes(AddrPc(0), &rom_bytes, &mut processor);
         chunks.push((AddrPc(0), BinaryBlock::Code(first_code)));
         if rest.0 != rom_bytes.len() {
             chunks.push((rest, BinaryBlock::Unknown));
@@ -68,14 +69,15 @@ impl RomDisassembly {
 
 impl CodeBlock {
     /// Returns parsed code block and the address of the next byte after the block end
-    pub fn from_bytes(base: AddrPc, bytes: &[u8]) -> (Self, AddrPc) {
+    pub fn from_bytes(base: AddrPc, bytes: &[u8], processor: &mut Processor) -> (Self, AddrPc) {
         let mut instructions = Vec::with_capacity(bytes.len() / 2);
         let mut rest = bytes;
         let mut addr = base;
-        while let Ok((i, new_rest)) = Instruction::parse(rest) {
+        while let Ok((i, new_rest)) = Instruction::parse(rest, processor.p_reg) {
             instructions.push((addr, i));
             rest = new_rest;
-            addr = AddrPc(addr.0 + i.opcode.instruction_size());
+            addr = addr + i.opcode.instruction_size();
+            processor.execute(i);
         }
         (Self { instructions }, addr)
     }
