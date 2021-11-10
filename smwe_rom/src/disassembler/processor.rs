@@ -31,8 +31,12 @@ impl Processor {
     pub fn execute(&mut self, instr: Instruction) {
         let ops = instr.operands();
         match instr.opcode.mnemonic {
-            SEP => self.p_reg.0 |= instr.operands()[0],
-            REP => self.p_reg.0 &= !instr.operands()[0],
+            SEP => {
+                self.p_reg.0 |= instr.operands()[0];
+            }
+            REP => {
+                self.p_reg.0 &= !instr.operands()[0];
+            }
             PEA => {
                 self.stack.push(ops[1]);
                 self.stack.push(ops[0]);
@@ -69,7 +73,9 @@ impl Processor {
             PHD => {
                 self.push_word(self.dp_reg.0);
             }
-            PHK => self.stack.push(self.pb_reg.0),
+            PHK => {
+                self.stack.push(self.pb_reg.0);
+            }
             PLA => {
                 if self.p_reg.m_flag() && self.stack.len() >= 1 {
                     self.a_reg.0 = self.stack.pop().unwrap() as u16;
