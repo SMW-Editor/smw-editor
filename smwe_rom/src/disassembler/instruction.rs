@@ -20,16 +20,17 @@ pub struct Instruction {
 
 #[derive(Copy, Clone)]
 pub struct DisplayInstruction {
-    i:      Instruction,
-    offset: usize,
-    x_flag: bool,
-    m_flag: bool,
+    i:           Instruction,
+    offset:      usize,
+    x_flag:      bool,
+    m_flag:      bool,
+    direct_page: u16,
 }
 
 // -------------------------------------------------------------------------------------------------
 
 impl Instruction {
-    pub fn parse(bytes: &[u8], p_reg: PRegister) -> Result<(Instruction, &[u8]), InstructionParseError> {
+    pub fn parse(bytes: &[u8], p_reg: PRegister) -> Result<(Self, &[u8]), InstructionParseError> {
         let (&opcode_raw, rest) = bytes.split_first().ok_or(InstructionParseError::InputEmpty)?;
         let mut opcode = SNES_OPCODES[opcode_raw as usize];
 
@@ -50,22 +51,21 @@ impl Instruction {
         Ok((Self { opcode, operands }, rest))
     }
 
-    pub fn display(self, offset: usize, x_flag: bool, m_flag: bool) -> DisplayInstruction {
-        DisplayInstruction { i: self, offset, x_flag, m_flag }
+    pub fn display(self, offset: usize, x_flag: bool, m_flag: bool, direct_page: u16) -> DisplayInstruction {
+        DisplayInstruction { i: self, offset, x_flag, m_flag, direct_page }
     }
 
     pub fn operands(&self) -> &[u8] {
         &self.operands[0..self.opcode.mode.operands_size()]
     }
 
-    fn get_intermediate_address(self, offset: usize, resolve: bool) -> u32 {
+    fn get_intermediate_address(self, offset: usize, direct_page: u16, resolve: bool) -> u32 {
         let op_bytes = self.operands();
         match self.opcode.mode {
             m if (DirectPage..=DirectPageYIndex).contains(&m) => {
                 if resolve {
                     let operand = op_bytes[0] as u32;
-                    let direct_page: u32 = todo!();
-                    ((direct_page + operand) & 0xFFFF) as u32
+                    ((direct_page as u32 + operand) & 0xFFFF) as u32
                 } else {
                     op_bytes[0] as u32
                 }
@@ -76,8 +76,7 @@ impl Instruction {
                     let offset_pc = AddrPc(offset);
                     (AddrSnes::try_from_lorom(offset_pc).unwrap().0 >> 16) as u32
                 } else {
-                    //TODO
-                    0xDEAD
+                    direct_page as u32
                 };
                 let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
                 (bank << 16) | (operand as u32)
@@ -106,8 +105,8 @@ impl Instruction {
 
 impl Display for DisplayInstruction {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let DisplayInstruction { i, x_flag, m_flag, offset } = *self;
-        let address = i.get_intermediate_address(offset, false);
+        let DisplayInstruction { i, x_flag, m_flag, offset, direct_page } = *self;
+        let address = i.get_intermediate_address(offset, direct_page, false);
         write!(fmt, "{}", i.opcode.mnemonic)?;
         match i.opcode.mode {
             Implied => {

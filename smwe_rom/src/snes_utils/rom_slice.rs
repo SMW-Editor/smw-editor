@@ -32,14 +32,17 @@ impl<A: Addr> RomSlice<A> {
         }
     }
 
+    #[must_use]
     pub fn offset_forward(self, offset: usize) -> Self {
         Self { begin: self.begin + offset, ..self }
     }
 
+    #[must_use]
     pub fn offset_backward(self, offset: usize) -> Self {
         Self { begin: self.begin - offset, ..self }
     }
 
+    #[must_use]
     pub fn skip_forward(self, lengths: usize) -> Self {
         if self.is_infinite() {
             self
@@ -48,6 +51,7 @@ impl<A: Addr> RomSlice<A> {
         }
     }
 
+    #[must_use]
     pub fn skip_backward(self, lengths: usize) -> Self {
         if self.is_infinite() {
             self
@@ -56,10 +60,12 @@ impl<A: Addr> RomSlice<A> {
         }
     }
 
+    #[must_use]
     pub fn move_to(self, new_address: A) -> Self {
         Self { begin: new_address, ..self }
     }
 
+    #[must_use]
     pub fn expand(self, diff: usize) -> Self {
         if self.is_infinite() {
             self
@@ -68,14 +74,17 @@ impl<A: Addr> RomSlice<A> {
         }
     }
 
+    #[must_use]
     pub fn shrink(self, diff: usize) -> Self {
         Self { size: self.size - diff, ..self }
     }
 
+    #[must_use]
     pub fn resize(self, new_size: usize) -> Self {
         Self { size: new_size, ..self }
     }
 
+    #[must_use]
     pub fn infinite(self) -> Self {
         Self { size: usize::MAX, ..self }
     }

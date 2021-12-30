@@ -12,7 +12,7 @@ pub mod masks {
 
 pub mod types {
     use std::{
-        cmp::{Ordering, PartialEq, PartialOrd},
+        cmp::{PartialEq, PartialOrd},
         convert::TryFrom,
         fmt,
         ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub},

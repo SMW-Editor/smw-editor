@@ -3,10 +3,10 @@ use std::{
     fmt::Write,
 };
 
-use imgui::{ImColor32, Ui, Window};
+use imgui::{ImColor32, Window};
 use itertools::Itertools;
 use smwe_rom::{
-    disassembler::rom_disassembly::{BinaryBlock, RomDisassembly},
+    disassembler::rom_disassembly::{BinaryBlock, InstructionMeta},
     snes_utils::addr::AddrPc,
 };
 
@@ -55,7 +55,7 @@ impl UiDisassembler {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disas = &project.rom_data.disassembly;
         let ui = ctx.ui;
-        let [available_w, available_h] = ui.content_region_avail();
+        let [_available_w, available_h] = ui.content_region_avail();
         let [xoff, yoff] = ui.cursor_screen_pos();
         {
             let str_buf = RefCell::new(String::with_capacity(256));
@@ -139,8 +139,10 @@ impl UiDisassembler {
                         }
                     }
                     BinaryBlock::Code(code) => {
-                        let first_instruction = code.instructions.partition_point(|i| i.0 .0 < current_address);
-                        for (addr, ins) in code.instructions.iter().copied().skip(first_instruction) {
+                        let first_instruction =
+                            code.instruction_metas.partition_point(|i| i.offset.0 < current_address);
+                        for imeta in code.instruction_metas.iter().copied().skip(first_instruction) {
+                            let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag, direct_page } = imeta;
                             draw_addr(addr, COLOR_ADDR);
                             let num_bytes = draw_hex(
                                 &mut disas.rom_bytes().iter().copied().skip(addr.0).take(ins.opcode.instruction_size()),
@@ -150,8 +152,7 @@ impl UiDisassembler {
                             {
                                 let mut str_buf = str_buf.borrow_mut();
                                 str_buf.clear();
-                                write!(str_buf, "{}", ins.display(addr.0, false, false)).unwrap();
-                                // TODO: Get X, M flags
+                                write!(str_buf, "{}", ins.display(addr.0, x_flag, m_flag, direct_page)).unwrap();
                                 draw_text(&*str_buf, COLOR_CODE);
                             }
                             current_address = addr.0 + num_bytes;

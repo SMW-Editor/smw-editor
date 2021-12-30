@@ -25,7 +25,16 @@ pub enum DataKind {
 
 #[derive(Clone)]
 pub struct CodeBlock {
-    pub instructions: Vec<(AddrPc, Instruction)>,
+    pub instruction_metas: Vec<InstructionMeta>,
+}
+
+#[derive(Clone, Copy)]
+pub struct InstructionMeta {
+    pub offset:      AddrPc,
+    pub instruction: Instruction,
+    pub m_flag:      bool,
+    pub x_flag:      bool,
+    pub direct_page: u16,
 }
 
 #[derive(Clone)]
@@ -70,15 +79,21 @@ impl RomDisassembly {
 impl CodeBlock {
     /// Returns parsed code block and the address of the next byte after the block end
     pub fn from_bytes(base: AddrPc, bytes: &[u8], processor: &mut Processor) -> (Self, AddrPc) {
-        let mut instructions = Vec::with_capacity(bytes.len() / 2);
+        let mut instruction_metas = Vec::with_capacity(bytes.len() / 2);
         let mut rest = bytes;
         let mut addr = base;
         while let Ok((i, new_rest)) = Instruction::parse(rest, processor.p_reg) {
-            instructions.push((addr, i));
+            instruction_metas.push(InstructionMeta {
+                offset:      addr,
+                instruction: i,
+                m_flag:      processor.p_reg.m_flag(),
+                x_flag:      processor.p_reg.x_flag(),
+                direct_page: processor.dp_reg.0,
+            });
             rest = new_rest;
             addr = addr + i.opcode.instruction_size();
             processor.execute(i);
         }
-        (Self { instructions }, addr)
+        (Self { instruction_metas }, addr)
     }
 }
