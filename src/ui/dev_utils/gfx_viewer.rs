@@ -210,8 +210,7 @@ impl UiGfxViewer {
             for (idx, tile) in gfx_file.tiles.iter().enumerate() {
                 let (row, col) = (idx / N_TILES_IN_ROW, idx % N_TILES_IN_ROW);
                 let (x, y) = ((col * 8) as u32, (row * 8) as u32);
-                let rgba_tile: Vec<f32> =
-                    tile.to_rgba(palette).iter().flat_map(|c| c.as_array().into_iter()).collect();
+                let rgba_tile: Vec<f32> = tile.to_rgba(palette).iter().flat_map(|c| c.as_array().into_iter()).collect();
                 let image = RawImage2d::from_raw_rgba(rgba_tile, (8, 8));
                 let rect = Rect { left: x, bottom: y, width: 8, height: 8 };
                 texture.write(rect, image);

@@ -49,6 +49,7 @@ pub mod types {
         + Sub<Self, Output = Self>
     {
         type OppositeAddr: Addr;
+        const MIN: Self;
         fn try_from_lorom(addr: Self::OppositeAddr) -> Result<Self, AddressError>;
         fn try_from_hirom(addr: Self::OppositeAddr) -> Result<Self, AddressError>;
         fn is_valid_lorom(&self) -> bool;
@@ -114,6 +115,8 @@ pub mod types {
     impl Addr for AddrPc {
         type OppositeAddr = AddrSnes;
 
+        const MIN: Self = AddrPc(0);
+
         fn try_from_lorom(addr: AddrSnes) -> Result<Self, AddressError> {
             if addr.is_valid_lorom() {
                 Ok(Self(((addr.0 & 0x7F0000) >> 1) | (addr.0 & 0x7FFF)))
@@ -161,6 +164,8 @@ pub mod types {
 
     impl Addr for AddrSnes {
         type OppositeAddr = AddrPc;
+
+        const MIN: Self = AddrSnes(0x8000);
 
         fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressError> {
             if addr.is_valid_lorom() {
