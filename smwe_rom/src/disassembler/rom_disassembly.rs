@@ -21,8 +21,8 @@ pub enum DataKind {
     LevelObjectLayer,
     LevelSpriteLayer,
     Music,
-    NotYetDetermined,
     // will be deleted once we identify all data kinds in SMW ROM
+    NotYetDetermined,
     OverworldLayer1,
     OverworldLayer2,
     OverworldSpriteLayer,
