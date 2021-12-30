@@ -4,15 +4,16 @@ pub use self::{masks::*, types::*};
 pub mod masks {
     use super::types::Mask;
 
+    /// Bank
     pub const BB: Mask = 0xFF0000;
-    // Bank
+    /// High byte
     pub const HH: Mask = 0x00FF00;
-    // High byte
+    /// Low byte
     pub const DD: Mask = 0x0000FF;
-    // Low byte
+    /// Absolute address
     pub const HHDD: Mask = HH | DD;
-    // Absolute address
-    pub const BBHHDD: Mask = BB | HH | DD; // Long address
+    /// Long address
+    pub const BBHHDD: Mask = BB | HH | DD;
 }
 
 pub mod types {
