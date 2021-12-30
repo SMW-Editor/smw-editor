@@ -41,107 +41,207 @@ pub enum AddressingMode {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Mnemonic {
-    ADC, // Add with carry
-    AND, // AND Accumulator
-    ASL, // Left-shift Accumulator
-    BCC, // Branch if carry clear
-    BCS, // Branch if carry set
-    BEQ, // Branch if equal
-    BIT, // Bit test
-    BMI, // Branch if minus
-    BNE, // Branch if not equal
-    BPL, // Branch if plus
-    BRA, // Branch always
-    BRK, // Break to instruction
-    BRL, // Branch relative long
-    BVC, // Branch if overflow clear
-    BVS, // Branch if overflow set
-    CLC, // Clear carry flag
-    CLD, // Clear decimal flag
-    CLI, // Clear interrupt flag
-    CLV, // Clear overflow flag
-    CMP, // Compare Accumulator with memory
-    CPX, // Compare X with memory
-    CPY, // Compare Y with memory
-    COP, // Coprocessor Empowerment
-    DEC, // Decrement Accumulator
-    DEX, // Decrement X
-    DEY, // Decrement Y
-    EOR, // Exclusive-OR Accumulator
-    INC, // Increment Accumulator
-    INX, // Increment X
-    INY, // Increment Y
-    JMP, // Jump to location
-    JML, // Jump long
-    JSR, // Jump subroutine
-    JSL, // Jump subroutine long
-    LDA, // Load Accumulator with memory
-    LDX, // Load X with memory
-    LDY, // Load Y with memory
-    LSR, // Right-shift Accumulator or memory
-    MVN, // Block move negative
-    MVP, // Block move positive
-    NOP, // No operation
-    ORA, // OR Accumulator with memory
-    PEA, // Push effective address
-    PEI, // Push effective indirect address
-    PER, // Push program counter relative
-    PHA, // Push Accumulator
-    PHB, // Push Data Bank Register
-    PHD, // Push Direct Page Register
-    PHK, // Push Program Bank
-    PHP, // Push Processor Status
-    PHX, // Push X
-    PHY, // Push Y
-    PLA, // Pull Accumulator
-    PLB, // Pull Data Bank Register
-    PLD, // Pull Direct Page Register
-    PLP, // Pull flags
-    PLX, // Pull X
-    PLY, // Pull Y
-    REP, // Reset flag
-    ROL, // Rotate bit left
-    ROR, // Rotate bit right
-    RTI, // Return from interrupt
-    RTS, // Return from subroutine
-    RTL, // Return from subroutine long
-    SBC, // Subtract with carry
-    SEC, // Set carry flag
-    SED, // Set decimal flag
-    SEI, // Set interrupt flag
-    SEP, // Set flag
-    STA, // Store Accumulator to memory
-    STX, // Store X to memory
-    STY, // Store Y to memory
-    STP, // Stop the clock
-    STZ, // Store zero to memory
-    TAX, // Transfer Accumulator to X
-    TAY, // Transfer Accumulator to Y
-    TCD, // Transfer Accumulator to Direct Page
-    TCS, // Transfer Accumulator to Stack
-    TDC, // Transfer Direct Page to Accumulator
-    TSC, // Transfer Stack to Accumulator
-    TSX, // Transfer Stack to X
-    TXA, // Transfer X to Accumulator
-    TXS, // Transfer X to Stack
-    TXY, // Transfer X to Y
-    TYA, // Transfer Y to Accumulator
-    TYX, // Transfer Y to X
-    TRB, // Test and reset bit
-    TSB, // Test and set bit
-    WAI, // Wait for interrupt
-    WDM, // (Reserved for future expansion)
-    XBA, // Exchange B with A (bytes in Accumulator)
-    XCE, // Exchange Carry with Emulation
+    /// Add with carry
+    ADC,
+    /// AND Accumulator
+    AND,
+    /// Left-shift Accumulator
+    ASL,
+    /// Branch if carry clear
+    BCC,
+    /// Branch if carry set
+    BCS,
+    /// Branch if equal
+    BEQ,
+    /// Bit test
+    BIT,
+    /// Branch if minus
+    BMI,
+    /// Branch if not equal
+    BNE,
+    /// Branch if plus
+    BPL,
+    /// Branch always
+    BRA,
+    /// Break to instruction
+    BRK,
+    /// Branch relative long
+    BRL,
+    /// Branch if overflow clear
+    BVC,
+    /// Branch if overflow set
+    BVS,
+    /// Clear carry flag
+    CLC,
+    /// Clear decimal flag
+    CLD,
+    /// Clear interrupt flag
+    CLI,
+    /// Clear overflow flag
+    CLV,
+    /// Compare Accumulator with memory
+    CMP,
+    /// Compare X with memory
+    CPX,
+    /// Compare Y with memory
+    CPY,
+    /// Coprocessor Empowerment
+    COP,
+    /// Decrement Accumulator
+    DEC,
+    /// Decrement X
+    DEX,
+    /// Decrement Y
+    DEY,
+    /// Exclusive-OR Accumulator
+    EOR,
+    /// Increment Accumulator
+    INC,
+    /// Increment X
+    INX,
+    /// Increment Y
+    INY,
+    /// Jump to location
+    JMP,
+    /// Jump long
+    JML,
+    /// Jump subroutine
+    JSR,
+    /// Jump subroutine long
+    JSL,
+    /// Load Accumulator with memory
+    LDA,
+    /// Load X with memory
+    LDX,
+    /// Load Y with memory
+    LDY,
+    /// Right-shift Accumulator or memory
+    LSR,
+    /// Block move negative
+    MVN,
+    /// Block move positive
+    MVP,
+    /// No operation
+    NOP,
+    /// OR Accumulator with memory
+    ORA,
+    /// Push effective address
+    PEA,
+    /// Push effective indirect address
+    PEI,
+    /// Push program counter relative
+    PER,
+    /// Push Accumulator
+    PHA,
+    /// Push Data Bank Register
+    PHB,
+    /// Push Direct Page Register
+    PHD,
+    /// Push Program Bank
+    PHK,
+    /// Push Processor Status
+    PHP,
+    /// Push X
+    PHX,
+    /// Push Y
+    PHY,
+    /// Pull Accumulator
+    PLA,
+    /// Pull Data Bank Register
+    PLB,
+    /// Pull Direct Page Register
+    PLD,
+    /// Pull flags
+    PLP,
+    /// Pull X
+    PLX,
+    /// Pull Y
+    PLY,
+    /// Reset flag
+    REP,
+    /// Rotate bit left
+    ROL,
+    /// Rotate bit right
+    ROR,
+    /// Return from interrupt
+    RTI,
+    /// Return from subroutine
+    RTS,
+    /// Return from subroutine long
+    RTL,
+    /// Subtract with carry
+    SBC,
+    /// Set carry flag
+    SEC,
+    /// Set decimal flag
+    SED,
+    /// Set interrupt flag
+    SEI,
+    /// Set flag
+    SEP,
+    /// Store Accumulator to memory
+    STA,
+    /// Store X to memory
+    STX,
+    /// Store Y to memory
+    STY,
+    /// Stop the clock
+    STP,
+    /// Store zero to memory
+    STZ,
+    /// Transfer Accumulator to X
+    TAX,
+    /// Transfer Accumulator to Y
+    TAY,
+    /// Transfer Accumulator to Direct Page
+    TCD,
+    /// Transfer Accumulator to Stack
+    TCS,
+    /// Transfer Direct Page to Accumulator
+    TDC,
+    /// Transfer Stack to Accumulator
+    TSC,
+    /// Transfer Stack to X
+    TSX,
+    /// Transfer X to Accumulator
+    TXA,
+    /// Transfer X to Stack
+    TXS,
+    /// Transfer X to Y
+    TXY,
+    /// Transfer Y to Accumulator
+    TYA,
+    /// Transfer Y to X
+    TYX,
+    /// Test and reset bit
+    TRB,
+    /// Test and set bit
+    TSB,
+    /// Wait for interrupt
+    WAI,
+    /// (Reserved for future expansion)
+    WDM,
+    /// Exchange B with A (bytes in Accumulator)
+    XBA,
+    /// Exchange Carry with Emulation
+    XCE,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Opcode {
     pub mnemonic: Mnemonic,
     pub mode:     AddressingMode,
 }
 
 // -------------------------------------------------------------------------------------------------
+
+impl Mnemonic {
+    pub fn can_branch(self) -> bool {
+        use Mnemonic::*;
+        [BCC, BCS, BEQ, BMI, BNE, BRK, BPL, BRA, BRK, BRL, BVC, BVS, COP, JMP, JML, JSR, JSL, RTI, RTS, RTL]
+            .contains(&self)
+    }
+}
 
 impl fmt::Display for Mnemonic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -148,7 +148,7 @@ impl UiDisassembler {
                         {
                             let mut str_buf = str_buf.borrow_mut();
                             str_buf.clear();
-                            write!(str_buf, "{}", ins.display(addr.0, x_flag, m_flag, direct_page)).unwrap();
+                            write!(str_buf, "{}", ins.display(addr, x_flag, m_flag, direct_page)).unwrap();
                             draw_text(&*str_buf, COLOR_CODE);
                         }
                         current_address = addr.0 + num_bytes;

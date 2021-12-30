@@ -3,10 +3,15 @@ pub use self::{masks::*, types::*};
 #[rustfmt::skip]
 pub mod masks {
     use super::types::Mask;
-    pub const BB:     Mask = 0xFF0000; // Bank
-    pub const HH:     Mask = 0x00FF00; // High byte
-    pub const DD:     Mask = 0x0000FF; // Low byte
-    pub const HHDD:   Mask = HH | DD;  // Absolute address
+
+    pub const BB: Mask = 0xFF0000;
+    // Bank
+    pub const HH: Mask = 0x00FF00;
+    // High byte
+    pub const DD: Mask = 0x0000FF;
+    // Low byte
+    pub const HHDD: Mask = HH | DD;
+    // Absolute address
     pub const BBHHDD: Mask = BB | HH | DD; // Long address
 }
 
@@ -60,7 +65,7 @@ pub mod types {
 
     macro_rules! gen_address_type {
         ($name:ident) => {
-            #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $name(pub usize);
 
             impl From<usize> for $name {
@@ -73,10 +78,6 @@ pub mod types {
 
             impl From<$name> for usize {
                 fn from(this: $name) -> usize { this.0 }
-            }
-
-            impl fmt::Display for $name {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
             }
 
             macro_rules! gen_address_bin_op {
@@ -162,6 +163,28 @@ pub mod types {
         }
     }
 
+    impl fmt::Display for AddrPc {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let snes = AddrSnes::try_from(*self);
+            if let Ok(snes) = snes {
+                write!(f, "0x{:06x} (SNES: {})", self.0, snes)
+            } else {
+                write!(f, "0x{:06x}", self.0)
+            }
+        }
+    }
+
+    impl fmt::Debug for AddrPc {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let snes = AddrSnes::try_from(*self);
+            if let Ok(snes) = snes {
+                write!(f, "AddrPc(0x{:06x} (SNES: {}))", self.0, snes)
+            } else {
+                write!(f, "AddrPc(0x{:06x})", self.0)
+            }
+        }
+    }
+
     impl Addr for AddrSnes {
         type OppositeAddr = AddrPc;
 
@@ -214,6 +237,18 @@ pub mod types {
     impl fmt::UpperHex for AddrSnes {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "SNES ${:X}", self.0)
+        }
+    }
+
+    impl fmt::Display for AddrSnes {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "0x{:06x}", self.0)
+        }
+    }
+
+    impl fmt::Debug for AddrSnes {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "AddrSnes(0x{:06x})", self.0)
         }
     }
 }

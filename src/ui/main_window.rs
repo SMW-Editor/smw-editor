@@ -50,10 +50,24 @@ impl UiMainWindow {
     }
 
     fn menu_file(&mut self, ctx: &mut FrameContext) {
-        ctx.ui.menu("File", || {
-            let menu_item = |label| MenuItem::new(label).build(ctx.ui);
+        let FrameContext { ui, project_ref, .. } = ctx;
+        let project = project_ref.as_ref().map(|p| p.borrow_mut());
+        ui.menu("File", || {
+            let menu_item = |label| MenuItem::new(label).build(ui);
             if menu_item("New project") {
                 self.open_tool(UiProjectCreator::new);
+            }
+            if MenuItem::new("Save ROM dump").enabled(project.is_some()).build(ui) {
+                use nfd2::Response;
+                if let Response::Okay(path) =
+                    nfd2::open_save_dialog(Some("txt"), None) //
+                        .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
+                {
+                    use std::fmt::Write;
+                    let mut dump = String::with_capacity(4096);
+                    write!(&mut dump, "{:?}", project.unwrap().rom_data.disassembly).unwrap();
+                    std::fs::write(path, dump).unwrap();
+                }
             }
             if menu_item("Exit") {
                 self.running = false;

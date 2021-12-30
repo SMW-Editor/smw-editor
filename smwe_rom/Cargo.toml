@@ -12,3 +12,4 @@ nom = "7.0"
 num_enum = "0.5"
 thiserror = "1.0"
 itertools = "0.10"
+smallvec = { version="1.7", features=["write", "union", "const_generics", "const_new"] }
