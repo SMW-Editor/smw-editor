@@ -115,7 +115,22 @@ impl RomDisassembly {
         }
         chunks.push((AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom));
         chunks.sort_by_key(|e| e.0 .0);
-        Self { rom_bytes, chunks }
+        let mut dedup_chunks = Vec::with_capacity(chunks.len());
+        for (_group_pc, mut chunk_group) in &chunks.into_iter().group_by(|e| e.0 .0) {
+            let first = chunk_group.next().unwrap();
+            dedup_chunks.push(first);
+            let final_chunk = dedup_chunks.last_mut().unwrap();
+            for chunk in chunk_group {
+                if matches!(final_chunk.1, BinaryBlock::Unknown) {
+                    *final_chunk = chunk;
+                } else if matches!(chunk.1, BinaryBlock::Unknown) {
+                    continue;
+                } else {
+                    panic!("Multiple chunks generated at address {}", final_chunk.0);
+                }
+            }
+        }
+        Self { rom_bytes, chunks: dedup_chunks }
     }
 
     pub fn rom_bytes(&self) -> &[u8] {

@@ -73,7 +73,7 @@ impl UiDisassembler {
         let y = Cell::new(8.0f32);
         let yadv = ui.text_line_height_with_spacing();
         let [xoff, yoff] = ui.cursor_screen_pos();
-        let [_available_w, available_h] = ui.content_region_avail();
+        let [available_w, available_h] = ui.content_region_avail();
 
         const COLOR_ADDR: u32 = 0xff_aa_aa_aa;
         const COLOR_DATA: u32 = 0xff_ee_dd_dd;
@@ -85,6 +85,19 @@ impl UiDisassembler {
             x.set(xstart);
             y.set(y.get() + yadv);
             ui.set_cursor_pos([x.get(), y.get()]);
+            y.get() >= available_h - yadv
+        };
+        let draw_chunk_line = || {
+            x.set(xstart);
+            y.set(y.get() + 4.0);
+            ui.set_cursor_pos([x.get(), y.get()]);
+            draw_list
+                .add_line(
+                    [xoff + x.get(), yoff + y.get() - 2.0],
+                    [xoff + x.get() + available_w - 8.0, yoff + y.get() - 2.0],
+                    COLOR_ADDR,
+                )
+                .build();
             y.get() >= available_h - yadv
         };
         let draw_text = |text: &str, color: u32| {
@@ -126,8 +139,8 @@ impl UiDisassembler {
                     let stride = 8;
                     let skip_lines = (current_address - chunk_pc.0) / stride;
                     let chunks = chunk_bytes.iter().copied().chunks(stride);
-                    for mut byte_line in chunks.into_iter().skip(skip_lines) {
-                        draw_addr(AddrPc::from(current_address), COLOR_ADDR);
+                    for (line_number, mut byte_line) in chunks.into_iter().enumerate().skip(skip_lines) {
+                        draw_addr(AddrPc::from(chunk_pc.0 + line_number * stride), COLOR_ADDR);
                         let num_bytes = draw_hex(&mut byte_line, COLOR_DATA);
                         current_address += num_bytes;
                         if draw_end_line() {
@@ -157,6 +170,9 @@ impl UiDisassembler {
                         }
                     }
                 }
+            }
+            if draw_chunk_line() {
+                break 'draw_lines;
             }
         }
     }
