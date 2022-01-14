@@ -1,6 +1,6 @@
 #![allow(clippy::identity_op)]
 
-use std::{fs, path::Path, sync::Arc};
+use std::{fs, path::Path};
 
 pub use crate::internal_header::RomInternalHeader;
 use crate::{
@@ -76,7 +76,7 @@ impl SmwRom {
         let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
 
         log::info!("Creating disassembly map");
-        let disassembly = RomDisassembly::new(Arc::clone(&rom.0));
+        let disassembly = RomDisassembly::new(&rom);
 
         Ok(Self {
             disassembly,

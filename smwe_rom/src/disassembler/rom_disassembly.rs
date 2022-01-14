@@ -9,6 +9,7 @@ use itertools::Itertools;
 use crate::{
     disassembler::{instruction::Instruction, processor::Processor},
     snes_utils::addr::{Addr, AddrPc, AddrSnes},
+    Rom,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -66,7 +67,8 @@ pub struct RomDisassembly {
 // -------------------------------------------------------------------------------------------------
 
 impl RomDisassembly {
-    pub fn new(rom_bytes: Arc<[u8]>) -> Self {
+    pub fn new(rom: &Rom) -> Self {
+        let rom_bytes = Arc::clone(&rom.0);
         let mut chunks = Vec::with_capacity(64);
         // Chunk end -> Chunk start
         let mut analysed_chunks: BTreeMap<AddrPc, AddrPc> = Default::default();
@@ -114,9 +116,9 @@ impl RomDisassembly {
             }
         }
         chunks.push((AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom));
-        chunks.sort_by_key(|e| e.0 .0);
+        chunks.sort_by_key(|(address, _)| address.0);
         let mut dedup_chunks = Vec::with_capacity(chunks.len());
-        for (_group_pc, mut chunk_group) in &chunks.into_iter().group_by(|e| e.0 .0) {
+        for (_group_pc, mut chunk_group) in &chunks.into_iter().group_by(|(address, _)| address.0) {
             let first = chunk_group.next().unwrap();
             dedup_chunks.push(first);
             let final_chunk = dedup_chunks.last_mut().unwrap();
@@ -140,9 +142,9 @@ impl RomDisassembly {
 
 impl Debug for RomDisassembly {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (chunk, next_chunk) in self.chunks.iter().tuple_windows::<(_, _)>() {
-            writeln!(f, " #### CHUNK {} .. {}", chunk.0, next_chunk.0)?;
-            match &chunk.1 {
+        for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
+            writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
+            match block {
                 BinaryBlock::Code(code) => {
                     for exit in code.exits.iter() {
                         writeln!(f, "# Exit: {}", exit)?;

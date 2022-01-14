@@ -2,9 +2,9 @@
 // https://github.com/Dotsarecool/DiztinGUIsh
 
 pub mod instruction;
+pub mod jump_tables;
 pub mod opcodes;
 pub mod processor;
 pub mod registers;
 pub mod rom_disassembly;
 pub mod smw_data_blocks;
-pub mod jump_tables;

@@ -238,8 +238,7 @@ pub struct Opcode {
 impl Mnemonic {
     pub fn can_branch(self) -> bool {
         use Mnemonic::*;
-        [BCC, BCS, BEQ, BMI, BNE, BRK, BPL, BRA, BRK, BRL, BVC, BVS, COP, JMP, JML, JSR, JSL, RTI, RTS, RTL]
-            .contains(&self)
+        [BCC, BCS, BEQ, BMI, BNE, BRK, BPL, BRA, BRL, BVC, BVS, COP, JMP, JML, JSR, JSL, RTI, RTS, RTL].contains(&self)
     }
 }
 
