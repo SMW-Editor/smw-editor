@@ -79,6 +79,7 @@ impl UiDisassembler {
         const COLOR_DATA: u32 = 0xff_ee_dd_dd;
         const COLOR_CODE: u32 = 0xff_dd_dd_ee;
         const COLOR_CODE_HEX: u32 = 0xff_cc_cc_dd;
+        const COLOR_DEBUG_NOTE: u32 = 0xff_55_ee_ee;
         let space_width: f32 = ui.calc_text_size("0")[0];
 
         let draw_end_line = || {
@@ -106,11 +107,14 @@ impl UiDisassembler {
             x.set(x.get() + xadv);
             ui.set_cursor_pos([x.get(), y.get()]);
         };
-        let draw_addr = |addr: AddrPc, color: u32| {
+        let draw_fmt = |fmt: std::fmt::Arguments, color: u32| {
             let mut str_buf = str_buf.borrow_mut();
             str_buf.clear();
-            write!(str_buf, "{:06x}: ", AddrSnes::try_from_lorom(addr).unwrap().0).unwrap();
+            str_buf.write_fmt(fmt).unwrap();
             draw_text(&*str_buf, color);
+        };
+        let draw_addr = |addr: AddrPc, color: u32| {
+            draw_fmt(format_args!("{:06x}: ", AddrSnes::try_from_lorom(addr).unwrap().0), color);
         };
         let draw_hex = |bytes: &mut dyn Iterator<Item = u8>, color: u32| {
             let mut str_buf = str_buf.borrow_mut();
@@ -133,6 +137,13 @@ impl UiDisassembler {
                 disas.chunks.get(chunk_idx + 1).map(|c| c.0).unwrap_or_else(|| AddrPc::from(disas.rom_bytes().len()));
             let chunk_bytes = &disas.rom_bytes()[chunk_pc.0..next_chunk_pc.0];
 
+            draw_fmt(
+                format_args!("Chunk of {ty}: {ab}..{ae}", ty = chunk.type_name(), ab = chunk_pc, ae = next_chunk_pc),
+                COLOR_DEBUG_NOTE,
+            );
+            if draw_end_line() {
+                break 'draw_lines;
+            }
             match chunk {
                 BinaryBlock::EndOfRom => break 'draw_lines,
                 BinaryBlock::Unknown | BinaryBlock::Unused | BinaryBlock::Data(_) => {
@@ -150,6 +161,10 @@ impl UiDisassembler {
                 }
                 BinaryBlock::Code(code) => {
                     let first_instruction = code.instruction_metas.partition_point(|i| i.offset.0 < current_address);
+                    draw_fmt(format_args!("First insn: {}", first_instruction), COLOR_DEBUG_NOTE);
+                    if draw_end_line() {
+                        break 'draw_lines;
+                    }
                     for imeta in code.instruction_metas.iter().copied().skip(first_instruction) {
                         let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag, direct_page } = imeta;
                         draw_addr(addr, COLOR_ADDR);
@@ -171,6 +186,7 @@ impl UiDisassembler {
                     }
                 }
             }
+            current_address = next_chunk_pc.0;
             if draw_chunk_line() {
                 break 'draw_lines;
             }

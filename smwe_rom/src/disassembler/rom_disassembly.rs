@@ -173,6 +173,19 @@ impl Debug for RomDisassembly {
     }
 }
 
+impl BinaryBlock {
+    pub fn type_name(&self) -> &'static str {
+        use BinaryBlock::*;
+        match self {
+            Code(_) => "Code",
+            Data(_) => "Data",
+            Unused => "Unused",
+            Unknown => "Unknown",
+            EndOfRom => "End of ROM",
+        }
+    }
+}
+
 impl CodeBlock {
     /// Returns parsed code block and the address of the next byte after the block end
     pub fn from_bytes(base: AddrPc, bytes: &[u8], processor: &mut Processor) -> (Self, AddrPc) {
