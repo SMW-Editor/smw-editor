@@ -79,8 +79,6 @@ impl RomDisassembly {
         analysed_code_starts.insert(AddrPc::MIN);
         'analysis_loop: while let Some((code_start, mut processor)) = remaining_code_starts.pop() {
             let mut next_known_start = rom_bytes.len();
-            dbg!(code_start);
-            dbg!(&analysed_chunks);
             if let Some((&range_end, &(range_start, range_vec_idx))) =
                 analysed_chunks.range(code_start + AddrPc(1)..).next()
             {
