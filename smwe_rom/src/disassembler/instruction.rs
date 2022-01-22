@@ -72,6 +72,7 @@ impl Instruction {
             JMP | JML if jump_address_known => {
                 smallvec![maybe_target]
             }
+            // JSR, JSL: we assume they return to the next instruction, thus it is in the list
             BCC | BCS | BEQ | BMI | BNE | BPL | BRA | BRL | BVC | BVS | JSR | JSL if jump_address_known => {
                 smallvec![next_instruction, maybe_target]
             }

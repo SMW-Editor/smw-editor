@@ -232,10 +232,15 @@ impl UiDisassembler {
             const ARROW_SZ: f32 = 4.0f32;
             const ARROW_SEP: f32 = 3.0f32;
             let mut arrx = xstart - ARROW_SZ;
+            let mut arrows_at_addr: BTreeMap<AddrSnes, i32> = BTreeMap::new();
             for arrow in branch_arrows_to_draw {
                 arrx = (arrx - ARROW_SEP).max(ARROW_SZ);
-                let arrow_ystart = self.address_y_map.get(&arrow.source).copied().unwrap();
-                let target_y = self.address_y_map.get(&arrow.target).copied();
+                let start_arrows = arrows_at_addr.entry(arrow.source).or_insert(0);
+                let arrow_ystart = self.address_y_map.get(&arrow.source).copied().unwrap() + (*start_arrows as f32);
+                *start_arrows += 1;
+                let end_arrows = arrows_at_addr.entry(arrow.target).or_insert(0);
+                let target_y = self.address_y_map.get(&arrow.target).copied().map(|v| v + (*end_arrows as f32));
+                *end_arrows += 1;
                 let arrow_yend =
                     target_y.unwrap_or(if arrow.target < first_visible_addr { 0.0f32 } else { available_h });
                 let color = branch_color_it.next().unwrap();
@@ -244,6 +249,7 @@ impl UiDisassembler {
                     .build();
                 draw_list.add_line([xoff + arrx, yoff + arrow_ystart], [xoff + arrx, yoff + arrow_yend], color).build();
                 if target_y.is_some() {
+                    let xoff = xoff - (*end_arrows - 1) as f32 * ARROW_SEP;
                     // - insn
                     draw_list
                         .add_line([xoff + arrx, yoff + arrow_yend], [xoff + xstart, yoff + arrow_yend], color)
