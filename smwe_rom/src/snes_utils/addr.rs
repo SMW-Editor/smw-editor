@@ -69,6 +69,10 @@ pub mod types {
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $name(pub usize);
 
+            impl Default for $name {
+                fn default() -> Self { Self::MIN }
+            }
+
             impl From<usize> for $name {
                 fn from(addr: usize) -> Self { Self(addr) }
             }

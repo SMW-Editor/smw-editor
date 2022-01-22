@@ -1,5 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
+    collections::BTreeMap,
     fmt::Write,
 };
 
@@ -18,6 +19,7 @@ use crate::{
 pub struct UiDisassembler {
     title:                  String,
     current_address_scroll: i32,
+    address_y_map:          BTreeMap<AddrSnes, f32>,
 }
 
 impl UiTool for UiDisassembler {
@@ -51,6 +53,7 @@ impl UiDisassembler {
         Self {
             title:                  title_with_id("Disassembler", id),
             current_address_scroll: AddrSnes::MIN.0 as i32,
+            address_y_map:          BTreeMap::new(),
         }
     }
 
@@ -59,7 +62,7 @@ impl UiDisassembler {
         let disas = &project.rom_data.disassembly;
         let ui = ctx.ui;
 
-        if ui.input_int("Address", &mut self.current_address_scroll).chars_hexadecimal(true).build() {
+        if ui.input_int("Address", &mut self.current_address_scroll).step(4).chars_hexadecimal(true).build() {
             let min = AddrSnes::MIN;
             let max = AddrSnes::try_from_lorom(AddrPc(disas.rom_bytes().len())).unwrap();
             self.current_address_scroll = self.current_address_scroll.clamp(min.0 as i32, max.0 as i32);
@@ -68,10 +71,11 @@ impl UiDisassembler {
         let str_buf = RefCell::new(String::with_capacity(256));
         let draw_list = ui.get_window_draw_list();
 
-        let xstart = 0.0f32;
+        let xstart = 32.0f32;
         let x = Cell::new(xstart);
         let y = Cell::new(8.0f32);
         let yadv = ui.text_line_height_with_spacing();
+        let yadv_middle = (ui.text_line_height() / 2.0).round();
         let [xoff, yoff] = ui.cursor_screen_pos();
         let [available_w, available_h] = ui.content_region_avail();
 
@@ -82,6 +86,8 @@ impl UiDisassembler {
         const COLOR_CODE_HEX: u32 = 0xff_cc_cc_dd;
         const COLOR_DEBUG_NOTE: u32 = 0xff_55_ee_ee;
         let space_width: f32 = ui.calc_text_size("0")[0];
+
+        let mut new_addr_map: BTreeMap<AddrSnes, f32> = BTreeMap::new();
 
         let draw_end_line = || {
             x.set(xstart);
@@ -114,8 +120,10 @@ impl UiDisassembler {
             str_buf.write_fmt(fmt).unwrap();
             draw_text(&*str_buf, color);
         };
-        let draw_addr = |addr: AddrPc, color: u32| {
-            draw_fmt(format_args!("{:06x}: ", AddrSnes::try_from_lorom(addr).unwrap().0), color);
+        let mut draw_addr = |addr: AddrPc, color: u32| {
+            let snes_addr = AddrSnes::try_from_lorom(addr).unwrap();
+            draw_fmt(format_args!("{:06x}: ", snes_addr.0), color);
+            new_addr_map.insert(snes_addr, y.get() + yadv_middle);
         };
         let draw_hex = |bytes: &mut dyn Iterator<Item = u8>, color: u32| {
             let mut str_buf = str_buf.borrow_mut();
@@ -132,6 +140,13 @@ impl UiDisassembler {
         let curr_pc_addr_scroll = AddrPc::try_from_lorom(AddrSnes(self.current_address_scroll as usize)).unwrap().0;
         let first_block_idx = disas.chunks.partition_point(|(a, _)| a.0 < curr_pc_addr_scroll).max(1) - 1;
         let mut current_address = curr_pc_addr_scroll;
+
+        #[derive(Clone, Default)]
+        struct BranchArrow {
+            source: AddrSnes,
+            target: AddrSnes,
+        }
+        let mut branch_arrows_to_draw: Vec<BranchArrow> = Vec::with_capacity(self.address_y_map.len());
         'draw_lines: for (chunk_idx, (chunk_pc, chunk)) in disas.chunks.iter().enumerate().skip(first_block_idx) {
             let chunk_pc = *chunk_pc;
             let next_chunk_pc =
@@ -178,8 +193,9 @@ impl UiDisassembler {
                         if ins.opcode.mnemonic.can_branch() {
                             draw_text(" ->", COLOR_BRANCH_TARGET);
                             debug_assert_eq!(addr, code.instruction_metas.last().unwrap().offset);
-                            for target in code.exits.iter() {
+                            for &target in code.exits.iter() {
                                 draw_fmt(format_args!(" {}", target), COLOR_BRANCH_TARGET);
+                                branch_arrows_to_draw.push(BranchArrow { source: addr.try_into().unwrap(), target });
                             }
                         }
                         if draw_end_line() {
@@ -191,6 +207,51 @@ impl UiDisassembler {
             current_address = next_chunk_pc.0;
             if draw_chunk_line() {
                 break 'draw_lines;
+            }
+        }
+        self.address_y_map = new_addr_map;
+        // draw branch arrows
+        {
+            let first_visible_addr = self.address_y_map.iter().next().map(|e| *e.0).unwrap_or_default();
+            let branch_colors: [u32; 6] =
+                [0xff_ee_aa_aa, 0xff_aa_ee_aa, 0xff_aa_aa_ee, 0xff_aa_ee_ee, 0xff_ee_aa_ee, 0xff_ee_ee_aa];
+            let mut branch_color_it = branch_colors.iter().copied().cycle();
+            const ARROW_SZ: f32 = 4.0f32;
+            const ARROW_SEP: f32 = 3.0f32;
+            let mut arrx = xstart - ARROW_SZ;
+            for arrow in branch_arrows_to_draw {
+                arrx = (arrx - ARROW_SEP).max(ARROW_SZ);
+                let arrow_ystart = self.address_y_map.get(&arrow.source).copied().unwrap();
+                let target_y = self.address_y_map.get(&arrow.target).copied();
+                let arrow_yend =
+                    target_y.unwrap_or(if arrow.target < first_visible_addr { 0.0f32 } else { available_h });
+                let color = branch_color_it.next().unwrap();
+                draw_list
+                    .add_line([xoff + arrx, yoff + arrow_ystart], [xoff + xstart, yoff + arrow_ystart], color)
+                    .build();
+                draw_list.add_line([xoff + arrx, yoff + arrow_ystart], [xoff + arrx, yoff + arrow_yend], color).build();
+                if target_y.is_some() {
+                    // - insn
+                    draw_list
+                        .add_line([xoff + arrx, yoff + arrow_yend], [xoff + xstart, yoff + arrow_yend], color)
+                        .build();
+                    // \ insn
+                    draw_list
+                        .add_line(
+                            [xoff + xstart - ARROW_SZ, yoff + arrow_yend - ARROW_SZ],
+                            [xoff + xstart, yoff + arrow_yend],
+                            color,
+                        )
+                        .build();
+                    // / insn
+                    draw_list
+                        .add_line(
+                            [xoff + xstart - ARROW_SZ, yoff + arrow_yend + ARROW_SZ],
+                            [xoff + xstart, yoff + arrow_yend],
+                            color,
+                        )
+                        .build();
+                }
             }
         }
     }
