@@ -31,7 +31,7 @@ pub enum DataKind {
     Text,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct CodeBlock {
     pub instruction_metas: Vec<InstructionMeta>,
     pub exits:             Vec<AddrSnes>,
@@ -46,7 +46,7 @@ pub struct InstructionMeta {
     pub direct_page: u16,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct DataBlock {}
 
 #[derive(Clone)]
@@ -69,22 +69,64 @@ pub struct RomDisassembly {
 impl RomDisassembly {
     pub fn new(rom: &Rom) -> Self {
         let rom_bytes = Arc::clone(&rom.0);
-        let mut chunks = Vec::with_capacity(64);
-        // Chunk end -> Chunk start
-        let mut analysed_chunks: BTreeMap<AddrPc, AddrPc> = Default::default();
+        let mut chunks: Vec<(AddrPc, BinaryBlock)> = Vec::with_capacity(64);
+        // Chunk end -> Chunk start, index in vec
+        let mut analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)> = Default::default();
         // Temporary until code scanning
         let mut remaining_code_starts = Vec::with_capacity(16);
         let mut analysed_code_starts = HashSet::with_capacity(256);
         remaining_code_starts.push((AddrPc::MIN, Processor::new()));
         analysed_code_starts.insert(AddrPc::MIN);
         'analysis_loop: while let Some((code_start, mut processor)) = remaining_code_starts.pop() {
-            if let Some((&range_end, &range_start)) = analysed_chunks.range(code_start..).next() {
+            let mut next_known_start = rom_bytes.len();
+            dbg!(code_start);
+            dbg!(&analysed_chunks);
+            if let Some((&range_end, &(range_start, range_vec_idx))) =
+                analysed_chunks.range(code_start + AddrPc(1)..).next()
+            {
                 if code_start >= range_start && code_start < range_end {
                     // already analysed
+                    if code_start != range_start {
+                        let middle_start = code_start;
+                        // jump into the middle of a block, split it in two
+                        let (original_pc, mut original_block) =
+                            std::mem::replace(&mut chunks[range_vec_idx], (range_start, BinaryBlock::Unknown));
+                        let CodeBlock { instruction_metas: original_instructions, exits: original_exits } =
+                            std::mem::take(
+                                original_block
+                                    .code_block_mut()
+                                    .expect("Found jump into the middle of a non-code section"),
+                            );
+                        assert_eq!(original_pc, range_start);
+
+                        let mut first_block = CodeBlock {
+                            instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
+                            exits:             vec![middle_start.try_into().unwrap()],
+                        };
+                        let mut second_block = CodeBlock {
+                            instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
+                            exits:             original_exits,
+                        };
+                        for imeta in original_instructions.into_iter() {
+                            if imeta.offset < middle_start { &mut first_block } else { &mut second_block }
+                                .instruction_metas
+                                .push(imeta);
+                        }
+
+                        chunks.push((range_start, BinaryBlock::Code(first_block)));
+                        chunks[range_vec_idx] = (middle_start, BinaryBlock::Code(second_block));
+                        analysed_chunks.remove(&range_end);
+                        analysed_chunks.insert(range_end, (middle_start, range_vec_idx));
+                        analysed_chunks.insert(middle_start, (range_start, chunks.len() - 1));
+                        analysed_code_starts.insert(middle_start);
+                    }
                     continue;
+                } else {
+                    next_known_start = range_start.0;
                 }
             }
-            let (mut code_block, rest) = CodeBlock::from_bytes(code_start, &rom_bytes[code_start.0..], &mut processor);
+            let (mut code_block, rest) =
+                CodeBlock::from_bytes(code_start, &rom_bytes[code_start.0..next_known_start], &mut processor);
             let last_instruction = code_block.instruction_metas.last().expect("Empty (invalid) code block");
             let mut next_covered = false;
             if last_instruction.instruction.opcode.mnemonic.can_branch() {
@@ -94,7 +136,7 @@ impl RomDisassembly {
                     if next_pc.0 >= rom_bytes.len() {
                         eprintln!("Invalid next PC encountered when parsing basic code block starting at {:?}, at final instruction {:?}", code_start, last_instruction);
                         chunks.push((code_start, BinaryBlock::Code(code_block)));
-                        analysed_chunks.insert(rest, code_start);
+                        analysed_chunks.insert(rest, (code_start, chunks.len() - 1));
                         if !next_covered {
                             chunks.push((rest, BinaryBlock::Unknown));
                         }
@@ -110,7 +152,7 @@ impl RomDisassembly {
                 }
             }
             chunks.push((code_start, BinaryBlock::Code(code_block)));
-            analysed_chunks.insert(rest, code_start);
+            analysed_chunks.insert(rest, (code_start, chunks.len() - 1));
             if !next_covered {
                 chunks.push((rest, BinaryBlock::Unknown));
             }
@@ -182,6 +224,34 @@ impl BinaryBlock {
             Unused => "Unused",
             Unknown => "Unknown",
             EndOfRom => "End of ROM",
+        }
+    }
+
+    pub fn code_block(&self) -> Option<&CodeBlock> {
+        match self {
+            Self::Code(code) => Some(code),
+            _ => None,
+        }
+    }
+
+    pub fn code_block_mut(&mut self) -> Option<&mut CodeBlock> {
+        match self {
+            Self::Code(code) => Some(code),
+            _ => None,
+        }
+    }
+
+    pub fn data_block(&self) -> Option<&DataBlock> {
+        match self {
+            Self::Data(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn data_block_mut(&mut self) -> Option<&mut DataBlock> {
+        match self {
+            Self::Data(data) => Some(data),
+            _ => None,
         }
     }
 }
