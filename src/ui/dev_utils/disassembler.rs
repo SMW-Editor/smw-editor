@@ -78,6 +78,7 @@ impl UiDisassembler {
         const COLOR_ADDR: u32 = 0xff_aa_aa_aa;
         const COLOR_DATA: u32 = 0xff_ee_dd_dd;
         const COLOR_CODE: u32 = 0xff_dd_dd_ee;
+        const COLOR_BRANCH_TARGET: u32 = 0xff_aa_aa_bb;
         const COLOR_CODE_HEX: u32 = 0xff_cc_cc_dd;
         const COLOR_DEBUG_NOTE: u32 = 0xff_55_ee_ee;
         let space_width: f32 = ui.calc_text_size("0")[0];
@@ -173,13 +174,14 @@ impl UiDisassembler {
                             COLOR_CODE_HEX,
                         );
                         x.set(x.get() + space_width * 3.0 * (4 - num_bytes) as f32);
-                        {
-                            let mut str_buf = str_buf.borrow_mut();
-                            str_buf.clear();
-                            write!(str_buf, "{}", ins.display(addr, x_flag, m_flag, direct_page)).unwrap();
-                            draw_text(&*str_buf, COLOR_CODE);
+                        draw_fmt(format_args!("{}", ins.display(addr, x_flag, m_flag, direct_page)), COLOR_CODE);
+                        if ins.opcode.mnemonic.can_branch() {
+                            draw_text(" ->", COLOR_BRANCH_TARGET);
+                            debug_assert_eq!(addr, code.instruction_metas.last().unwrap().offset);
+                            for target in code.exits.iter() {
+                                draw_fmt(format_args!(" {}", target), COLOR_BRANCH_TARGET);
+                            }
                         }
-                        current_address = addr.0 + num_bytes;
                         if draw_end_line() {
                             break 'draw_lines;
                         }
