@@ -20,6 +20,7 @@ pub struct UiDisassembler {
     title:                  String,
     current_address_scroll: i32,
     address_y_map:          BTreeMap<AddrSnes, f32>,
+    opt_draw_debug_info:    bool,
 }
 
 impl UiTool for UiDisassembler {
@@ -54,6 +55,7 @@ impl UiDisassembler {
             title:                  title_with_id("Disassembler", id),
             current_address_scroll: AddrSnes::MIN.0 as i32,
             address_y_map:          BTreeMap::new(),
+            opt_draw_debug_info:    false,
         }
     }
 
@@ -61,6 +63,8 @@ impl UiDisassembler {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disas = &project.rom_data.disassembly;
         let ui = ctx.ui;
+
+        ui.checkbox("Draw debug info", &mut self.opt_draw_debug_info);
 
         if ui.input_int("Address", &mut self.current_address_scroll).step(4).chars_hexadecimal(true).build() {
             let min = AddrSnes::MIN;
@@ -153,12 +157,19 @@ impl UiDisassembler {
                 disas.chunks.get(chunk_idx + 1).map(|c| c.0).unwrap_or_else(|| AddrPc::from(disas.rom_bytes().len()));
             let chunk_bytes = &disas.rom_bytes()[chunk_pc.0..next_chunk_pc.0];
 
-            draw_fmt(
-                format_args!("Chunk of {ty}: {ab}..{ae}", ty = chunk.type_name(), ab = chunk_pc, ae = next_chunk_pc),
-                COLOR_DEBUG_NOTE,
-            );
-            if draw_end_line() {
-                break 'draw_lines;
+            if self.opt_draw_debug_info {
+                draw_fmt(
+                    format_args!(
+                        "Chunk of {ty}: {ab}..{ae}",
+                        ty = chunk.type_name(),
+                        ab = chunk_pc,
+                        ae = next_chunk_pc
+                    ),
+                    COLOR_DEBUG_NOTE,
+                );
+                if draw_end_line() {
+                    break 'draw_lines;
+                }
             }
             match chunk {
                 BinaryBlock::EndOfRom => break 'draw_lines,
@@ -177,9 +188,11 @@ impl UiDisassembler {
                 }
                 BinaryBlock::Code(code) => {
                     let first_instruction = code.instruction_metas.partition_point(|i| i.offset.0 < current_address);
-                    draw_fmt(format_args!("First insn: {}", first_instruction), COLOR_DEBUG_NOTE);
-                    if draw_end_line() {
-                        break 'draw_lines;
+                    if self.opt_draw_debug_info {
+                        draw_fmt(format_args!("First insn: {}", first_instruction), COLOR_DEBUG_NOTE);
+                        if draw_end_line() {
+                            break 'draw_lines;
+                        }
                     }
                     for imeta in code.instruction_metas.iter().copied().skip(first_instruction) {
                         let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag, direct_page } = imeta;
