@@ -1,9 +1,8 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    fmt::{Debug, Formatter, Write},
+    fmt::{Debug, Display, Formatter, Write},
     sync::Arc,
 };
-use std::fmt::Display;
 
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
@@ -51,8 +50,6 @@ pub struct InstructionMeta {
     pub instruction: Instruction,
     pub m_flag:      bool,
     pub x_flag:      bool,
-    pub direct_page: u16,
-    pub data_bank:   u8,
 }
 
 #[derive(Default, Clone)]
@@ -77,8 +74,8 @@ pub struct RomDisassembly {
 
 impl Display for InstructionMeta {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]", if self.m_flag {'M'} else {'m'})?;
-        self.instruction.display(self.offset, self.x_flag, self.m_flag, self.direct_page, self.data_bank).fmt(f)
+        write!(f, "[{}]", if self.m_flag { 'M' } else { 'm' })?;
+        self.instruction.display(self.offset, self.x_flag, self.m_flag).fmt(f)
     }
 }
 
@@ -90,17 +87,18 @@ impl RomDisassembly {
         let mut analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)> = Default::default();
         // Temporary until code scanning
         // TODO: Debug maximum small vec size
-        let mut remaining_code_starts: Vec<(AddrPc, Processor, AddrSnes, SmallVec<[AddrPc; 32]>)> = Vec::with_capacity(JUMP_TABLES.len() + 1);
+        let mut remaining_code_starts: Vec<(AddrPc, Processor, AddrSnes, SmallVec<[AddrPc; 32]>)> =
+            Vec::with_capacity(JUMP_TABLES.len() + 1);
         let mut analysed_code_starts = HashSet::with_capacity(256);
 
         remaining_code_starts.push((AddrPc::MIN, Processor::new(), AddrSnes::MIN, smallvec![]));
         // TODO: Return stack: support multiple places a subroutine is called from
 
-        'analysis_loop: while let Some((code_start, mut processor, entrance, mut return_stack)) = remaining_code_starts.pop() {
+        'analysis_loop: while let Some((code_start, mut processor, entrance, mut return_stack)) =
+            remaining_code_starts.pop()
+        {
             let mut next_known_start = rom_bytes.len();
-            if let Some((&range_end, &(range_start, range_vec_idx))) =
-                analysed_chunks.range(code_start + 1..).next()
-            {
+            if let Some((&range_end, &(range_start, range_vec_idx))) = analysed_chunks.range(code_start + 1..).next() {
                 if code_start >= range_start && code_start < range_end {
                     // already analysed
                     if code_start != range_start {
@@ -109,30 +107,33 @@ impl RomDisassembly {
                         // jump into the middle of a block, split it in two
                         let (original_pc, mut original_block) =
                             std::mem::replace(&mut chunks[range_vec_idx], (range_start, BinaryBlock::Unknown));
-                        let CodeBlock { instruction_metas: original_instructions, exits: original_exits, entrances: original_entrances } =
-                            std::mem::take(
-                                original_block
-                                    .code_block_mut()
-                                    .expect("Found jump into the middle of a non-code section"),
-                            );
+                        let CodeBlock {
+                            instruction_metas: original_instructions,
+                            exits: original_exits,
+                            entrances: original_entrances,
+                        } = std::mem::take(
+                            original_block.code_block_mut().expect("Found jump into the middle of a non-code section"),
+                        );
                         assert_eq!(original_pc, range_start);
 
                         let mut first_block = CodeBlock {
                             instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
                             exits:             vec![middle_start.try_into().unwrap()],
-                            entrances:          original_entrances,
+                            entrances:         original_entrances,
                         };
                         let mut second_block = CodeBlock {
                             instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
                             exits:             original_exits,
-                            entrances:          vec![entrance],
+                            entrances:         vec![entrance],
                         };
                         for imeta in original_instructions.into_iter() {
                             if imeta.offset < middle_start { &mut first_block } else { &mut second_block }
                                 .instruction_metas
                                 .push(imeta);
                         }
-                        second_block.entrances.push(first_block.instruction_metas.last().unwrap().offset.try_into().unwrap());
+                        second_block
+                            .entrances
+                            .push(first_block.instruction_metas.last().unwrap().offset.try_into().unwrap());
 
                         chunks.push((range_start, BinaryBlock::Code(first_block)));
                         chunks[range_vec_idx] = (middle_start, BinaryBlock::Code(second_block));
@@ -148,37 +149,43 @@ impl RomDisassembly {
             }
             {
                 let nkssnes = AddrPc(next_known_start);
-                eprintln!("analysing {code_start} to {nkssnes:?} M:{} X:{} entrance:{:?}", processor.p_reg.m_flag(), processor.p_reg.x_flag(), entrance);
+                eprintln!(
+                    "analysing {code_start} to {nkssnes:?} M:{} X:{} entrance:{:?}",
+                    processor.p_reg.m_flag(),
+                    processor.p_reg.x_flag(),
+                    entrance
+                );
             }
             let (mut code_block, rest) =
                 CodeBlock::from_bytes(code_start, &rom_bytes[code_start.0..next_known_start], &mut processor);
             code_block.entrances.push(entrance);
-            let last_instruction = code_block
-                .instruction_metas
-                .last()
-                .unwrap_or_else(|| {
-                    eprintln!("!!!! Code error backtrace start, block at {code_start} M:{}", processor.p_reg.m_flag());
-                    code_block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
-                    let mut entrance = entrance;
-                    while entrance != AddrSnes::MIN {
-                        let entrance_pc: AddrPc = entrance.try_into().unwrap();
-                        let (&block_end, &(block_start, block_idx)) = analysed_chunks.range(entrance_pc..).next().unwrap();
-                        let block = chunks[block_idx].1.code_block().unwrap();
-                        eprintln!("Next backtrace block at {:?} M:{} [e={entrance:?}]", block.instruction_metas[0].offset, block.instruction_metas[0].m_flag);
-                        block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
-                        if entrance == block.entrances[0] {
-                            break;
-                        }
-                        entrance = block.entrances[0];
+            let last_instruction = code_block.instruction_metas.last().unwrap_or_else(|| {
+                eprintln!("!!!! Code error backtrace start, block at {code_start} M:{}", processor.p_reg.m_flag());
+                code_block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
+                let mut entrance = entrance;
+                while entrance != AddrSnes::MIN {
+                    let entrance_pc: AddrPc = entrance.try_into().unwrap();
+                    let (_, &(_, block_idx)) = analysed_chunks.range(entrance_pc..).next().unwrap();
+                    let block = chunks[block_idx].1.code_block().unwrap();
+                    eprintln!(
+                        "Next backtrace block at {:?} M:{} [e={entrance:?}]",
+                        block.instruction_metas[0].offset, block.instruction_metas[0].m_flag
+                    );
+                    block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
+                    if entrance == block.entrances[0] {
+                        break;
                     }
-                    panic!("Empty (invalid) code block at {code_start}")});
+                    entrance = block.entrances[0];
+                }
+                panic!("Empty (invalid) code block at {code_start}")
+            });
             let mut next_covered = false;
             if last_instruction.instruction.opcode.mnemonic.can_branch() {
                 let last_snes: AddrSnes = last_instruction.offset.try_into().unwrap();
                 for meta in code_block.instruction_metas.iter() {
                     eprintln!("{meta}");
                 }
-                let mut next_instructions = last_instruction.instruction.next_instructions(last_snes, processor.dp_reg.0, processor.db_reg.0);
+                let mut next_instructions = last_instruction.instruction.next_instructions(last_snes);
                 let is_jump_table = next_instructions.iter().any(|&AddrSnes(t)| t == 0x0086DF || t == 0x0086FA);
                 if is_jump_table {
                     let jump_table_addr = AddrSnes::try_from_lorom(rest).unwrap();
@@ -189,7 +196,12 @@ impl RomDisassembly {
                                 let addr = AddrPc::try_from_lorom(addr).unwrap();
                                 if analysed_code_starts.insert(addr) {
                                     eprintln!("from jump table: {code_start:?} to {addr:?}");
-                                    remaining_code_starts.push((addr, processor.clone(), code_start.try_into().unwrap(), return_stack.clone()));
+                                    remaining_code_starts.push((
+                                        addr,
+                                        processor.clone(),
+                                        code_start.try_into().unwrap(),
+                                        return_stack.clone(),
+                                    ));
                                 } else {
                                     // TODO: Add entrance to matching code block
                                 }
@@ -201,7 +213,8 @@ impl RomDisassembly {
                     }
                 } else {
                     if last_instruction.instruction.opcode.mnemonic.is_subroutine_call() {
-                        let next_instruction = last_instruction.offset + AddrPc(last_instruction.instruction.opcode.instruction_size());
+                        let next_instruction =
+                            last_instruction.offset + AddrPc(last_instruction.instruction.opcode.instruction_size());
                         return_stack.push(next_instruction);
                     } else if last_instruction.instruction.opcode.mnemonic.is_subroutine_return() {
                         let return_addr = return_stack.pop().expect("Address stack underflow");
@@ -225,7 +238,12 @@ impl RomDisassembly {
                             code_block.exits.push(next_target);
                             if analysed_code_starts.insert(next_pc) {
                                 eprintln!("from {code_start:?} to {next_pc:?}");
-                                remaining_code_starts.push((next_pc, processor.clone(), code_start.try_into().unwrap(), return_stack.clone()));
+                                remaining_code_starts.push((
+                                    next_pc,
+                                    processor.clone(),
+                                    code_start.try_into().unwrap(),
+                                    return_stack.clone(),
+                                ));
                             } else {
                                 // TODO: Add entrance to matching code block
                             }
@@ -277,12 +295,7 @@ impl Debug for RomDisassembly {
                     }
                     for i in code.instruction_metas.iter() {
                         let ibytes = &self.rom_bytes[i.offset.0..][..i.instruction.opcode.instruction_size()];
-                        write!(
-                            f,
-                            "${:6}   {:<20} # ",
-                            i.offset,
-                            i.instruction.display(i.offset, i.x_flag, i.m_flag, i.direct_page, i.data_bank)
-                        )?;
+                        write!(f, "${:6}   {:<20} # ", i.offset, i.instruction.display(i.offset, i.x_flag, i.m_flag))?;
                         for &byte in ibytes {
                             write!(f, "{:02x} ", byte)?;
                         }
@@ -352,8 +365,6 @@ impl CodeBlock {
                 instruction: i,
                 m_flag:      processor.p_reg.m_flag(),
                 x_flag:      processor.p_reg.x_flag(),
-                direct_page: processor.dp_reg.0,
-                data_bank:   processor.db_reg.0,
             };
             instruction_metas.push(meta);
             rest = new_rest;

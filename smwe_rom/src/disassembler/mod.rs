@@ -7,4 +7,3 @@ pub mod opcodes;
 pub mod processor;
 pub mod registers;
 pub mod rom_disassembly;
-pub mod smw_data_blocks;

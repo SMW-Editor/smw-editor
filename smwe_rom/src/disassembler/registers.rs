@@ -1,13 +1,5 @@
-// This module will probably not define every register of the 65816,
+// This module will not define every register of the 65816,
 // only those that are needed for disassembly.
-
-/// Direct Page
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct DPRegister(pub u16);
-
-/// Data Bank
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct DBRegister(pub u8);
 
 /// Processor Status
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]

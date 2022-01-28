@@ -22,12 +22,10 @@ pub struct Instruction {
 
 #[derive(Copy, Clone)]
 pub struct DisplayInstruction {
-    i:           Instruction,
-    offset:      AddrPc,
-    x_flag:      bool,
-    m_flag:      bool,
-    direct_page: u16,
-    data_bank:   u8,
+    i:      Instruction,
+    offset: AddrPc,
+    x_flag: bool,
+    m_flag: bool,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -54,23 +52,21 @@ impl Instruction {
         Ok((Self { opcode, operands }, rest))
     }
 
-    pub fn display(
-        self, offset: AddrPc, x_flag: bool, m_flag: bool, direct_page: u16, data_bank: u8,
-    ) -> DisplayInstruction {
-        DisplayInstruction { i: self, offset, x_flag, m_flag, direct_page, data_bank }
+    pub fn display(self, offset: AddrPc, x_flag: bool, m_flag: bool) -> DisplayInstruction {
+        DisplayInstruction { i: self, offset, x_flag, m_flag }
     }
 
     pub fn operands(&self) -> &[u8] {
         &self.operands[0..self.opcode.mode.operands_size()]
     }
 
-    pub fn next_instructions(self, offset: AddrSnes, direct_page: u16, data_bank: u8) -> SmallVec<[AddrSnes; 2]> {
+    pub fn next_instructions(self, offset: AddrSnes) -> SmallVec<[AddrSnes; 2]> {
         use AddressingMode::*;
         use Mnemonic::*;
 
         let is_jump_address_immediate = [Address, Long, Relative8, Relative16].contains(&self.opcode.mode);
         let next_instruction = offset + self.opcode.instruction_size();
-        let maybe_jump_target = self.get_intermediate_address(offset, direct_page, data_bank, true);
+        let maybe_jump_target = self.get_intermediate_address(offset);
 
         match self.opcode.mnemonic {
             // Unconditional jumps (single path)
@@ -109,22 +105,13 @@ impl Instruction {
         }
     }
 
-    fn get_intermediate_address(self, offset: AddrSnes, direct_page: u16, data_bank: u8, resolve: bool) -> AddrSnes {
+    fn get_intermediate_address(self, offset: AddrSnes) -> AddrSnes {
         let op_bytes = self.operands();
         AddrSnes(match self.opcode.mode {
-            m if (DirectPage..=DirectPageYIndex).contains(&m) => {
-                if resolve {
-                    let operand = op_bytes[0] as u32;
-                    (direct_page as u32 + operand) & 0xFFFF
-                } else {
-                    op_bytes[0] as u32
-                }
-            }
+            m if (DirectPage..=DirectPageYIndex).contains(&m) => op_bytes[0] as u32,
             DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as u32,
             Address | AddressXIndex | AddressYIndex | AddressXIndexIndirect => {
-                use Mnemonic::*;
-                let bank =
-                    if [JSR, JMP].contains(&self.opcode.mnemonic) { (offset.0 >> 16) as u32 } else { data_bank as u32 };
+                let bank = (offset.0 >> 16) as u32;
                 let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
                 (bank << 16) | (operand as u32)
             }
@@ -150,10 +137,10 @@ impl Display for DisplayInstruction {
     fn fmt(&self, outer_fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         use std::io::Write;
         let mut fmt: SmallVec<[u8; 64]> = Default::default();
-        let DisplayInstruction { i, x_flag, m_flag, offset, direct_page, data_bank } = *self;
+        let DisplayInstruction { i, x_flag, m_flag, offset } = *self;
 
         let offset = AddrSnes::try_from_lorom(offset).unwrap_or_default();
-        let address = i.get_intermediate_address(offset, direct_page, data_bank, false).0;
+        let address = i.get_intermediate_address(offset).0;
 
         write!(fmt, "{}", i.opcode.mnemonic).unwrap();
         match i.opcode.mode {
