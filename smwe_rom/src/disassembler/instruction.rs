@@ -27,6 +27,7 @@ pub struct DisplayInstruction {
     x_flag:      bool,
     m_flag:      bool,
     direct_page: u16,
+    data_bank:   u8,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -53,59 +54,77 @@ impl Instruction {
         Ok((Self { opcode, operands }, rest))
     }
 
-    pub fn display(self, offset: AddrPc, x_flag: bool, m_flag: bool, direct_page: u16) -> DisplayInstruction {
-        DisplayInstruction { i: self, offset, x_flag, m_flag, direct_page }
+    pub fn display(
+        self, offset: AddrPc, x_flag: bool, m_flag: bool, direct_page: u16, data_bank: u8,
+    ) -> DisplayInstruction {
+        DisplayInstruction { i: self, offset, x_flag, m_flag, direct_page, data_bank }
     }
 
     pub fn operands(&self) -> &[u8] {
         &self.operands[0..self.opcode.mode.operands_size()]
     }
 
-    pub fn next_instructions(self, addr: AddrSnes, direct_page: u16) -> SmallVec<[AddrSnes; 2]> {
-        let next_instruction = addr + self.opcode.instruction_size();
-        let addr_pc = AddrPc::try_from(addr).unwrap();
-        let maybe_target = self.get_intermediate_address(addr_pc, direct_page, true);
+    pub fn next_instructions(self, offset: AddrSnes, direct_page: u16, data_bank: u8) -> SmallVec<[AddrSnes; 2]> {
         use AddressingMode::*;
         use Mnemonic::*;
-        let jump_address_known = [Address, Long, Relative8, Relative16].contains(&self.opcode.mode);
+
+        let is_jump_address_immediate = [Address, Long, Relative8, Relative16].contains(&self.opcode.mode);
+        let next_instruction = offset + self.opcode.instruction_size();
+        let maybe_jump_target = self.get_intermediate_address(offset, direct_page, data_bank, true);
+
         match self.opcode.mnemonic {
-            JMP | JML if jump_address_known => {
-                smallvec![maybe_target]
+            // Unconditional jumps (single path)
+            BRA | BRL | JMP | JML | JSR | JSL => {
+                if is_jump_address_immediate {
+                    smallvec![maybe_jump_target]
+                } else {
+                    smallvec![]
+                }
             }
-            // JSR, JSL: we assume they return to the next instruction, thus it is in the list
-            BCC | BCS | BEQ | BMI | BNE | BPL | BRA | BRL | BVC | BVS | JSR | JSL if jump_address_known => {
-                smallvec![next_instruction, maybe_target]
+            // Conditional and returning jumps (2 paths)
+            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS => {
+                if is_jump_address_immediate {
+                    smallvec![next_instruction, maybe_jump_target]
+                } else {
+                    smallvec![next_instruction]
+                }
             }
+            // Returns
             RTS | RTL | RTI => {
                 smallvec![]
             }
+            // Interrupts
             BRK | COP => {
                 // todo: interrupt handler destination
                 smallvec![next_instruction]
             }
-            _ if self.opcode.mnemonic.can_branch() => smallvec![],
-            _ => smallvec![next_instruction],
+            _ => {
+                if self.opcode.mnemonic.can_branch() {
+                    log::error!("Unhandled branching instruction {self:?} at ${offset:06X}");
+                    smallvec![]
+                } else {
+                    smallvec![next_instruction]
+                }
+            }
         }
     }
 
-    fn get_intermediate_address(self, offset: AddrPc, direct_page: u16, resolve: bool) -> AddrSnes {
+    fn get_intermediate_address(self, offset: AddrSnes, direct_page: u16, data_bank: u8, resolve: bool) -> AddrSnes {
         let op_bytes = self.operands();
         AddrSnes(match self.opcode.mode {
             m if (DirectPage..=DirectPageYIndex).contains(&m) => {
                 if resolve {
                     let operand = op_bytes[0] as u32;
-                    ((direct_page as u32 + operand) & 0xFFFF) as u32
+                    (direct_page as u32 + operand) & 0xFFFF
                 } else {
                     op_bytes[0] as u32
                 }
             }
             DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as u32,
             Address | AddressXIndex | AddressYIndex | AddressXIndexIndirect => {
-                let bank = if self.opcode.mnemonic == Mnemonic::JSR || self.opcode.mnemonic == Mnemonic::JMP {
-                    (AddrSnes::try_from_lorom(offset).unwrap().0 >> 16) as u32
-                } else {
-                    direct_page as u32
-                };
+                use Mnemonic::*;
+                let bank =
+                    if [JSR, JMP].contains(&self.opcode.mnemonic) { (offset.0 >> 16) as u32 } else { data_bank as u32 };
                 let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
                 (bank << 16) | (operand as u32)
             }
@@ -113,15 +132,14 @@ impl Instruction {
             Long | LongXIndex => u32::from_le_bytes([op_bytes[0], op_bytes[1], op_bytes[2], 0]),
             Relative8 | Relative16 => {
                 let operand_size = self.opcode.instruction_size() - 1;
-                let program_counter = { AddrSnes::try_from_lorom(offset + 1 + operand_size).unwrap().0 as i32 };
+                let program_counter = (offset + 1 + operand_size).0 as i32;
                 let bank = program_counter >> 16;
-                let address = if self.opcode.mode == Relative8 {
-                    (op_bytes[0] as i8) as i32
-                } else {
-                    i16::from_le_bytes([op_bytes[0], op_bytes[1]]) as i32
+                let jump_amount = match operand_size {
+                    1 => op_bytes[0] as i8 as i32, // u8->i8 for the sign, i8->i32 for the size.
+                    2 => i16::from_le_bytes([op_bytes[0], op_bytes[1]]) as i32,
+                    _ => unreachable!(),
                 };
-
-                ((bank << 16) | ((program_counter.wrapping_add(address)) & 0xFFFF)) as u32
+                ((bank << 16) | (program_counter.wrapping_add(jump_amount) & 0xFFFF)) as u32
             }
             _ => 0,
         } as usize)
@@ -132,15 +150,19 @@ impl Display for DisplayInstruction {
     fn fmt(&self, outer_fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         use std::io::Write;
         let mut fmt: SmallVec<[u8; 64]> = Default::default();
-        let DisplayInstruction { i, x_flag, m_flag, offset, direct_page } = *self;
-        let address = i.get_intermediate_address(offset, direct_page, false).0;
+        let DisplayInstruction { i, x_flag, m_flag, offset, direct_page, data_bank } = *self;
+
+        let offset = AddrSnes::try_from_lorom(offset).unwrap_or_default();
+        let address = i.get_intermediate_address(offset, direct_page, data_bank, false).0;
 
         write!(fmt, "{}", i.opcode.mnemonic).unwrap();
         match i.opcode.mode {
             Implied => {
                 // no-op
             }
-            Accumulator => fmt.push(b'A'),
+            Accumulator => {
+                write!(fmt, " A").unwrap();
+            }
             Constant8 | Immediate8 => {
                 write!(fmt, " #${:02X}", i.operands[0]).unwrap();
             }
@@ -157,59 +179,59 @@ impl Display for DisplayInstruction {
                 }
             }
             DirectPage => {
-                write!(fmt, " ${:02X}", address).unwrap();
+                write!(fmt, " ${address:02X}").unwrap();
             }
             Relative8 => {
                 let address = i.operands[0] as u32;
                 let address = address & !(-1 << 8) as u32;
-                write!(fmt, " ${:02X}", address).unwrap();
+                write!(fmt, " ${address:02X}").unwrap();
             }
             Relative16 => {
                 let address = u16::from_le_bytes([i.operands[0], i.operands[1]]) as u32;
                 let address = address & !(-1 << 16) as u32;
-                write!(fmt, " ${:04X}", address).unwrap();
+                write!(fmt, " ${address:04X}").unwrap();
             }
             Address => {
-                write!(fmt, " ${:04X}", address).unwrap();
+                write!(fmt, " ${address:04X}").unwrap();
             }
             Long => {
-                write!(fmt, " ${:06X}", address).unwrap();
+                write!(fmt, " ${address:06X}").unwrap();
             }
             DirectPageXIndex | AddressXIndex | LongXIndex => {
-                write!(fmt, " ${:02X}, X", address).unwrap();
+                write!(fmt, " ${address:02X}, X").unwrap();
             }
             DirectPageYIndex | AddressYIndex => {
-                write!(fmt, " ${:02X}, Y", address).unwrap();
+                write!(fmt, " ${address:02X}, Y").unwrap();
             }
             DirectPageSIndex => {
-                write!(fmt, " ${:02X}, S", address).unwrap();
+                write!(fmt, " ${address:02X}, S").unwrap();
             }
             DirectPageIndirect => {
-                write!(fmt, " (${:02X})", address).unwrap();
+                write!(fmt, " (${address:02X})").unwrap();
             }
             AddressIndirect => {
-                write!(fmt, " (${:04X})", address).unwrap();
+                write!(fmt, " (${address:04X})").unwrap();
             }
             DirectPageXIndexIndirect => {
-                write!(fmt, " (${:02X}, X)", address).unwrap();
+                write!(fmt, " (${address:02X}, X)").unwrap();
             }
             AddressXIndexIndirect => {
-                write!(fmt, " (${:04X}, X)", address).unwrap();
+                write!(fmt, " (${address:04X}, X)").unwrap();
             }
             DirectPageIndirectYIndex => {
-                write!(fmt, " (${:02X}), Y", address).unwrap();
+                write!(fmt, " (${address:02X}), Y").unwrap();
             }
             DirectPageSIndexIndirectYIndex => {
-                write!(fmt, " (${:02X}, S), Y", address).unwrap();
+                write!(fmt, " (${address:02X}, S), Y").unwrap();
             }
             DirectPageLongIndirect => {
-                write!(fmt, " [${:02X}]", address).unwrap();
+                write!(fmt, " [${address:02X}]").unwrap();
             }
             AddressLongIndirect => {
-                write!(fmt, " [${:04X}]", address).unwrap();
+                write!(fmt, " [${address:04X}]").unwrap();
             }
             DirectPageLongIndirectYIndex => {
-                write!(fmt, " [${:02X}], Y", address).unwrap();
+                write!(fmt, " [${address:02X}], Y").unwrap();
             }
             BlockMove => {
                 write!(fmt, " ${:02X}, ${:02X}", i.operands[0], i.operands[1]).unwrap();

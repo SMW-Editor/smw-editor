@@ -5,6 +5,10 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct DPRegister(pub u16);
 
+/// Data Bank
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct DBRegister(pub u8);
+
 /// Processor Status
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct PRegister(pub u8);

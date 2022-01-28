@@ -240,6 +240,16 @@ impl Mnemonic {
         use Mnemonic::*;
         [BCC, BCS, BEQ, BMI, BNE, BRK, BPL, BRA, BRL, BVC, BVS, COP, JMP, JML, JSR, JSL, RTI, RTS, RTL].contains(&self)
     }
+
+    pub fn is_subroutine_call(self) -> bool {
+        use Mnemonic::*;
+        [JSR, JSL].contains(&self)
+    }
+
+    pub fn is_subroutine_return(self) -> bool {
+        use Mnemonic::*;
+        [RTS, RTL].contains(&self)
+    }
 }
 
 impl fmt::Display for Mnemonic {

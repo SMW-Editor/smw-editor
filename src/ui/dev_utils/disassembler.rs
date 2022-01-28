@@ -189,20 +189,24 @@ impl UiDisassembler {
                 BinaryBlock::Code(code) => {
                     let first_instruction = code.instruction_metas.partition_point(|i| i.offset.0 < current_address);
                     if self.opt_draw_debug_info {
-                        draw_fmt(format_args!("First insn: {}", first_instruction), COLOR_DEBUG_NOTE);
+                        draw_fmt(format_args!("First insn: {first_instruction}"), COLOR_DEBUG_NOTE);
                         if draw_end_line() {
                             break 'draw_lines;
                         }
                     }
                     for imeta in code.instruction_metas.iter().copied().skip(first_instruction) {
-                        let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag, direct_page } = imeta;
+                        let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag, direct_page, data_bank } =
+                            imeta;
                         draw_addr(addr, COLOR_ADDR);
                         let num_bytes = draw_hex(
                             &mut disas.rom_bytes().iter().copied().skip(addr.0).take(ins.opcode.instruction_size()),
                             COLOR_CODE_HEX,
                         );
                         x.set(x.get() + space_width * 3.0 * (4 - num_bytes) as f32);
-                        draw_fmt(format_args!("{}", ins.display(addr, x_flag, m_flag, direct_page)), COLOR_CODE);
+                        draw_fmt(
+                            format_args!("{}", ins.display(addr, x_flag, m_flag, direct_page, data_bank)),
+                            COLOR_CODE,
+                        );
                         if ins.opcode.mnemonic.can_branch() {
                             draw_text(" ->", COLOR_BRANCH_TARGET);
                             debug_assert_eq!(addr, code.instruction_metas.last().unwrap().offset);
