@@ -24,7 +24,10 @@ pub mod types {
         ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub},
     };
 
-    use crate::error::AddressError;
+    use crate::{
+        error::AddressError,
+        snes_utils::addr::{DD, HH, HHDD},
+    };
 
     pub trait Addr:
         Sized
@@ -187,6 +190,48 @@ pub mod types {
             } else {
                 write!(f, "AddrPc(0x{:06x})", self.0)
             }
+        }
+    }
+
+    impl AddrSnes {
+        #[must_use]
+        pub fn bank(self) -> u8 {
+            (self.0 >> 16) as u8
+        }
+
+        #[must_use]
+        pub fn high(self) -> u8 {
+            ((self.0 & HH) >> 8) as u8
+        }
+
+        #[must_use]
+        pub fn low(self) -> u8 {
+            (self.0 & DD) as u8
+        }
+
+        #[must_use]
+        pub fn absolute(self) -> u16 {
+            (self.0 & HHDD) as u16
+        }
+
+        #[must_use]
+        pub fn with_bank(self, bank: u8) -> Self {
+            Self((self.0 & 0x00FFFF) | ((bank as usize) << 16))
+        }
+
+        #[must_use]
+        pub fn with_high(self, high: u8) -> Self {
+            Self((self.0 & 0xFF00FF) | ((high as usize) << 8))
+        }
+
+        #[must_use]
+        pub fn with_low(self, low: u8) -> Self {
+            Self((self.0 & 0xFFFF00) | (low as usize))
+        }
+
+        #[must_use]
+        pub fn with_absolute(self, absolute: u16) -> Self {
+            Self((self.0 & 0xFF0000) | (absolute as usize))
         }
     }
 

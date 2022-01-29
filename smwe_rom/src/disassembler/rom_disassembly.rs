@@ -10,7 +10,12 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     disassembler::{
         instruction::Instruction,
-        jump_tables::{get_jump_table_from_rom, JUMP_TABLES},
+        jump_tables::{
+            get_jump_table_from_rom,
+            EXECUTE_PTR_LONG_TRAMPOLINE_ADDR,
+            EXECUTE_PTR_TRAMPOLINE_ADDR,
+            JUMP_TABLES,
+        },
         processor::Processor,
     },
     snes_utils::addr::{Addr, AddrPc, AddrSnes},
@@ -74,7 +79,7 @@ pub struct RomDisassembly {
 
 impl Display for InstructionMeta {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]", if self.m_flag { 'M' } else { 'm' })?;
+        write!(f, "[{}{}] ", if self.m_flag { 'M' } else { 'm' }, if self.x_flag { 'X' } else { 'x' })?;
         self.instruction.display(self.offset, self.x_flag, self.m_flag).fmt(f)
     }
 }
@@ -186,13 +191,15 @@ impl RomDisassembly {
                     eprintln!("{meta}");
                 }
                 let mut next_instructions = last_instruction.instruction.next_instructions(last_snes);
-                let is_jump_table = next_instructions.iter().any(|&AddrSnes(t)| t == 0x0086DF || t == 0x0086FA);
+                let is_jump_table = next_instructions
+                    .iter()
+                    .any(|&t| t == EXECUTE_PTR_TRAMPOLINE_ADDR || t == EXECUTE_PTR_LONG_TRAMPOLINE_ADDR);
                 if is_jump_table {
                     let jump_table_addr = AddrSnes::try_from_lorom(rest).unwrap();
                     match JUMP_TABLES.iter().find(|t| t.begin == jump_table_addr) {
                         Some(&jtv) => {
                             let addresses = get_jump_table_from_rom(rom, jtv).unwrap();
-                            for addr in addresses.into_iter().filter(|a| a.0 & 0xFFFF != 0) {
+                            for addr in addresses.into_iter().filter(|a| a.absolute() != 0) {
                                 let addr = AddrPc::try_from_lorom(addr).unwrap();
                                 if analysed_code_starts.insert(addr) {
                                     eprintln!("from jump table: {code_start:?} to {addr:?}");

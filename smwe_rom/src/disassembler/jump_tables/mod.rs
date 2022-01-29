@@ -13,6 +13,9 @@ use crate::{
     Rom,
 };
 
+pub const EXECUTE_PTR_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086DF);
+pub const EXECUTE_PTR_LONG_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086FA);
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTableView {
     pub begin:     AddrSnes,
