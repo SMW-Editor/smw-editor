@@ -69,18 +69,18 @@ impl Instruction {
         let maybe_jump_target = self.get_intermediate_address(offset);
 
         match self.opcode.mnemonic {
-            // Unconditional jumps (single path)
-            BRA | BRL | JMP | JML => {
+            // Jumps & subroutines
+            BRA | BRL | JMP | JML | JSR | JSL => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target]
                 } else {
                     smallvec![]
                 }
             }
-            // Conditional and returning jumps (2 paths)
-            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS | JSR | JSL => {
+            // Conditional branches
+            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS => {
                 if is_jump_address_immediate {
-                    smallvec![next_instruction, maybe_jump_target]
+                    smallvec![maybe_jump_target, next_instruction]
                 } else {
                     smallvec![next_instruction]
                 }
@@ -92,7 +92,7 @@ impl Instruction {
             // Interrupts
             BRK | COP => {
                 // todo: interrupt handler destination
-                smallvec![next_instruction]
+                smallvec![]
             }
             _ => {
                 if self.opcode.mnemonic.can_branch() {
@@ -102,6 +102,19 @@ impl Instruction {
                     smallvec![next_instruction]
                 }
             }
+        }
+    }
+
+    /// If the instruction leads to a subroutine that would return flow control, gets the returned flow control address.
+    pub fn return_instruction(self, offset: AddrSnes) -> Option<AddrSnes> {
+        use Mnemonic::*;
+
+        // Conditional and returning jumps (2 paths) and interrupts
+        if [JSR, JSL, BRK, COP].contains(&self.opcode.mnemonic) {
+            let next_instruction = offset + self.opcode.instruction_size();
+            Some(next_instruction)
+        } else {
+            None
         }
     }
 
