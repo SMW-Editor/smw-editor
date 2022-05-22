@@ -70,7 +70,7 @@ impl Instruction {
 
         match self.opcode.mnemonic {
             // Unconditional jumps (single path)
-            BRA | BRL | JMP | JML | JSR | JSL => {
+            BRA | BRL | JMP | JML => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target]
                 } else {
@@ -78,7 +78,7 @@ impl Instruction {
                 }
             }
             // Conditional and returning jumps (2 paths)
-            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS => {
+            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS | JSR | JSL => {
                 if is_jump_address_immediate {
                     smallvec![next_instruction, maybe_jump_target]
                 } else {

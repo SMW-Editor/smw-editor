@@ -75,201 +75,234 @@ pub struct RomDisassembly {
     pub chunks: Vec<(AddrPc, BinaryBlock)>,
 }
 
-// -------------------------------------------------------------------------------------------------
+struct RomAssemblyWalker<'r> {
+    rom: &'r Rom,
+    /// Start index, Block data
+    pub chunks: Vec<(AddrPc, BinaryBlock)>,
 
-impl Display for InstructionMeta {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}{}] ", if self.m_flag { 'M' } else { 'm' }, if self.x_flag { 'X' } else { 'x' })?;
-        self.instruction.display(self.offset, self.x_flag, self.m_flag).fmt(f)
-    }
+    // Algorithm state
+
+    analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)>,
+    // Temporary until code scanning
+    // TODO: Debug maximum small vec size
+    remaining_code_starts: Vec<RomAssemblyWalkerStep>,
+    analysed_code_starts: HashSet<AddrPc>,
 }
 
-impl RomDisassembly {
-    pub fn new(rom: &Rom) -> Self {
-        let rom_bytes = Arc::clone(&rom.0);
-        let mut chunks: Vec<(AddrPc, BinaryBlock)> = Vec::with_capacity(64);
-        // Chunk end -> Chunk start, index in vec
-        let mut analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)> = Default::default();
-        // Temporary until code scanning
-        // TODO: Debug maximum small vec size
-        let mut remaining_code_starts: Vec<(AddrPc, Processor, AddrSnes, SmallVec<[AddrPc; 32]>)> =
-            Vec::with_capacity(JUMP_TABLES.len() + 1);
-        let mut analysed_code_starts = HashSet::with_capacity(256);
+struct RomAssemblyWalkerStep {
+    code_start: AddrPc,
+    processor: Processor,
+    entrance: AddrSnes,
+    return_stack: SmallVec<[AddrPc; 32]>,
+}
 
-        remaining_code_starts.push((AddrPc::MIN, Processor::new(), AddrSnes::MIN, smallvec![]));
-        // TODO: Return stack: support multiple places a subroutine is called from
+// -------------------------------------------------------------------------------------------------
 
-        'analysis_loop: while let Some((code_start, mut processor, entrance, mut return_stack)) =
-            remaining_code_starts.pop()
-        {
-            let mut next_known_start = rom_bytes.len();
-            if let Some((&range_end, &(range_start, range_vec_idx))) = analysed_chunks.range(code_start + 1..).next() {
-                if code_start >= range_start && code_start < range_end {
-                    // already analysed
-                    if code_start != range_start {
-                        let middle_start = code_start;
-                        eprintln!("split at {middle_start}");
-                        // jump into the middle of a block, split it in two
-                        let (original_pc, mut original_block) =
-                            std::mem::replace(&mut chunks[range_vec_idx], (range_start, BinaryBlock::Unknown));
-                        let CodeBlock {
-                            instruction_metas: original_instructions,
-                            exits: original_exits,
-                            entrances: original_entrances,
-                        } = std::mem::take(
-                            original_block.code_block_mut().expect("Found jump into the middle of a non-code section"),
-                        );
-                        assert_eq!(original_pc, range_start);
+type Result<T> = std::result::Result<T, ()>;
 
-                        let mut first_block = CodeBlock {
-                            instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
-                            exits:             vec![middle_start.try_into().unwrap()],
-                            entrances:         original_entrances,
-                        };
-                        let mut second_block = CodeBlock {
-                            instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
-                            exits:             original_exits,
-                            entrances:         vec![entrance],
-                        };
-                        for imeta in original_instructions.into_iter() {
-                            if imeta.offset < middle_start { &mut first_block } else { &mut second_block }
-                                .instruction_metas
-                                .push(imeta);
-                        }
-                        second_block
-                            .entrances
-                            .push(first_block.instruction_metas.last().unwrap().offset.try_into().unwrap());
+impl<'r> RomAssemblyWalker<'r> {
+    fn new(rom: &'r Rom) -> Self {
+        Self {
+            rom,
+            chunks: Default::default(),
+            analysed_chunks: Default::default(),
+            // Temporary until code scanning
+            // TODO: Debug maximum small vec size
+            remaining_code_starts:
+                vec![RomAssemblyWalkerStep {
+                    code_start: AddrPc::MIN,
+                    processor: Processor::new(),
+                    entrance: AddrSnes::MIN,
+                    return_stack: smallvec![],
+                }],
+            analysed_code_starts: HashSet::with_capacity(256),
+        }
+    }
 
-                        chunks.push((range_start, BinaryBlock::Code(first_block)));
-                        chunks[range_vec_idx] = (middle_start, BinaryBlock::Code(second_block));
-                        analysed_chunks.remove(&range_end);
-                        analysed_chunks.insert(range_end, (middle_start, range_vec_idx));
-                        analysed_chunks.insert(middle_start, (range_start, chunks.len() - 1));
-                        analysed_code_starts.insert(middle_start);
-                    }
-                    continue;
-                } else {
-                    next_known_start = range_start.0;
-                }
-            }
-            {
-                let nkssnes = AddrPc(next_known_start);
-                eprintln!(
-                    "analysing {code_start} to {nkssnes:?} M:{} X:{} entrance:{:?}",
-                    processor.p_reg.m_flag(),
-                    processor.p_reg.x_flag(),
-                    entrance
-                );
-            }
-            let (mut code_block, rest) =
-                CodeBlock::from_bytes(code_start, &rom_bytes[code_start.0..next_known_start], &mut processor);
-            code_block.entrances.push(entrance);
-            let last_instruction = code_block.instruction_metas.last().unwrap_or_else(|| {
-                eprintln!("!!!! Code error backtrace start, block at {code_start} M:{}", processor.p_reg.m_flag());
-                code_block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
-                let mut entrance = entrance;
-                while entrance != AddrSnes::MIN {
-                    let entrance_pc: AddrPc = entrance.try_into().unwrap();
-                    let (_, &(_, block_idx)) = analysed_chunks.range(entrance_pc..).next().unwrap();
-                    let block = chunks[block_idx].1.code_block().unwrap();
-                    eprintln!(
-                        "Next backtrace block at {:?} M:{} [e={entrance:?}]",
-                        block.instruction_metas[0].offset, block.instruction_metas[0].m_flag
+    fn full_analysis(&mut self) -> Result<()> {
+        while let Some(step) = self.remaining_code_starts.pop() {
+            self.analysis_step(step)?;
+        }
+        self.cleanup()?;
+        Ok(())
+    }
+
+    fn analysis_step(&mut self, step: RomAssemblyWalkerStep) -> Result<()> {
+        let RomAssemblyWalkerStep{
+            code_start,
+            mut processor,
+            entrance,
+            mut return_stack,
+        } = step;
+
+        let mut next_known_start = self.rom.0.len();
+        if let Some((&range_end, &(range_start, range_vec_idx))) = self.analysed_chunks.range(code_start + 1..).next() {
+            if code_start >= range_start && code_start < range_end {
+                // already analysed
+                if code_start != range_start {
+                    let middle_start = code_start;
+                    eprintln!("split at {middle_start}");
+                    // jump into the middle of a block, split it in two
+                    let (original_pc, mut original_block) =
+                        std::mem::replace(&mut self.chunks[range_vec_idx], (range_start, BinaryBlock::Unknown));
+                    let CodeBlock {
+                        instruction_metas: original_instructions,
+                        exits: original_exits,
+                        entrances: original_entrances,
+                    } = std::mem::take(
+                        original_block.code_block_mut().expect("Found jump into the middle of a non-code section"),
                     );
-                    block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
-                    if entrance == block.entrances[0] {
-                        break;
+                    assert_eq!(original_pc, range_start);
+
+                    let mut first_block = CodeBlock {
+                        instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
+                        exits:             vec![middle_start.try_into().unwrap()],
+                        entrances:         original_entrances,
+                    };
+                    let mut second_block = CodeBlock {
+                        instruction_metas: Vec::with_capacity(original_instructions.len() / 2),
+                        exits:             original_exits,
+                        entrances:         vec![entrance],
+                    };
+                    for imeta in original_instructions.into_iter() {
+                        if imeta.offset < middle_start { &mut first_block } else { &mut second_block }
+                            .instruction_metas
+                            .push(imeta);
                     }
-                    entrance = block.entrances[0];
+                    second_block
+                        .entrances
+                        .push(first_block.instruction_metas.last().unwrap().offset.try_into().unwrap());
+
+                    self.chunks.push((range_start, BinaryBlock::Code(first_block)));
+                    self.chunks[range_vec_idx] = (middle_start, BinaryBlock::Code(second_block));
+                    self.analysed_chunks.remove(&range_end);
+                    self.analysed_chunks.insert(range_end, (middle_start, range_vec_idx));
+                    self.analysed_chunks.insert(middle_start, (range_start, self.chunks.len() - 1));
+                    self.analysed_code_starts.insert(middle_start);
                 }
-                panic!("Empty (invalid) code block at {code_start}")
-            });
-            let mut next_covered = false;
-            if last_instruction.instruction.opcode.mnemonic.can_branch() {
-                let last_snes: AddrSnes = last_instruction.offset.try_into().unwrap();
-                for meta in code_block.instruction_metas.iter() {
-                    eprintln!("{meta}");
+                return Ok(());
+            } else {
+                next_known_start = range_start.0;
+            }
+        }
+        eprintln!(
+            "analysing {code_start} to {:?} M:{} X:{} entrance:{entrance:?}",
+            AddrPc(next_known_start),
+            processor.p_reg.m_flag(),
+            processor.p_reg.x_flag(),
+        );
+        let (mut code_block, rest) =
+            CodeBlock::from_bytes(code_start, &self.rom.0[code_start.0..next_known_start], &mut processor);
+        code_block.entrances.push(entrance);
+        let last_instruction = code_block.instruction_metas.last().unwrap_or_else(|| {
+            eprintln!("!!!! Code error backtrace start, block at {code_start} M:{}", processor.p_reg.m_flag());
+            code_block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
+            let mut entrance = entrance;
+            while entrance != AddrSnes::MIN {
+                let entrance_pc: AddrPc = entrance.try_into().unwrap();
+                let (_, &(_, block_idx)) = self.analysed_chunks.range(entrance_pc..).next().unwrap();
+                let block = self.chunks[block_idx].1.code_block().unwrap();
+                eprintln!(
+                    "Next backtrace block at {:?} M:{} [e={entrance:?}]",
+                    block.instruction_metas[0].offset, block.instruction_metas[0].m_flag
+                );
+                block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
+                if entrance == block.entrances[0] {
+                    break;
                 }
-                let mut next_instructions = last_instruction.instruction.next_instructions(last_snes);
-                let is_jump_table = next_instructions
-                    .iter()
-                    .any(|&t| t == EXECUTE_PTR_TRAMPOLINE_ADDR || t == EXECUTE_PTR_LONG_TRAMPOLINE_ADDR);
-                if is_jump_table {
-                    let jump_table_addr = AddrSnes::try_from_lorom(rest).unwrap();
-                    match JUMP_TABLES.iter().find(|t| t.begin == jump_table_addr) {
-                        Some(&jtv) => {
-                            let addresses = get_jump_table_from_rom(rom, jtv).unwrap();
-                            for addr in addresses.into_iter().filter(|a| a.absolute() != 0) {
-                                let addr = AddrPc::try_from_lorom(addr).unwrap();
-                                if analysed_code_starts.insert(addr) {
-                                    eprintln!("from jump table: {code_start:?} to {addr:?}");
-                                    remaining_code_starts.push((
-                                        addr,
-                                        processor.clone(),
-                                        code_start.try_into().unwrap(),
-                                        return_stack.clone(),
-                                    ));
-                                } else {
-                                    // TODO: Add entrance to matching code block
-                                }
-                            }
-                        }
-                        None => {
-                            log::warn!("Could not find jump table at {jump_table_addr:?}");
-                        }
-                    }
-                } else {
-                    if last_instruction.instruction.opcode.mnemonic.is_subroutine_call() {
-                        let next_instruction =
-                            last_instruction.offset + AddrPc(last_instruction.instruction.opcode.instruction_size());
-                        return_stack.push(next_instruction);
-                    } else if last_instruction.instruction.opcode.mnemonic.is_subroutine_return() {
-                        let return_addr = return_stack.pop().expect("Address stack underflow");
-                        next_instructions.push(return_addr.try_into().unwrap());
-                    }
-                    for next_target in next_instructions {
-                        if let Ok(next_pc) = AddrPc::try_from(next_target) {
-                            if next_pc.0 >= rom_bytes.len() {
-                                eprintln!("Invalid next PC encountered when parsing basic code block starting at {:?}, at final instruction {:?}", code_start, last_instruction);
-                                chunks.push((code_start, BinaryBlock::Code(code_block)));
-                                analysed_chunks.insert(rest, (code_start, chunks.len() - 1));
-                                if !next_covered {
-                                    chunks.push((rest, BinaryBlock::Unknown));
-                                }
-                                break 'analysis_loop;
-                            }
-                            if next_pc == rest {
-                                next_covered = true;
-                            }
-                            eprintln!("exit from {last_instruction} to {next_target:?}");
-                            code_block.exits.push(next_target);
-                            if analysed_code_starts.insert(next_pc) {
-                                eprintln!("from {code_start:?} to {next_pc:?}");
-                                remaining_code_starts.push((
-                                    next_pc,
-                                    processor.clone(),
-                                    code_start.try_into().unwrap(),
-                                    return_stack.clone(),
-                                ));
+                entrance = block.entrances[0];
+            }
+            panic!("Empty (invalid) code block at {code_start}")
+        });
+        let mut next_covered = false;
+        if last_instruction.instruction.opcode.mnemonic.can_branch() {
+            let last_snes: AddrSnes = last_instruction.offset.try_into().unwrap();
+            for meta in code_block.instruction_metas.iter() {
+                eprintln!("{meta}");
+            }
+            let mut next_instructions = last_instruction.instruction.next_instructions(last_snes);
+            let is_jump_table = next_instructions
+                .iter()
+                .any(|&t| t == EXECUTE_PTR_TRAMPOLINE_ADDR || t == EXECUTE_PTR_LONG_TRAMPOLINE_ADDR);
+            if is_jump_table {
+                let jump_table_addr = AddrSnes::try_from_lorom(rest).unwrap();
+                match JUMP_TABLES.iter().find(|t| t.begin == jump_table_addr) {
+                    Some(&jtv) => {
+                        let addresses = get_jump_table_from_rom(self.rom, jtv).unwrap();
+                        for addr in addresses.into_iter().filter(|a| a.absolute() != 0) {
+                            let addr = AddrPc::try_from_lorom(addr).unwrap();
+                            if self.analysed_code_starts.insert(addr) {
+                                eprintln!("from jump table: {code_start:?} to {addr:?}");
+                                self.remaining_code_starts.push(RomAssemblyWalkerStep {
+                                    code_start: addr,
+                                    processor: processor.clone(),
+                                    entrance: code_start.try_into().unwrap(),
+                                    return_stack: return_stack.clone(),
+                                });
                             } else {
                                 // TODO: Add entrance to matching code block
                             }
-                        } else {
-                            log::warn!("Wrong address of next target: {next_target:06X}");
                         }
+                    }
+                    None => {
+                        log::warn!("Could not find jump table at {jump_table_addr:?}");
+                    }
+                }
+            } else {
+                if last_instruction.instruction.opcode.mnemonic.is_subroutine_call() {
+                    let next_instruction =
+                        last_instruction.offset + AddrPc(last_instruction.instruction.opcode.instruction_size());
+                    return_stack.push(next_instruction);
+                } else if last_instruction.instruction.opcode.mnemonic.is_subroutine_return() {
+                    let return_addr = return_stack.pop().expect("Address stack underflow");
+                    next_instructions.push(return_addr.try_into().unwrap());
+                }
+                for next_target in next_instructions {
+                    if let Ok(next_pc) = AddrPc::try_from(next_target) {
+                        if next_pc.0 >= self.rom.0.len() {
+                            eprintln!("Invalid next PC encountered when parsing basic code block starting at {code_start:?}, at final instruction {last_instruction:?}");
+                            self.chunks.push((code_start, BinaryBlock::Code(code_block)));
+                            self.analysed_chunks.insert(rest, (code_start, self.chunks.len() - 1));
+                            if !next_covered {
+                                self.chunks.push((rest, BinaryBlock::Unknown));
+                            }
+                            return Err(());
+                        }
+                        if next_pc == rest {
+                            next_covered = true;
+                        }
+                        eprintln!("exit from {last_instruction} to {next_target:?}");
+                        code_block.exits.push(next_target);
+                        if self.analysed_code_starts.insert(next_pc) {
+                            eprintln!("from {code_start:?} to {next_pc:?}");
+                            self.remaining_code_starts.push(RomAssemblyWalkerStep{
+                                code_start: next_pc,
+                                processor: processor.clone(),
+                                entrance: code_start.try_into().unwrap(),
+                                return_stack: return_stack.clone(),
+                            });
+                        } else {
+                            // TODO: Add entrance to matching code block
+                        }
+                    } else {
+                        log::warn!("Wrong address of next target: {next_target:06X}");
                     }
                 }
             }
-            chunks.push((code_start, BinaryBlock::Code(code_block)));
-            analysed_chunks.insert(rest, (code_start, chunks.len() - 1));
-            if !next_covered {
-                chunks.push((rest, BinaryBlock::Unknown));
-            }
         }
-        chunks.push((AddrPc(rom_bytes.len()), BinaryBlock::EndOfRom));
-        chunks.sort_by_key(|(address, _)| address.0);
-        let mut dedup_chunks = Vec::with_capacity(chunks.len());
-        for (_group_pc, mut chunk_group) in &chunks.into_iter().group_by(|(address, _)| address.0) {
+        self.chunks.push((code_start, BinaryBlock::Code(code_block)));
+        self.analysed_chunks.insert(rest, (code_start, self.chunks.len() - 1));
+        if !next_covered {
+            self.chunks.push((rest, BinaryBlock::Unknown));
+        }
+        Ok(())
+    }
+
+    fn cleanup(&mut self) -> Result<()> {
+        self.chunks.push((AddrPc(self.rom.0.len()), BinaryBlock::EndOfRom));
+        self.chunks.sort_by_key(|(address, _)| address.0);
+        let mut dedup_chunks = Vec::with_capacity(self.chunks.len());
+        for (_group_pc, mut chunk_group) in &std::mem::take(&mut self.chunks).into_iter().group_by(|(address, _)| address.0) {
             let first = chunk_group.next().unwrap();
             dedup_chunks.push(first);
             let final_chunk = dedup_chunks.last_mut().unwrap();
@@ -283,7 +316,23 @@ impl RomDisassembly {
                 }
             }
         }
-        Self { rom_bytes, chunks: dedup_chunks }
+        self.chunks = dedup_chunks;
+        Ok(())
+    }
+}
+
+impl Display for InstructionMeta {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}{}] ", if self.m_flag { 'M' } else { 'm' }, if self.x_flag { 'X' } else { 'x' })?;
+        self.instruction.display(self.offset, self.x_flag, self.m_flag).fmt(f)
+    }
+}
+
+impl RomDisassembly {
+    pub fn new(rom: &Rom) -> Self {
+        let mut walker = RomAssemblyWalker::new(rom);
+        walker.full_analysis().unwrap();
+        Self { rom_bytes: Arc::clone(&rom.0), chunks: walker.chunks }
     }
 
     pub fn rom_bytes(&self) -> &[u8] {
