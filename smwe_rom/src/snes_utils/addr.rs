@@ -21,8 +21,31 @@ pub mod types {
         cmp::{PartialEq, PartialOrd},
         convert::TryFrom,
         fmt,
-        ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub},
+        ops::{
+            Add,
+            AddAssign,
+            BitAnd,
+            BitAndAssign,
+            BitOr,
+            BitOrAssign,
+            BitXor,
+            BitXorAssign,
+            Div,
+            DivAssign,
+            Mul,
+            MulAssign,
+            Rem,
+            RemAssign,
+            Shl,
+            ShlAssign,
+            Shr,
+            ShrAssign,
+            Sub,
+            SubAssign,
+        },
     };
+
+    use paste::*;
 
     use crate::{
         error::AddressError,
@@ -56,6 +79,26 @@ pub mod types {
         + Shr<Self, Output = Self>
         + Sub<usize, Output = Self>
         + Sub<Self, Output = Self>
+        + AddAssign<usize>
+        + AddAssign<Self>
+        + BitAndAssign<usize>
+        + BitAndAssign<Self>
+        + BitOrAssign<usize>
+        + BitOrAssign<Self>
+        + BitXorAssign<usize>
+        + BitXorAssign<Self>
+        + DivAssign<usize>
+        + DivAssign<Self>
+        + MulAssign<usize>
+        + MulAssign<Self>
+        + RemAssign<usize>
+        + RemAssign<Self>
+        + ShlAssign<usize>
+        + ShlAssign<Self>
+        + ShrAssign<usize>
+        + ShrAssign<Self>
+        + SubAssign<usize>
+        + SubAssign<Self>
     {
         type OppositeAddr: Addr;
         const MIN: Self;
@@ -89,32 +132,43 @@ pub mod types {
             }
 
             macro_rules! gen_address_bin_op {
-                ($op_name: ident, $op_fn_name: ident, $op: tt) => {
-                    impl $op_name<$name> for $name {
-                        type Output = Self;
-                        fn $op_fn_name(self, rhs: Self) -> Self::Output { Self(self.0 $op rhs.0) }
-                    }
-                    impl $op_name<usize> for $name {
-                        type Output = Self;
-                        fn $op_fn_name(self, rhs: usize) -> Self::Output { Self(self.0 $op rhs) }
-                    }
-                    impl $op_name<$name> for usize {
-                        type Output = $name;
-                        fn $op_fn_name(self, rhs: $name) -> Self::Output { $name(self $op rhs.0) }
+                ($op_name: ident, $op: tt) => {
+                    paste! {
+                        impl $op_name<$name> for $name {
+                            type Output = Self;
+                            fn [<$op_name:lower>](self, rhs: Self) -> Self::Output { Self(self.0 $op rhs.0) }
+                        }
+                        impl $op_name<usize> for $name {
+                            type Output = Self;
+                            fn [<$op_name:lower>](self, rhs: usize) -> Self::Output { Self(self.0 $op rhs) }
+                        }
+                        impl $op_name<$name> for usize {
+                            type Output = $name;
+                            fn [<$op_name:lower>](self, rhs: $name) -> Self::Output { $name(self $op rhs.0) }
+                        }
+                        impl [<$op_name Assign>]<$name> for $name {
+                            fn [<$op_name:lower _assign>](&mut self, rhs: Self) { self.0 = self.0 $op rhs.0; }
+                        }
+                        impl [<$op_name Assign>]<usize> for $name {
+                            fn [<$op_name:lower _assign>](&mut self, rhs: usize) { self.0 = self.0 $op rhs; }
+                        }
+                        impl [<$op_name Assign>]<$name> for usize {
+                            fn [<$op_name:lower _assign>](&mut self, rhs: $name) { *self = *self $op rhs.0; }
+                        }
                     }
                 }
             }
 
-            gen_address_bin_op!(Add,    add,    +);
-            gen_address_bin_op!(Sub,    sub,    -);
-            gen_address_bin_op!(Mul,    mul,    *);
-            gen_address_bin_op!(Div,    div,    /);
-            gen_address_bin_op!(Rem,    rem,    %);
-            gen_address_bin_op!(BitAnd, bitand, &);
-            gen_address_bin_op!(BitOr,  bitor,  |);
-            gen_address_bin_op!(BitXor, bitxor, ^);
-            gen_address_bin_op!(Shl,    shl,    <<);
-            gen_address_bin_op!(Shr,    shr,    >>);
+            gen_address_bin_op!(Add,    +);
+            gen_address_bin_op!(Sub,    -);
+            gen_address_bin_op!(Mul,    *);
+            gen_address_bin_op!(Div,    /);
+            gen_address_bin_op!(Rem,    %);
+            gen_address_bin_op!(BitAnd, &);
+            gen_address_bin_op!(BitOr,  |);
+            gen_address_bin_op!(BitXor, ^);
+            gen_address_bin_op!(Shl,    <<);
+            gen_address_bin_op!(Shr,    >>);
         }
     }
 

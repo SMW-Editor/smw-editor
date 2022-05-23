@@ -153,7 +153,7 @@ impl UiAddressConverter {
 mod modes {
     use std::{cmp::PartialEq, fmt};
 
-    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum ConversionMode {
         LoRom,
         HiRom,

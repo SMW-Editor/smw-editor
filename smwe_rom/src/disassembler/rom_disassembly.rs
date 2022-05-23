@@ -163,15 +163,17 @@ impl<'r> RomAssemblyWalker<'r> {
     fn print_backtrace(
         &self, code_start: AddrPc, mut entrance: AddrSnes, processor: &Processor, code_block: &CodeBlock,
     ) {
-        eprintln!("!!!! Code error backtrace start, block at {code_start} M:{}", processor.p_reg.m_flag());
+        eprintln!("!!!! Code error backtrace start, block at {code_start}, M: {}", processor.p_reg.m_flag());
         code_block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
         while entrance != AddrSnes::MIN {
             let entrance_pc: AddrPc = entrance.try_into().unwrap();
             let (_, &(_, block_idx)) = self.analysed_chunks.range(entrance_pc..).next().unwrap();
             let block = self.chunks[block_idx].1.code_block().unwrap();
             eprintln!(
-                "Next backtrace block at {:?} M:{} [e={entrance:?}]",
-                block.instruction_metas[0].offset, block.instruction_metas[0].m_flag
+                "Next backtrace block at {:?}, M: {}, X: {}, entrance: {entrance:?}",
+                block.instruction_metas[0].offset,
+                block.instruction_metas[0].m_flag,
+                block.instruction_metas[0].x_flag,
             );
             block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
             if entrance == block.entrances[0] {
@@ -181,29 +183,8 @@ impl<'r> RomAssemblyWalker<'r> {
         }
     }
 
-    /// (range end, (range start, range vec idx))
-    /// Error variant: next known start
-    fn find_block_of(&self, instruction: AddrPc) -> BlockFindResult {
-        if let Some((&range_end, &(range_start, range_vec_idx))) = self.analysed_chunks.range(instruction + 1..).next()
-        {
-            if instruction >= range_start && instruction < range_end {
-                BlockFindResult::Found { range_end, range_start, range_vec_idx }
-            } else {
-                BlockFindResult::MissingWithNext { next_start: range_start }
-            }
-        } else {
-            BlockFindResult::Missing
-        }
-    }
-
-    fn enqueue_step(&mut self, step: RomAssemblyWalkerStep) {
-        if self.analysed_code_starts.insert(step.code_start) {
-            self.remaining_code_starts.push(step);
-        }
-    }
-
     fn analysis_step(&mut self, step: RomAssemblyWalkerStep) -> Result<()> {
-        let RomAssemblyWalkerStep { code_start, mut processor, entrance, mut return_stack, next_steps } = step;
+        let RomAssemblyWalkerStep { code_start, mut processor, entrance, return_stack, next_steps } = step;
 
         let mut next_known_start = self.rom.0.len();
         match self.find_block_of(code_start) {
@@ -221,17 +202,19 @@ impl<'r> RomAssemblyWalker<'r> {
             BlockFindResult::MissingWithNext { next_start } => {
                 next_known_start = next_start.0;
             }
-            BlockFindResult::Missing => {}
+            BlockFindResult::Missing => {
+                // no-op
+            }
         }
 
         eprintln!(
-            "analysing {code_start} to {:?} M:{} X:{} entrance:{entrance:?}",
+            "analysing {code_start} to {:?}, M: {}, X: {}, entrance: {entrance:?}",
             AddrPc(next_known_start),
             processor.p_reg.m_flag(),
             processor.p_reg.x_flag(),
         );
 
-        let (mut code_block, rest) =
+        let (mut code_block, addr_after_block) =
             CodeBlock::from_bytes(code_start, &self.rom.0[code_start.0..next_known_start], &mut processor);
         code_block.entrances.push(entrance);
 
@@ -252,7 +235,7 @@ impl<'r> RomAssemblyWalker<'r> {
             }
 
             let last_snes: AddrSnes = last_instruction.offset.try_into().unwrap();
-            let mut next_instructions = last_instruction.instruction.next_instructions(last_snes);
+            let mut next_instructions = last_instruction.instruction.next_instructions(last_snes).to_vec();
             let is_jump_table = next_instructions
                 .iter()
                 .any(|&t| t == EXECUTE_PTR_TRAMPOLINE_ADDR || t == EXECUTE_PTR_LONG_TRAMPOLINE_ADDR);
@@ -260,14 +243,18 @@ impl<'r> RomAssemblyWalker<'r> {
             let mut new_return_stack = return_stack.clone();
             if is_jump_table {
                 next_instructions.clear();
-                let jump_table_addr = AddrSnes::try_from_lorom(rest).unwrap();
+
+                // The M and X flags are getting set in the `ExecutePtr` and `ExecutePtrLong` trampolines.
+                processor.p_reg.0 |= 0x30;
+
+                let jump_table_addr = AddrSnes::try_from_lorom(addr_after_block).unwrap();
                 match JUMP_TABLES.iter().find(|t| t.begin == jump_table_addr) {
                     Some(&jtv) => {
                         let addresses = get_jump_table_from_rom(self.rom, jtv).unwrap();
                         for addr in addresses.into_iter().filter(|a| a.absolute() != 0) {
-                            let addr = AddrPc::try_from_lorom(addr).unwrap();
-                            eprintln!("from jump table: {code_start:?} to {addr:?}");
-                            next_instructions.push(addr.try_into().unwrap());
+                            let addr_pc: AddrPc = addr.try_into().unwrap();
+                            eprintln!("from jump table: {code_start:?} to {addr_pc:?}");
+                            next_instructions.push(addr);
                         }
                     }
                     None => {
@@ -280,7 +267,7 @@ impl<'r> RomAssemblyWalker<'r> {
                 new_return_stack.push(next_instruction);
                 return_addr = last_instruction.instruction.return_instruction(last_snes);
             } else if last_instruction.instruction.opcode.mnemonic.is_subroutine_return() {
-                let return_addr = new_return_stack.pop().expect("Address stack underflow");
+                let return_addr = new_return_stack.pop().expect("Return address stack underflow");
                 next_instructions.push(return_addr.try_into().unwrap());
             }
 
@@ -289,13 +276,13 @@ impl<'r> RomAssemblyWalker<'r> {
                     if next_pc.0 >= self.rom.0.len() {
                         eprintln!("Invalid next PC encountered when parsing basic code block starting at {code_start:?}, at final instruction {last_instruction:?}");
                         self.chunks.push((code_start, BinaryBlock::Code(code_block)));
-                        self.analysed_chunks.insert(rest, (code_start, self.chunks.len() - 1));
+                        self.analysed_chunks.insert(addr_after_block, (code_start, self.chunks.len() - 1));
                         if !next_covered {
-                            self.chunks.push((rest, BinaryBlock::Unknown));
+                            self.chunks.push((addr_after_block, BinaryBlock::Unknown));
                         }
                         return Err(());
                     }
-                    if next_pc == rest {
+                    if next_pc == addr_after_block {
                         next_covered = true;
                     }
                     eprintln!("exit from {last_instruction} to {next_target:?}");
@@ -308,7 +295,7 @@ impl<'r> RomAssemblyWalker<'r> {
                         next_steps:   vec![],
                     };
                     if self.analysed_code_starts.insert(next_pc) {
-                        eprintln!("from {code_start:?} to {next_pc:?}");
+                        eprintln!("new code block from {code_start:?} to {next_pc:?}");
                         self.remaining_code_starts.push(RomAssemblyWalkerStep {
                             code_start:   next_pc,
                             processor:    processor.clone(),
@@ -343,11 +330,32 @@ impl<'r> RomAssemblyWalker<'r> {
             }
         }
         self.chunks.push((code_start, BinaryBlock::Code(code_block)));
-        self.analysed_chunks.insert(rest, (code_start, self.chunks.len() - 1));
+        self.analysed_chunks.insert(addr_after_block, (code_start, self.chunks.len() - 1));
         if !next_covered {
-            self.chunks.push((rest, BinaryBlock::Unknown));
+            self.chunks.push((addr_after_block, BinaryBlock::Unknown));
         }
         Ok(())
+    }
+
+    /// (range end, (range start, range vec idx))
+    /// Error variant: next known start
+    fn find_block_of(&self, instruction: AddrPc) -> BlockFindResult {
+        if let Some((&range_end, &(range_start, range_vec_idx))) = self.analysed_chunks.range(instruction + 1..).next()
+        {
+            if instruction >= range_start && instruction < range_end {
+                BlockFindResult::Found { range_end, range_start, range_vec_idx }
+            } else {
+                BlockFindResult::MissingWithNext { next_start: range_start }
+            }
+        } else {
+            BlockFindResult::Missing
+        }
+    }
+
+    fn enqueue_step(&mut self, step: RomAssemblyWalkerStep) {
+        if self.analysed_code_starts.insert(step.code_start) {
+            self.remaining_code_starts.push(step);
+        }
     }
 
     /// Returns: index of the first block (second block's index remains unchanged)
@@ -505,7 +513,7 @@ impl CodeBlock {
             };
             instruction_metas.push(meta);
             rest = new_rest;
-            addr = addr + i.opcode.instruction_size();
+            addr += i.opcode.instruction_size();
             processor.execute(i);
             if i.opcode.mnemonic.can_branch() {
                 break;

@@ -4,7 +4,7 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     disassembler::{
-        opcodes::{AddressingMode, AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
+        opcodes::{AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
         registers::PRegister,
     },
     error::InstructionParseError,
@@ -35,10 +35,10 @@ impl Instruction {
         let (&opcode_raw, rest) = bytes.split_first().ok_or(InstructionParseError::InputEmpty)?;
         let mut opcode = SNES_OPCODES[opcode_raw as usize];
 
-        if opcode.mode == AddressingMode::ImmediateMFlagDependent {
-            opcode.mode = if p_reg.m_flag() { AddressingMode::Immediate8 } else { AddressingMode::Immediate16 };
-        } else if opcode.mode == AddressingMode::ImmediateXFlagDependent {
-            opcode.mode = if p_reg.x_flag() { AddressingMode::Immediate8 } else { AddressingMode::Immediate16 };
+        if opcode.mode == ImmediateMFlagDependent {
+            opcode.mode = if p_reg.m_flag() { Immediate8 } else { Immediate16 };
+        } else if opcode.mode == ImmediateXFlagDependent {
+            opcode.mode = if p_reg.x_flag() { Immediate8 } else { Immediate16 };
         }
 
         let operands_size = opcode.mode.operands_size();
@@ -61,7 +61,6 @@ impl Instruction {
     }
 
     pub fn next_instructions(self, offset: AddrSnes) -> SmallVec<[AddrSnes; 2]> {
-        use AddressingMode::*;
         use Mnemonic::*;
 
         let is_jump_address_immediate = [Address, Long, Relative8, Relative16].contains(&self.opcode.mode);
@@ -109,7 +108,7 @@ impl Instruction {
     pub fn return_instruction(self, offset: AddrSnes) -> Option<AddrSnes> {
         use Mnemonic::*;
 
-        // Conditional and returning jumps (2 paths) and interrupts
+        // Returning jumps and interrupts
         if [JSR, JSL, BRK, COP].contains(&self.opcode.mnemonic) {
             let next_instruction = offset + self.opcode.instruction_size();
             Some(next_instruction)
@@ -153,7 +152,9 @@ impl Display for DisplayInstruction {
         let DisplayInstruction { i, x_flag, m_flag, offset } = *self;
 
         let offset = AddrSnes::try_from_lorom(offset).unwrap_or_default();
-        let address = i.get_intermediate_address(offset).0;
+        let address_long = i.get_intermediate_address(offset).0;
+        let address_short = address_long & 0xFFFF;
+        let address_dp = address_long & 0xFF;
 
         write!(fmt, "{}", i.opcode.mnemonic).unwrap();
         match i.opcode.mode {
@@ -179,59 +180,59 @@ impl Display for DisplayInstruction {
                 }
             }
             DirectPage => {
-                write!(fmt, " ${address:02X}").unwrap();
+                write!(fmt, " ${address_dp:02X}").unwrap();
             }
             Relative8 => {
                 let address = i.operands[0] as u32;
-                let address = address & !(-1 << 8) as u32;
+                let address = address & !(-1i32 << 8) as u32;
                 write!(fmt, " ${address:02X}").unwrap();
             }
             Relative16 => {
                 let address = u16::from_le_bytes([i.operands[0], i.operands[1]]) as u32;
-                let address = address & !(-1 << 16) as u32;
+                let address = address & !(-1i32 << 16) as u32;
                 write!(fmt, " ${address:04X}").unwrap();
             }
             Address => {
-                write!(fmt, " ${address:04X}").unwrap();
+                write!(fmt, " ${address_short:04X}").unwrap();
             }
             Long => {
-                write!(fmt, " ${address:06X}").unwrap();
+                write!(fmt, " ${address_long:06X}").unwrap();
             }
             DirectPageXIndex | AddressXIndex | LongXIndex => {
-                write!(fmt, " ${address:02X}, X").unwrap();
+                write!(fmt, " ${address_dp:02X}, X").unwrap();
             }
             DirectPageYIndex | AddressYIndex => {
-                write!(fmt, " ${address:02X}, Y").unwrap();
+                write!(fmt, " ${address_dp:02X}, Y").unwrap();
             }
             DirectPageSIndex => {
-                write!(fmt, " ${address:02X}, S").unwrap();
+                write!(fmt, " ${address_dp:02X}, S").unwrap();
             }
             DirectPageIndirect => {
-                write!(fmt, " (${address:02X})").unwrap();
+                write!(fmt, " (${address_dp:02X})").unwrap();
             }
             AddressIndirect => {
-                write!(fmt, " (${address:04X})").unwrap();
+                write!(fmt, " (${address_short:04X})").unwrap();
             }
             DirectPageXIndexIndirect => {
-                write!(fmt, " (${address:02X}, X)").unwrap();
+                write!(fmt, " (${address_dp:02X}, X)").unwrap();
             }
             AddressXIndexIndirect => {
-                write!(fmt, " (${address:04X}, X)").unwrap();
+                write!(fmt, " (${address_short:04X}, X)").unwrap();
             }
             DirectPageIndirectYIndex => {
-                write!(fmt, " (${address:02X}), Y").unwrap();
+                write!(fmt, " (${address_dp:02X}), Y").unwrap();
             }
             DirectPageSIndexIndirectYIndex => {
-                write!(fmt, " (${address:02X}, S), Y").unwrap();
+                write!(fmt, " (${address_dp:02X}, S), Y").unwrap();
             }
             DirectPageLongIndirect => {
-                write!(fmt, " [${address:02X}]").unwrap();
+                write!(fmt, " [${address_dp:02X}]").unwrap();
             }
             AddressLongIndirect => {
-                write!(fmt, " [${address:04X}]").unwrap();
+                write!(fmt, " [${address_short:04X}]").unwrap();
             }
             DirectPageLongIndirectYIndex => {
-                write!(fmt, " [${address:02X}], Y").unwrap();
+                write!(fmt, " [${address_dp:02X}], Y").unwrap();
             }
             BlockMove => {
                 write!(fmt, " ${:02X}, ${:02X}", i.operands[0], i.operands[1]).unwrap();
