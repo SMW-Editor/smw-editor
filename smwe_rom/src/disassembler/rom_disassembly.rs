@@ -83,9 +83,9 @@ struct RomAssemblyWalker<'r> {
     pub chunks: Vec<(AddrPc, BinaryBlock)>,
 
     // Algorithm state
-    analysed_chunks:       BTreeMap<AddrPc, (AddrPc, usize)>,
+    analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)>,
+
     // Temporary until code scanning
-    // TODO: Debug maximum small vec size
     remaining_code_starts: Vec<RomAssemblyWalkerStep>,
     analysed_code_starts:  HashSet<AddrPc>,
 }
@@ -116,7 +116,6 @@ impl<'r> RomAssemblyWalker<'r> {
             chunks: Default::default(),
             analysed_chunks: Default::default(),
             // Temporary until code scanning
-            // TODO: Debug maximum small vec size
             remaining_code_starts: vec![RomAssemblyWalkerStep {
                 code_start:   AddrPc::MIN,
                 processor:    Processor::new(),
@@ -171,9 +170,7 @@ impl<'r> RomAssemblyWalker<'r> {
             let block = self.chunks[block_idx].1.code_block().unwrap();
             eprintln!(
                 "Next backtrace block at {:?}, M: {}, X: {}, entrance: {entrance:?}",
-                block.instruction_metas[0].offset,
-                block.instruction_metas[0].m_flag,
-                block.instruction_metas[0].x_flag,
+                block.instruction_metas[0].offset, block.instruction_metas[0].m_flag, block.instruction_metas[0].x_flag,
             );
             block.instruction_metas.iter().for_each(|i| eprintln!(" {i}"));
             if entrance == block.entrances[0] {
@@ -317,7 +314,7 @@ impl<'r> RomAssemblyWalker<'r> {
                                 // In analysis queue
                                 let step = self.remaining_code_starts.iter_mut().find(|s| s.code_start == next_pc);
                                 if let Some(step) = step {
-                                    step.next_steps.push(return_step.clone())
+                                    step.next_steps.push(return_step.clone());
                                 } else {
                                     log::warn!("Wrong state: couldn't find a place to handle return from subroutine {next_pc:?} to {return_addr:?}");
                                 }
@@ -329,11 +326,13 @@ impl<'r> RomAssemblyWalker<'r> {
                 }
             }
         }
+
         self.chunks.push((code_start, BinaryBlock::Code(code_block)));
         self.analysed_chunks.insert(addr_after_block, (code_start, self.chunks.len() - 1));
         if !next_covered {
             self.chunks.push((addr_after_block, BinaryBlock::Unknown));
         }
+
         Ok(())
     }
 

@@ -68,16 +68,16 @@ impl Instruction {
         let maybe_jump_target = self.get_intermediate_address(offset);
 
         match self.opcode.mnemonic {
-            // Jumps & subroutines
-            BRA | BRL | JMP | JML | JSR | JSL => {
+            // Jumps
+            BRA | BRL | JMP | JML => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target]
                 } else {
                     smallvec![]
                 }
             }
-            // Conditional branches
-            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS => {
+            // Conditional branches and subroutine calls
+            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS | JSR | JSL => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target, next_instruction]
                 } else {
