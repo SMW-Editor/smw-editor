@@ -120,6 +120,10 @@ pub enum InternalHeaderParseError {
     ReadDeveloperId(RomError),
     #[error("Reading Version Number:\n- {0}")]
     ReadVersionNumber(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadNativeModeInterruptVectors(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadEmulationModeInterruptVectors(RomError),
 }
 
 #[derive(Copy, Clone, Debug, Error)]

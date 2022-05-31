@@ -1,8 +1,8 @@
 use std::{clone::Clone, convert::TryFrom, fmt};
 
 use nom::{
-    combinator::map_res,
-    multi::many1,
+    combinator::{map, map_res},
+    multi::{count, many1},
     number::complete::{le_u16, le_u8},
     sequence::pair,
 };
@@ -10,7 +10,11 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use crate::{
     error::InternalHeaderParseError,
-    snes_utils::{addr::AddrPc, rom::Rom, rom_slice::PcSlice},
+    snes_utils::{
+        addr::{AddrPc, AddrSnes},
+        rom::Rom,
+        rom_slice::PcSlice,
+    },
 };
 
 #[rustfmt::skip]
@@ -36,6 +40,7 @@ pub struct RomInternalHeader {
     pub region_code:       RegionCode,
     pub developer_id:      u8,
     pub version_number:    u8,
+    pub interrupt_vectors: Vec<AddrSnes>,
 }
 
 #[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
@@ -162,6 +167,19 @@ impl RomInternalHeader {
                 .with_error_mapper(InternalHeaderParseError::ReadVersionNumber)
                 .slice_pc(byte_slice.skip_forward(6))
                 .parse(le_u8)?,
+            interrupt_vectors: {
+                let vectors_slice = byte_slice.skip_forward(15).resize(2 * 6);
+                let mut parse_vectors = count(map(le_u16, |addr| AddrSnes(addr as usize)), 6);
+                let native = rom
+                    .with_error_mapper(InternalHeaderParseError::ReadNativeModeInterruptVectors)
+                    .slice_pc(vectors_slice)
+                    .parse(&mut parse_vectors)?;
+                let emulation = rom
+                    .with_error_mapper(InternalHeaderParseError::ReadEmulationModeInterruptVectors)
+                    .slice_pc(vectors_slice.skip_forward(1).offset_forward(4))
+                    .parse(&mut parse_vectors)?;
+                native.into_iter().chain(emulation.into_iter()).collect()
+            },
         })
     }
 

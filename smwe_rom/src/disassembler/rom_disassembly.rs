@@ -20,6 +20,7 @@ use crate::{
     },
     snes_utils::addr::{Addr, AddrPc, AddrSnes},
     Rom,
+    RomInternalHeader,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -99,8 +100,6 @@ struct RomAssemblyWalkerStep {
     next_steps:   Vec<RomAssemblyWalkerStep>,
 }
 
-// -------------------------------------------------------------------------------------------------
-
 type Result<T> = std::result::Result<T, ()>;
 
 enum BlockFindResult {
@@ -109,20 +108,76 @@ enum BlockFindResult {
     Missing,
 }
 
+// -------------------------------------------------------------------------------------------------
+
+impl RomDisassembly {
+    pub fn new(rom: &Rom, rih: &RomInternalHeader) -> Self {
+        let mut walker = RomAssemblyWalker::new(rom, rih);
+        walker.full_analysis().unwrap();
+        Self { rom_bytes: Arc::clone(&rom.0), chunks: walker.chunks }
+    }
+
+    pub fn rom_bytes(&self) -> &[u8] {
+        &self.rom_bytes
+    }
+}
+
+impl Debug for RomDisassembly {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
+            writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
+            match block {
+                BinaryBlock::Code(code) => {
+                    for exit in code.exits.iter() {
+                        writeln!(f, "# Exit: {}", exit)?;
+                    }
+                    for i in code.instruction_metas.iter() {
+                        let ibytes = &self.rom_bytes[i.offset.0..][..i.instruction.opcode.instruction_size()];
+                        write!(f, "${:6}   {:<20} # ", i.offset, i.instruction.display(i.offset, i.x_flag, i.m_flag))?;
+                        for &byte in ibytes {
+                            write!(f, "{:02x} ", byte)?;
+                        }
+                        f.write_char('\n')?;
+                    }
+                }
+                BinaryBlock::Data(_data) => writeln!(f, "# Data")?,
+                BinaryBlock::Unused => writeln!(f, "# Unused")?,
+                BinaryBlock::Unknown => writeln!(f, "# Unknown")?,
+                BinaryBlock::EndOfRom => writeln!(f, "# End of ROM")?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<'r> RomAssemblyWalker<'r> {
-    fn new(rom: &'r Rom) -> Self {
+    fn new(rom: &'r Rom, rih: &RomInternalHeader) -> Self {
+        let mut remaining_code_starts = vec![RomAssemblyWalkerStep {
+            code_start:   AddrPc::MIN,
+            processor:    Processor::new(),
+            entrance:     AddrSnes::MIN,
+            return_stack: smallvec![],
+            next_steps:   vec![],
+        }];
+
+        for &ivec in
+            rih.interrupt_vectors.iter().chain([EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR].iter())
+        {
+            remaining_code_starts.push(RomAssemblyWalkerStep {
+                code_start:   AddrPc::try_from(ivec).unwrap(),
+                processor:    Processor::new(),
+                entrance:     ivec,
+                return_stack: smallvec![],
+                next_steps:   vec![],
+            });
+        }
+
         Self {
             rom,
             chunks: Default::default(),
             analysed_chunks: Default::default(),
             // Temporary until code scanning
-            remaining_code_starts: vec![RomAssemblyWalkerStep {
-                code_start:   AddrPc::MIN,
-                processor:    Processor::new(),
-                entrance:     AddrSnes::MIN,
-                return_stack: smallvec![],
-                next_steps:   vec![],
-            }],
+            remaining_code_starts,
             analysed_code_starts: HashSet::with_capacity(256),
         }
     }
@@ -412,46 +467,6 @@ impl Display for InstructionMeta {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}{}] ", if self.m_flag { 'M' } else { 'm' }, if self.x_flag { 'X' } else { 'x' })?;
         self.instruction.display(self.offset, self.x_flag, self.m_flag).fmt(f)
-    }
-}
-
-impl RomDisassembly {
-    pub fn new(rom: &Rom) -> Self {
-        let mut walker = RomAssemblyWalker::new(rom);
-        walker.full_analysis().unwrap();
-        Self { rom_bytes: Arc::clone(&rom.0), chunks: walker.chunks }
-    }
-
-    pub fn rom_bytes(&self) -> &[u8] {
-        &self.rom_bytes
-    }
-}
-
-impl Debug for RomDisassembly {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
-            writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
-            match block {
-                BinaryBlock::Code(code) => {
-                    for exit in code.exits.iter() {
-                        writeln!(f, "# Exit: {}", exit)?;
-                    }
-                    for i in code.instruction_metas.iter() {
-                        let ibytes = &self.rom_bytes[i.offset.0..][..i.instruction.opcode.instruction_size()];
-                        write!(f, "${:6}   {:<20} # ", i.offset, i.instruction.display(i.offset, i.x_flag, i.m_flag))?;
-                        for &byte in ibytes {
-                            write!(f, "{:02x} ", byte)?;
-                        }
-                        f.write_char('\n')?;
-                    }
-                }
-                BinaryBlock::Data(_data) => writeln!(f, "# Data")?,
-                BinaryBlock::Unused => writeln!(f, "# Unused")?,
-                BinaryBlock::Unknown => writeln!(f, "# Unknown")?,
-                BinaryBlock::EndOfRom => writeln!(f, "# End of ROM")?,
-            }
-        }
-        Ok(())
     }
 }
 

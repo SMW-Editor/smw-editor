@@ -76,7 +76,7 @@ impl SmwRom {
         let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
 
         log::info!("Creating disassembly map");
-        let disassembly = RomDisassembly::new(&rom);
+        let disassembly = RomDisassembly::new(&rom, &internal_header);
 
         Ok(Self {
             disassembly,
