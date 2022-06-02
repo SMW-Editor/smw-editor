@@ -202,6 +202,7 @@ impl UiDisassembler {
                             COLOR_CODE_HEX,
                         );
                         x.set(x.get() + space_width * 3.0 * (4 - num_bytes) as f32);
+                        draw_fmt(format_args!("[{}{}] ", ['m', 'M'][m_flag as usize], ['x', 'X'][x_flag as usize]), COLOR_ADDR);
                         draw_fmt(format_args!("{}", ins.display(addr, x_flag, m_flag)), COLOR_CODE);
                         if ins.opcode.mnemonic.can_branch() {
                             draw_text(" ->", COLOR_BRANCH_TARGET);

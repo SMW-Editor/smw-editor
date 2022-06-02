@@ -68,16 +68,16 @@ impl Instruction {
         let maybe_jump_target = self.get_intermediate_address(offset);
 
         match self.opcode.mnemonic {
-            // Jumps
-            BRA | BRL | JMP | JML => {
+            // Unconditional jumps and branches
+            BRA | BRL | JMP | JML | JSR | JSL => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target]
                 } else {
                     smallvec![]
                 }
             }
-            // Conditional branches and subroutine calls
-            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS | JSR | JSL => {
+            // Conditional branches
+            BCC | BCS | BEQ | BMI | BNE | BPL | BVC | BVS => {
                 if is_jump_address_immediate {
                     smallvec![maybe_jump_target, next_instruction]
                 } else {
@@ -90,7 +90,7 @@ impl Instruction {
             }
             // Interrupts
             BRK | COP => {
-                // todo: interrupt handler destination
+                // Interrupt handler destinations are read from internal header and enqueued at the start of disassembly.
                 smallvec![]
             }
             _ => {

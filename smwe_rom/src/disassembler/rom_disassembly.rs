@@ -152,25 +152,17 @@ impl Debug for RomDisassembly {
 
 impl<'r> RomAssemblyWalker<'r> {
     fn new(rom: &'r Rom, rih: &RomInternalHeader) -> Self {
-        let mut remaining_code_starts = vec![RomAssemblyWalkerStep {
-            code_start:   AddrPc::MIN,
-            processor:    Processor::new(),
-            entrance:     AddrSnes::MIN,
-            return_stack: smallvec![],
-            next_steps:   vec![],
-        }];
-
-        for &ivec in
-            rih.interrupt_vectors.iter().chain([EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR].iter())
-        {
-            remaining_code_starts.push(RomAssemblyWalkerStep {
-                code_start:   AddrPc::try_from(ivec).unwrap(),
+        let remaining_code_starts = [AddrSnes::MIN, EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR]
+            .iter()
+            .chain(rih.interrupt_vectors.iter())
+            .map(|&addr| RomAssemblyWalkerStep {
+                code_start:   AddrPc::try_from(addr).unwrap(),
                 processor:    Processor::new(),
-                entrance:     ivec,
+                entrance:     addr,
                 return_stack: smallvec![],
                 next_steps:   vec![],
-            });
-        }
+            })
+            .collect_vec();
 
         Self {
             rom,
@@ -334,9 +326,11 @@ impl<'r> RomAssemblyWalker<'r> {
                         }
                         return Err(());
                     }
+
                     if next_pc == addr_after_block {
                         next_covered = true;
                     }
+
                     eprintln!("exit from {last_instruction} to {next_target:?}");
                     code_block.exits.push(next_target);
                     let return_step = RomAssemblyWalkerStep {
@@ -346,6 +340,7 @@ impl<'r> RomAssemblyWalker<'r> {
                         return_stack: return_stack.clone(),
                         next_steps:   vec![],
                     };
+
                     if self.analysed_code_starts.insert(next_pc) {
                         eprintln!("new code block from {code_start:?} to {next_pc:?}");
                         self.remaining_code_starts.push(RomAssemblyWalkerStep {
