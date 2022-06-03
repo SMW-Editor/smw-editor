@@ -1,10 +1,19 @@
 #![allow(clippy::identity_op)]
 
+pub mod compression;
+pub mod disassembler;
+pub mod error;
+pub mod graphics;
+pub mod internal_header;
+pub mod level;
+pub mod objects;
+pub mod snes_utils;
+
 use std::{fs, path::Path};
 
 pub use crate::internal_header::RomInternalHeader;
 use crate::{
-    disassembler::rom_disassembly::RomDisassembly,
+    disassembler::RomDisassembly,
     error::RomParseError,
     graphics::{
         gfx_file::{GfxFile, GFX_FILES_META},
@@ -18,15 +27,6 @@ use crate::{
     objects::tilesets::Tilesets,
     snes_utils::rom::Rom,
 };
-
-pub mod compression;
-pub mod disassembler;
-pub mod error;
-pub mod graphics;
-pub mod internal_header;
-pub mod level;
-pub mod objects;
-pub mod snes_utils;
 
 pub struct SmwRom {
     pub disassembly:         RomDisassembly,

@@ -7,7 +7,7 @@ use std::{
 use imgui::{ImColor32, Window};
 use itertools::Itertools;
 use smwe_rom::{
-    disassembler::rom_disassembly::{BinaryBlock, InstructionMeta},
+    disassembler::{binary_block::BinaryBlock, instruction::Instruction},
     snes_utils::addr::{Addr, AddrPc, AddrSnes},
 };
 
@@ -187,26 +187,29 @@ impl UiDisassembler {
                     }
                 }
                 BinaryBlock::Code(code) => {
-                    let first_instruction = code.instruction_metas.partition_point(|i| i.offset.0 < current_address);
+                    let first_instruction = code.instructions.partition_point(|i| i.offset.0 < current_address);
                     if self.opt_draw_debug_info {
                         draw_fmt(format_args!("First insn: {first_instruction}"), COLOR_DEBUG_NOTE);
                         if draw_end_line() {
                             break 'draw_lines;
                         }
                     }
-                    for imeta in code.instruction_metas.iter().copied().skip(first_instruction) {
-                        let InstructionMeta { offset: addr, instruction: ins, x_flag, m_flag } = imeta;
+                    for ins in code.instructions.iter().copied().skip(first_instruction) {
+                        let Instruction { offset: addr, x_flag, m_flag, .. } = ins;
                         draw_addr(addr, COLOR_ADDR);
                         let num_bytes = draw_hex(
                             &mut disas.rom_bytes().iter().copied().skip(addr.0).take(ins.opcode.instruction_size()),
                             COLOR_CODE_HEX,
                         );
                         x.set(x.get() + space_width * 3.0 * (4 - num_bytes) as f32);
-                        draw_fmt(format_args!("[{}{}] ", ['m', 'M'][m_flag as usize], ['x', 'X'][x_flag as usize]), COLOR_ADDR);
-                        draw_fmt(format_args!("{}", ins.display(addr, x_flag, m_flag)), COLOR_CODE);
-                        if ins.opcode.mnemonic.can_branch() {
+                        draw_fmt(
+                            format_args!("[{}{}] ", ['m', 'M'][m_flag as usize], ['x', 'X'][x_flag as usize]),
+                            COLOR_ADDR,
+                        );
+                        draw_fmt(format_args!("{}", ins.display()), COLOR_CODE);
+                        if ins.can_branch() {
                             draw_text(" ->", COLOR_BRANCH_TARGET);
-                            debug_assert_eq!(addr, code.instruction_metas.last().unwrap().offset);
+                            debug_assert_eq!(addr, code.instructions.last().unwrap().offset);
                             for &target in code.exits.iter() {
                                 draw_fmt(format_args!(" {}", target), COLOR_BRANCH_TARGET);
                                 branch_arrows_to_draw.push(BranchArrow { source: addr.try_into().unwrap(), target });
