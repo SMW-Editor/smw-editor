@@ -317,18 +317,17 @@ impl<'r> RomAssemblyWalker<'r> {
                         // Handle return from subroutine
                         if let Some(return_addr) = return_addr {
                             let return_pc: AddrPc = return_addr.try_into().unwrap();
-                            if let BlockFindResult::Found { range_vec_idx, .. } = self.find_block_of(return_pc) {
+                            match self.find_block_of(return_pc) {
                                 // Already fully analysed
-                                let block = self.chunks[range_vec_idx].1.code_block().unwrap();
-                                let processor = block.final_processor_state.clone();
-                                self.enqueue_step(RomAssemblyWalkerStep { processor, ..return_step.clone() });
-                            } else {
+                                BlockFindResult::Found { range_vec_idx, .. } => {
+                                    let block = self.chunks[range_vec_idx].1.code_block().unwrap();
+                                    let processor = block.final_processor_state.clone();
+                                    self.enqueue_step(RomAssemblyWalkerStep { processor, ..return_step.clone() });
+                                }
                                 // In analysis queue
-                                let step = self.remaining_code_starts.iter_mut().find(|s| s.code_start == next_pc);
-                                if let Some(step) = step {
-                                    step.next_steps.push(return_step.clone());
-                                } else {
-                                    log::warn!("Wrong state: couldn't find a place to handle return from subroutine {next_pc:?} to {return_addr:?}");
+                                _ => match self.remaining_code_starts.iter_mut().find(|s| s.code_start == next_pc) {
+                                    Some(step) => step.next_steps.push(return_step.clone()),
+                                    None => log::warn!("Wrong state: couldn't find a place to handle return from subroutine {next_pc:?} to {return_addr:?}"),
                                 }
                             }
                         }
@@ -351,15 +350,15 @@ impl<'r> RomAssemblyWalker<'r> {
     /// (range end, (range start, range vec idx))
     /// Error variant: next known start
     fn find_block_of(&self, instruction: AddrPc) -> BlockFindResult {
-        if let Some((&range_end, &(range_start, range_vec_idx))) = self.analysed_chunks.range(instruction + 1..).next()
-        {
-            if instruction >= range_start && instruction < range_end {
-                BlockFindResult::Found { range_end, range_start, range_vec_idx }
-            } else {
-                BlockFindResult::MissingWithNext { next_start: range_start }
+        match self.analysed_chunks.range(instruction + 1..).next() {
+            Some((&range_end, &(range_start, range_vec_idx))) => {
+                if instruction >= range_start && instruction < range_end {
+                    BlockFindResult::Found { range_end, range_start, range_vec_idx }
+                } else {
+                    BlockFindResult::MissingWithNext { next_start: range_start }
+                }
             }
-        } else {
-            BlockFindResult::Missing
+            None => BlockFindResult::Missing,
         }
     }
 
