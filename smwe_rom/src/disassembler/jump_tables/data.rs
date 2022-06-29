@@ -174,3 +174,5 @@ pub static JUMP_TABLES: [JumpTableView; 86] = [
     // Loaders for objects in Tileset 4 (Ghost House or Switch Palace)
     JumpTableView::new(AddrSnes(0x0DE89A), 0x3F, true),
 ];
+
+pub static NON_CODE_JUMP_ADDRESSES: [AddrSnes; 1] = [AddrSnes(0x01E41F)];

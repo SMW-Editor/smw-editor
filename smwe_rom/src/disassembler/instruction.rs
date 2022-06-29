@@ -4,6 +4,7 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     disassembler::{
+        jump_tables::{EXECUTE_PTR_LONG_TRAMPOLINE_ADDR, EXECUTE_PTR_TRAMPOLINE_ADDR},
         opcodes::{AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
         registers::PRegister,
     },
@@ -66,12 +67,13 @@ impl Instruction {
         &self.operands[0..self.opcode.mode.operands_size()]
     }
 
-    pub fn next_instructions(self, offset: AddrSnes) -> SmallVec<[AddrSnes; 2]> {
+    pub fn next_instructions(self) -> SmallVec<[AddrSnes; 2]> {
         use Mnemonic::*;
 
-        let is_jump_address_immediate = [Address, Long, Relative8, Relative16].contains(&self.opcode.mode);
-        let next_instruction = offset + self.opcode.instruction_size();
-        let maybe_jump_target = self.get_intermediate_address(offset);
+        let offset_snes = AddrSnes::try_from(self.offset).expect("Invalid instruction address");
+        let is_jump_address_immediate = matches!(self.opcode.mode, Address | Long | Relative8 | Relative16);
+        let next_instruction = offset_snes + self.opcode.instruction_size();
+        let maybe_jump_target = self.get_intermediate_address();
 
         match self.opcode.mnemonic {
             // Unconditional jumps and branches
@@ -90,18 +92,14 @@ impl Instruction {
                     smallvec![next_instruction]
                 }
             }
-            // Returns
-            RTS | RTL | RTI => {
-                smallvec![]
-            }
-            // Interrupts
-            BRK | COP => {
+            // Returns and interrupts
+            RTS | RTL | RTI | BRK | COP => {
                 // Interrupt handler destinations are read from internal header and enqueued at the start of disassembly.
                 smallvec![]
             }
             _ => {
-                if self.can_branch() {
-                    log::error!("Unhandled branching instruction {self:?} at ${offset:06X}");
+                if self.can_change_program_counter() {
+                    log::error!("Unhandled branching instruction {self:?} at ${offset_snes:06X}");
                     smallvec![]
                 } else {
                     smallvec![next_instruction]
@@ -115,7 +113,7 @@ impl Instruction {
         use Mnemonic::*;
 
         // Returning jumps and interrupts
-        if [JSR, JSL, BRK, COP].contains(&self.opcode.mnemonic) {
+        if matches!(self.opcode.mnemonic, JSR | JSL | BRK | COP) {
             let next_instruction = offset + self.opcode.instruction_size();
             Some(next_instruction)
         } else {
@@ -123,13 +121,14 @@ impl Instruction {
         }
     }
 
-    fn get_intermediate_address(self, offset: AddrSnes) -> AddrSnes {
+    fn get_intermediate_address(self) -> AddrSnes {
+        let offset_snes = AddrSnes::try_from(self.offset).expect("Invalid instruction address");
         let op_bytes = self.operands();
         AddrSnes(match self.opcode.mode {
             m if (DirectPage..=DirectPageYIndex).contains(&m) => op_bytes[0] as u32,
             DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as u32,
             Address | AddressXIndex | AddressYIndex | AddressXIndexIndirect => {
-                let bank = (offset.0 >> 16) as u32;
+                let bank = (offset_snes.0 >> 16) as u32;
                 let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
                 (bank << 16) | (operand as u32)
             }
@@ -137,7 +136,7 @@ impl Instruction {
             Long | LongXIndex => u32::from_le_bytes([op_bytes[0], op_bytes[1], op_bytes[2], 0]),
             Relative8 | Relative16 => {
                 let operand_size = self.opcode.instruction_size() - 1;
-                let program_counter = (offset + 1 + operand_size).0 as i32;
+                let program_counter = (offset_snes + 1 + operand_size).0 as i32;
                 let bank = program_counter >> 16;
                 let jump_amount = match operand_size {
                     1 => op_bytes[0] as i8 as i32, // u8->i8 for the sign, i8->i32 for the size.
@@ -150,8 +149,20 @@ impl Instruction {
         } as usize)
     }
 
-    pub fn can_branch(self) -> bool {
-        self.opcode.mnemonic.can_branch()
+    pub fn can_change_program_counter(self) -> bool {
+        self.opcode.mnemonic.can_change_program_counter()
+    }
+
+    pub fn is_single_path_leap(self) -> bool {
+        self.opcode.mnemonic.is_single_path_leap()
+    }
+
+    pub fn is_double_path(self) -> bool {
+        self.opcode.mnemonic.is_double_path()
+    }
+
+    pub fn is_branch_or_jump(self) -> bool {
+        self.opcode.mnemonic.is_branch_or_jump()
     }
 
     pub fn is_subroutine_call(self) -> bool {
@@ -160,6 +171,12 @@ impl Instruction {
 
     pub fn is_subroutine_return(self) -> bool {
         self.opcode.mnemonic.is_subroutine_return()
+    }
+
+    pub fn uses_jump_table(self) -> bool {
+        self.next_instructions()
+            .iter()
+            .any(|&t| t == EXECUTE_PTR_TRAMPOLINE_ADDR || t == EXECUTE_PTR_LONG_TRAMPOLINE_ADDR)
     }
 }
 
@@ -174,12 +191,12 @@ impl Display for DisplayInstruction {
     fn fmt(&self, outer_fmt: &mut Formatter) -> std::fmt::Result {
         use std::io::Write;
         let mut fmt: SmallVec<[u8; 64]> = Default::default();
-        let Instruction { x_flag, m_flag, offset, .. } = self.0;
+        let Instruction { x_flag, m_flag, .. } = self.0;
 
-        let offset = AddrSnes::try_from_lorom(offset).unwrap_or_default();
-        let address_long = self.0.get_intermediate_address(offset).0;
-        let address_short = address_long & 0xFFFF;
-        let address_dp = address_long & 0xFF;
+        let (address_long, address_short, address_dp) = {
+            let a = self.0.get_intermediate_address();
+            (a.0, a.absolute(), a.low())
+        };
 
         write!(fmt, "{}", self.0.opcode.mnemonic).unwrap();
         match self.0.opcode.mode {

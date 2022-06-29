@@ -207,7 +207,7 @@ impl UiDisassembler {
                             COLOR_ADDR,
                         );
                         draw_fmt(format_args!("{}", ins.display()), COLOR_CODE);
-                        if ins.can_branch() {
+                        if ins.can_change_program_counter() {
                             draw_text(" ->", COLOR_BRANCH_TARGET);
                             debug_assert_eq!(addr, code.instructions.last().unwrap().offset);
                             for &target in code.exits.iter() {

@@ -1,6 +1,6 @@
 mod data;
 
-pub use data::JUMP_TABLES;
+pub use data::{JUMP_TABLES, NON_CODE_JUMP_ADDRESSES};
 use nom::{
     combinator::map,
     multi::many1,

@@ -98,7 +98,7 @@ impl CodeBlock {
             rest = new_rest;
             addr += i.opcode.instruction_size();
             processor.execute(i);
-            if i.can_branch() {
+            if i.can_change_program_counter() {
                 break;
             }
         }

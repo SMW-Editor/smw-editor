@@ -236,19 +236,54 @@ pub struct Opcode {
 // -------------------------------------------------------------------------------------------------
 
 impl Mnemonic {
-    pub fn can_branch(self) -> bool {
+    pub fn can_change_program_counter(self) -> bool {
         use Mnemonic::*;
-        [BCC, BCS, BEQ, BMI, BNE, BRK, BPL, BRA, BRL, BVC, BVS, COP, JMP, JML, JSR, JSL, RTI, RTS, RTL].contains(&self)
+        matches!(
+            self,
+            BCC | BCS
+                | BEQ
+                | BMI
+                | BNE
+                | BRK
+                | BPL
+                | BRA
+                | BRL
+                | BVC
+                | BVS
+                | COP
+                | JMP
+                | JML
+                | JSR
+                | JSL
+                | RTI
+                | RTS
+                | RTL
+        )
+    }
+
+    pub fn is_single_path_leap(self) -> bool {
+        use Mnemonic::*;
+        matches!(self, BRA | BRL | JMP | JML | RTS | RTL)
+    }
+
+    pub fn is_double_path(self) -> bool {
+        use Mnemonic::*;
+        matches!(self, BCC | BCS | BEQ | BMI | BNE | BRK | BPL | BVC | JSR | JSL)
+    }
+
+    pub fn is_branch_or_jump(self) -> bool {
+        use Mnemonic::*;
+        matches!(self, BCC | BCS | BEQ | BMI | BNE | BRK | BPL | BRA | BRL | BVC | BVS | JMP | JML)
     }
 
     pub fn is_subroutine_call(self) -> bool {
         use Mnemonic::*;
-        [JSR, JSL].contains(&self)
+        matches!(self, JSR | JSL)
     }
 
     pub fn is_subroutine_return(self) -> bool {
         use Mnemonic::*;
-        [RTS, RTL].contains(&self)
+        matches!(self, RTS | RTL)
     }
 }
 
