@@ -66,7 +66,7 @@ pub static JUMP_TABLES: [JumpTableView; 86] = [
     // Jumping Piranha
     JumpTableView::new(AddrSnes(0x02E136), 0x03, false),
     // Fish
-    JumpTableView::new(AddrSnes(0x02E136), 0x02, false),
+    JumpTableView::new(AddrSnes(0x02e747), 0x02, false),
     // Pipe Lakitu
     JumpTableView::new(AddrSnes(0x02E963), 0x05, false),
     // Super Koopa

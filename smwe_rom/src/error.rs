@@ -2,9 +2,12 @@ use std::ops::Range;
 
 use thiserror::Error;
 
-use crate::snes_utils::{
-    addr::{AddrPc, AddrSnes},
-    rom_slice::{PcSlice, SnesSlice},
+use crate::{
+    disassembler::instruction::Instruction,
+    snes_utils::{
+        addr::{AddrPc, AddrSnes},
+        rom_slice::{PcSlice, SnesSlice},
+    },
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -61,6 +64,14 @@ pub enum LcLz2Error {
     RepeatRangeOutOfBounds(Range<usize>, usize),
     #[error("Double Long Length")]
     DoubleLongLength,
+}
+
+#[derive(Copy, Clone, Debug, Error)]
+pub enum DisassemblyError {
+    #[error("Cannot find a block that returns from subroutine starting at ${0:?}")]
+    SubroutineWithoutReturn(AddrSnes),
+    #[error("Invalid next PC encountered when parsing basic code block starting at {0:?}, at final instruction {1:?}")]
+    InvalidAddrInCodeBlock(AddrPc, Instruction),
 }
 
 #[derive(Debug, Error)]
