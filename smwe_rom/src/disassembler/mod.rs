@@ -9,8 +9,11 @@ pub mod processor;
 pub mod registers;
 
 use std::{
+    cell::RefCell,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt::{Debug, Formatter, Write},
+    ops::Deref,
+    rc::Rc,
     sync::Arc,
 };
 
@@ -54,7 +57,7 @@ struct RomAssemblyWalker<'r> {
     analysed_code_starts: HashSet<AddrPc>,
     /// Subroutine start -> addresses of call return points
     subroutine_returns:   HashMap<AddrPc, Vec<AddrPc>>,
-    analysed_subroutines: HashMap<AddrPc, Subroutine>,
+    analysed_subroutines: HashMap<AddrPc, Rc<RefCell<SubroutineAnalysisState>>>,
 }
 
 #[derive(Clone)]
@@ -66,7 +69,6 @@ enum RomAssemblyWalkerStep {
 #[derive(Clone)]
 struct StepSubroutine {
     code_start: AddrPc,
-    processor:  Processor,
     entrance:   AddrSnes,
     caller:     Option<Box<StepSubroutine>>,
 }
@@ -79,9 +81,11 @@ struct StepBasicBlock {
 }
 
 #[derive(Clone)]
-struct Subroutine {
+struct SubroutineAnalysisState {
     /// (block address, block index)
-    code_blocks:           Vec<(AddrPc, usize)>,
+    code_blocks:           Vec<usize>,
+    analysed_blocks:       HashSet<AddrPc>,
+    remaining_blocks:      Vec<AddrPc>,
     final_processor_state: Processor,
 }
 
@@ -216,15 +220,24 @@ impl<'r> RomAssemblyWalker<'r> {
     }
 
     fn analyse_subroutine(&mut self, step: StepSubroutine) -> Result<()> {
-        let mut block_indices = Vec::with_capacity(32);
-        let mut analysed_blocks = HashSet::with_capacity(32);
-        let mut remaining_blocks = vec![step.code_start];
+        let sub = self
+            .analysed_subroutines
+            .entry(step.code_start)
+            .or_insert_with(|| {
+                Rc::new(RefCell::new(SubroutineAnalysisState {
+                    code_blocks:           Vec::with_capacity(32),
+                    analysed_blocks:       HashSet::with_capacity(32),
+                    remaining_blocks:      vec![step.code_start],
+                    final_processor_state: Processor::new(),
+                }))
+            })
+            .clone();
+        let mut sub = sub.deref().borrow_mut();
 
-        while let Some(curr_code_start) = remaining_blocks.pop() {
-            let _code_start_snes = AddrSnes::try_from(curr_code_start).unwrap();
+        while let Some(curr_code_start) = sub.remaining_blocks.pop() {
             match self.find_analysed_chunk_at(curr_code_start) {
-                BlockFindResult::Found { range_vec_idx, range_start, .. } => {
-                    block_indices.push((range_start, range_vec_idx));
+                BlockFindResult::Found { range_vec_idx, .. } => {
+                    sub.code_blocks.push(range_vec_idx);
 
                     let block = self.chunks[range_vec_idx].1.code_block().unwrap();
                     let last_instruction = *block.instructions.last().unwrap();
@@ -242,48 +255,57 @@ impl<'r> RomAssemblyWalker<'r> {
                             let sub_location = AddrPc::try_from(exits.as_slice()[0]).unwrap();
                             self.subroutine_returns.entry(sub_location).or_default().push(addr_after_block);
                             if !step.sub_exists_in_call_hierarchy(sub_location) {
-                                let sub = StepSubroutine {
+                                let next_step = StepSubroutine {
                                     code_start: sub_location,
-                                    processor:  block.final_processor_state.clone(),
                                     entrance:   last_instruction.offset.try_into().unwrap(),
                                     caller:     Some(Box::new(step.clone())),
                                 };
-                                if self.enqueue_subroutine(sub) {
+                                if self.enqueue_subroutine(next_step) {
+                                    sub.remaining_blocks.push(addr_after_block);
                                     return Ok(());
                                 }
+                            } else {
+                                self.enqueue_basic_block(StepBasicBlock {
+                                    code_start: addr_after_block,
+                                    processor:  sub.final_processor_state.clone(),
+                                    entrance:   step.entrance,
+                                });
                             }
                         } else if !last_instruction.is_subroutine_return() {
                             let pending_blocks = exits
                                 .clone()
                                 .map(|&a| AddrPc::try_from(a).unwrap())
-                                .filter(|&a| analysed_blocks.insert(a));
-                            remaining_blocks.extend(pending_blocks);
+                                .filter(|&a| sub.analysed_blocks.insert(a))
+                                .collect_vec();
+                            sub.remaining_blocks.extend(pending_blocks.into_iter());
                         }
                     }
 
-                    if !last_instruction.is_single_path_leap() && analysed_blocks.insert(addr_after_block) {
-                        remaining_blocks.push(addr_after_block);
+                    if !last_instruction.is_single_path_leap() && sub.analysed_blocks.insert(addr_after_block) {
+                        sub.remaining_blocks.push(addr_after_block);
                     }
                 }
                 _ => {
+                    sub.remaining_blocks.push(curr_code_start);
                     self.remaining_steps.push_back(RomAssemblyWalkerStep::Subroutine(step));
                     return Ok(());
                 }
             }
         }
 
-        let &(_, returning_block_index) = block_indices
-            .iter()
-            .find(|&&(_, idx)| {
-                let last_ins = self.chunks[idx].1.code_block().unwrap().instructions.last().unwrap();
-                last_ins.is_subroutine_return() || last_ins.uses_jump_table()
-            })
-            .expect("Cannot find a block that returns from subroutine.");
-        let processor = self.chunks[returning_block_index].1.code_block().unwrap().final_processor_state.clone();
-        self.analysed_subroutines.insert(step.code_start, Subroutine {
-            final_processor_state: processor.clone(),
-            code_blocks:           block_indices,
-        });
+        match sub.code_blocks.iter().find(|&&idx| {
+            let last_ins = self.chunks[idx].1.code_block().unwrap().instructions.last().unwrap();
+            last_ins.is_subroutine_return() || last_ins.uses_jump_table()
+        }) {
+            Some(&returning_block_index) => {
+                sub.final_processor_state =
+                    self.chunks[returning_block_index].1.code_block().unwrap().final_processor_state.clone();
+            }
+            None => {
+                log::error!("Cannot find a block that returns from subroutine.");
+                return Err(());
+            }
+        };
 
         if let Some(caller) = step.caller {
             self.enqueue_subroutine(*caller);
@@ -294,7 +316,7 @@ impl<'r> RomAssemblyWalker<'r> {
             for return_addr in returns.clone().into_iter() {
                 self.enqueue_basic_block(StepBasicBlock {
                     code_start: return_addr,
-                    processor:  processor.clone(),
+                    processor:  sub.final_processor_state.clone(),
                     entrance:   step.entrance,
                 });
             }
@@ -376,8 +398,10 @@ impl<'r> RomAssemblyWalker<'r> {
                 if let Ok(sub_start) = AddrPc::try_from(next_instructions[0]) {
                     self.subroutine_returns.entry(sub_start).or_default().push(addr_after_block);
                     if let Some(sub) = self.analysed_subroutines.get(&sub_start) {
-                        step_following_block.processor = sub.final_processor_state.clone();
-                        self.enqueue_basic_block(step_following_block);
+                        if sub.deref().borrow().is_complete() {
+                            step_following_block.processor = sub.deref().borrow().final_processor_state.clone();
+                            self.enqueue_basic_block(step_following_block);
+                        }
                     }
                 } else {
                     // The subroutine being called might be located in RAM and in such case we can assume the
@@ -422,7 +446,6 @@ impl<'r> RomAssemblyWalker<'r> {
                     if let Ok(code_start) = AddrPc::try_from(sub_start) {
                         self.enqueue_subroutine(StepSubroutine {
                             code_start,
-                            processor: processor.clone(),
                             entrance: last_instruction.offset.try_into().unwrap(),
                             caller: None,
                         });
@@ -529,5 +552,11 @@ impl StepSubroutine {
         } else {
             false
         }
+    }
+}
+
+impl SubroutineAnalysisState {
+    pub fn is_complete(&self) -> bool {
+        self.remaining_blocks.is_empty()
     }
 }

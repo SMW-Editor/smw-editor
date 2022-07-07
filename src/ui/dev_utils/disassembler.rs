@@ -1,3 +1,5 @@
+#![allow(clippy::explicit_auto_deref)]
+
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
