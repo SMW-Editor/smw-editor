@@ -122,7 +122,7 @@ impl UiDisassembler {
             let mut str_buf = str_buf.borrow_mut();
             str_buf.clear();
             str_buf.write_fmt(fmt).unwrap();
-            draw_text(&*str_buf, color);
+            draw_text(&str_buf, color);
         };
         let mut draw_addr = |addr: AddrPc, color: u32| {
             let snes_addr = AddrSnes::try_from_lorom(addr).unwrap();
@@ -137,7 +137,7 @@ impl UiDisassembler {
                 write!(str_buf, "{:02X} ", byte).unwrap();
                 num_bytes += 1;
             }
-            draw_text(&*str_buf, color);
+            draw_text(&str_buf, color);
             num_bytes
         };
 

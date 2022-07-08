@@ -8,7 +8,7 @@ members = [
 [package]
 name = "smw-editor"
 version = "0.1.0"
-authors = ["Adam Gąsior (Adanos020)", "Jakub Szewczyk (kubasz)"]
+authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)"]
 license = "MIT"
 edition = "2021"
 readme = "README.md"
