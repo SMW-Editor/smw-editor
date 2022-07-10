@@ -1,4 +1,5 @@
 mod color;
+mod dev_utils;
 mod project_creator;
 mod tool;
 
@@ -13,6 +14,7 @@ use crate::{
     frame_context::EFrameContext,
     ui_new::tool::UiTool,
 };
+use crate::ui_new::dev_utils::address_converter::UiAddressConverter;
 use crate::ui_new::project_creator::UiProjectCreator;
 
 pub struct UiMainWindow {
@@ -82,7 +84,7 @@ impl UiMainWindow {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New project").clicked() {
-                        self.open_tool(UiProjectCreator::new);
+                        self.open_tool(UiProjectCreator::default);
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Save ROM dump")).clicked() {
                         use nfd2::Response;
@@ -103,7 +105,7 @@ impl UiMainWindow {
 
                 ui.menu_button("Tools", |ui| {
                     if ui.button("Address converter").clicked() {
-
+                        self.open_tool(UiAddressConverter::default);
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Internal ROM Header")).clicked() {
 

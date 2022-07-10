@@ -16,6 +16,22 @@ pub struct UiProjectCreator {
     err_project_creation: String,
 }
 
+impl Default for UiProjectCreator {
+    fn default() -> Self {
+        log::info!("Opened Project Creator");
+        let mut myself = UiProjectCreator {
+            project_title: String::from("My SMW hack"),
+            base_rom_path: String::new(),
+
+            err_project_title:    String::new(),
+            err_base_rom_path:    String::new(),
+            err_project_creation: String::new(),
+        };
+        myself.handle_rom_file_path();
+        myself
+    }
+}
+
 impl UiTool for UiProjectCreator {
     fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut opened = true;
@@ -41,20 +57,6 @@ impl UiTool for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn new() -> Self {
-        log::info!("Opened Project Creator");
-        let mut myself = UiProjectCreator {
-            project_title: String::from("My SMW hack"),
-            base_rom_path: String::new(),
-
-            err_project_title:    String::new(),
-            err_base_rom_path:    String::new(),
-            err_project_creation: String::new(),
-        };
-        myself.handle_rom_file_path();
-        myself
-    }
-
     fn input_project_title(&mut self, ui: &mut Ui) {
         ui.label("Project title");
         if ui.text_edit_singleline(&mut self.project_title).changed() {
