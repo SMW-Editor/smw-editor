@@ -1,9 +1,7 @@
 use eframe::egui::{RichText, Ui, Window};
 use smwe_rom::RomInternalHeader;
-use crate::{
-    frame_context::EFrameContext,
-    ui_new::tool::UiTool,
-};
+
+use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
 
 pub struct UiRomInfo {
     display_data: Vec<(String, String)>,
@@ -13,18 +11,14 @@ impl UiTool for UiRomInfo {
     fn update(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut running = true;
 
-        Window::new("Internal ROM Header")
-            .auto_sized()
-            .collapsible(false)
-            .open(&mut running)
-            .show(ctx.ctx, |ui| {
-                for (name, data) in self.display_data.iter() {
-                    ui.horizontal(|ui| {
-                        ui.label(name);
-                        ui.label(RichText::new(data).monospace());
-                    });
-                }
-            });
+        Window::new("Internal ROM Header").auto_sized().collapsible(false).open(&mut running).show(ctx.ctx, |ui| {
+            for (name, data) in self.display_data.iter() {
+                ui.horizontal(|ui| {
+                    ui.label(name);
+                    ui.label(RichText::new(data).monospace());
+                });
+            }
+        });
 
         if !running {
             log::info!("Closed ROM Info");

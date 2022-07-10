@@ -4,27 +4,27 @@ mod project_creator;
 mod tool;
 
 use std::sync::Arc;
+
 use eframe::{
-    egui::{self, Context, Style},
+    egui::{self, Context, Style, Ui},
     Frame,
 };
-use eframe::egui::Ui;
 use smwe_project::ProjectRef;
+
 use crate::{
     frame_context::EFrameContext,
     ui_new::{
-        tool::UiTool,
-        dev_utils::address_converter::UiAddressConverter,
+        dev_utils::{address_converter::UiAddressConverter, rom_info::UiRomInfo},
         project_creator::UiProjectCreator,
+        tool::UiTool,
     },
 };
-use crate::ui_new::dev_utils::rom_info::UiRomInfo;
 
 pub struct UiMainWindow {
     project: Option<ProjectRef>,
-    style: Arc<Style>,
+    style:   Arc<Style>,
 
-    tools: Vec<Box<dyn UiTool>>,
+    tools:              Vec<Box<dyn UiTool>>,
     last_open_tool_idx: usize,
 }
 
@@ -43,12 +43,7 @@ impl UiMainWindow {
     pub fn new(project: Option<ProjectRef>) -> Self {
         let mut style = Style::default();
         style.visuals.dark_mode = true;
-        Self {
-            project,
-            style: Arc::new(style),
-            tools: vec![],
-            last_open_tool_idx: 0,
-        }
+        Self { project, style: Arc::new(style), tools: vec![], last_open_tool_idx: 0 }
     }
 
     fn open_tool<ToolType: 'static + UiTool>(&mut self, tool: ToolType) {
@@ -59,11 +54,7 @@ impl UiMainWindow {
     }
 
     fn update_tools(&mut self, ctx: &Context, frame: &mut Frame, ui: &mut Ui) {
-        let mut frame_ctx = EFrameContext {
-            project_ref: &mut self.project,
-            ctx,
-            frame,
-        };
+        let mut frame_ctx = EFrameContext { project_ref: &mut self.project, ctx, frame };
         let mut tools_to_close = vec![];
         for (i, tool) in self.tools.iter_mut().enumerate() {
             if !tool.update(ui, &mut frame_ctx) {

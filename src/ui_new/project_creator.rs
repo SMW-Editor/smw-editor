@@ -1,7 +1,9 @@
 use std::{cell::RefCell, path::Path, sync::Arc};
+
 use eframe::egui::{Button, Ui, Window};
 use smwe_project::Project;
 use smwe_rom::SmwRom;
+
 use crate::{
     frame_context::EFrameContext,
     ui_new::{color, tool::UiTool},
@@ -37,16 +39,14 @@ impl UiTool for UiProjectCreator {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
-        Window::new("Create new project")
-            .auto_sized()
-            .resizable(false)
-            .collapsible(false)
-            .open(&mut opened)
-            .show(ctx.ctx, |ui| {
+        Window::new("Create new project").auto_sized().resizable(false).collapsible(false).open(&mut opened).show(
+            ctx.ctx,
+            |ui| {
                 self.input_project_title(ui);
                 self.input_rom_file_path(ui);
                 self.create_or_cancel(ctx, ui, &mut created_or_cancelled);
-            });
+            },
+        );
 
         let running = opened && !created_or_cancelled;
         if !running {

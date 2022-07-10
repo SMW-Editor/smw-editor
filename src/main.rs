@@ -7,6 +7,7 @@ use std::{cell::RefCell, env, sync::Arc};
 
 use smwe_project::{Project, ProjectRef};
 use smwe_rom::SmwRom;
+
 use crate::ui_new::UiMainWindow;
 
 // use crate::{backend::Backend, ui::UiMainWindow};
@@ -38,9 +39,5 @@ fn main() {
     // backend.run(move |ctx| main_window.tick(ctx), project);
 
     let options = eframe::NativeOptions::default();
-    eframe::run_native(
-        "SMW Editor v0.1.0",
-        options,
-        Box::new(|_| Box::new(UiMainWindow::new(project))),
-    );
+    eframe::run_native("SMW Editor v0.1.0", options, Box::new(|_| Box::new(UiMainWindow::new(project))));
 }

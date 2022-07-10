@@ -1,7 +1,4 @@
-use std::{
-    cell::RefCell,
-    sync::Arc,
-};
+use std::{cell::RefCell, sync::Arc};
 
 use smwe_rom::SmwRom;
 

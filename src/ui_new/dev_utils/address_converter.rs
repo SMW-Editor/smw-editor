@@ -1,11 +1,19 @@
+use std::fmt::Write;
+
 use eframe::egui::{TextEdit, Ui, Window};
 use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
-use crate::frame_context::EFrameContext;
-use crate::ui_new::dev_utils::address_converter::helpers::adjust_to_header;
-use crate::ui_new::dev_utils::address_converter::modes::{ConvDir, ConversionMode};
-use crate::ui_new::tool::UiTool;
-use std::fmt::Write;
-use crate::ui_new::color;
+
+use crate::{
+    frame_context::EFrameContext,
+    ui_new::{
+        color,
+        dev_utils::address_converter::{
+            helpers::adjust_to_header,
+            modes::{ConvDir, ConversionMode},
+        },
+        tool::UiTool,
+    },
+};
 
 pub struct UiAddressConverter {
     conversion_mode: ConversionMode,
@@ -33,14 +41,10 @@ impl UiTool for UiAddressConverter {
     fn update(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut running = true;
 
-        Window::new("Address converter")
-            .auto_sized()
-            .collapsible(false)
-            .open(&mut running)
-            .show(ctx.ctx, |ui| {
-                self.mode_selection(ui);
-                self.conversions(ui);
-            });
+        Window::new("Address converter").auto_sized().collapsible(false).open(&mut running).show(ctx.ctx, |ui| {
+            self.mode_selection(ui);
+            self.conversions(ui);
+        });
 
         if !running {
             log::info!("Closed Address Converter");

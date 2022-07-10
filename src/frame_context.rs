@@ -1,7 +1,4 @@
-use eframe::{
-    egui::Context,
-    Frame,
-};
+use eframe::{egui::Context, Frame};
 use glium::Display;
 use imgui::Ui as ImUi;
 use imgui_glium_renderer::Renderer;
@@ -16,6 +13,6 @@ pub struct FrameContext<'f, 'ui> {
 
 pub struct EFrameContext<'f> {
     pub project_ref: &'f mut Option<ProjectRef>,
-    pub ctx: &'f Context,
-    pub frame: &'f mut Frame,
+    pub ctx:         &'f Context,
+    pub frame:       &'f mut Frame,
 }
