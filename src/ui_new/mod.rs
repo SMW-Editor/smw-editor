@@ -12,10 +12,13 @@ use eframe::egui::Ui;
 use smwe_project::ProjectRef;
 use crate::{
     frame_context::EFrameContext,
-    ui_new::tool::UiTool,
+    ui_new::{
+        tool::UiTool,
+        dev_utils::address_converter::UiAddressConverter,
+        project_creator::UiProjectCreator,
+    },
 };
-use crate::ui_new::dev_utils::address_converter::UiAddressConverter;
-use crate::ui_new::project_creator::UiProjectCreator;
+use crate::ui_new::dev_utils::rom_info::UiRomInfo;
 
 pub struct UiMainWindow {
     project: Option<ProjectRef>,
@@ -48,13 +51,9 @@ impl UiMainWindow {
         }
     }
 
-    fn open_tool<ToolType, Construct>(&mut self, construct_tool: Construct)
-    where
-        ToolType: 'static + UiTool,
-        Construct: FnOnce() -> ToolType,
-    {
+    fn open_tool<ToolType: 'static + UiTool>(&mut self, tool: ToolType) {
         if self.last_open_tool_idx < usize::MAX {
-            self.tools.push(Box::new(construct_tool()));
+            self.tools.push(Box::new(tool));
             self.last_open_tool_idx += 1;
         }
     }
@@ -84,7 +83,7 @@ impl UiMainWindow {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New project").clicked() {
-                        self.open_tool(UiProjectCreator::default);
+                        self.open_tool(UiProjectCreator::default());
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Save ROM dump")).clicked() {
                         use nfd2::Response;
@@ -105,10 +104,11 @@ impl UiMainWindow {
 
                 ui.menu_button("Tools", |ui| {
                     if ui.button("Address converter").clicked() {
-                        self.open_tool(UiAddressConverter::default);
+                        self.open_tool(UiAddressConverter::default());
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Internal ROM Header")).clicked() {
-
+                        let rom_info = UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
+                        self.open_tool(rom_info);
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Color palettes")).clicked() {
 
