@@ -9,8 +9,8 @@ and none of the main features are there yet.
 
 ## Currently in progress
 
-ROM disassembler, primarily for dividing the code and data portions of the ROM.
-You can track the progress in the [disassembler branch](https://github.com/SMW-Editor/smw-editor/tree/disassembler).
+Porting the GUI from imgui-rs to egui.
+You can track the progress in the [egui branch](https://github.com/SMW-Editor/smw-editor/tree/egui).
 
 The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
@@ -54,10 +54,10 @@ We also think expanding our development team would speed things up and help us d
 a better product. If you want to join us and are experienced in at least one of these
 (but the more the better):
 - [Rust](https://www.rust-lang.org/)
-- Programming for the SNES
+- ASM programming for the SNES
 - SMW romhacking
 - UI design
 
-Then please contact me:
+Then please contact me on:
 - Discord (Ąhoš#8981)
 - Email: a.gasior@newcastle.ac.uk
