@@ -1,18 +1,13 @@
 use std::{cell::RefCell, path::Path, sync::Arc};
-
-use imgui::{PopupModal, Ui, Window};
-use inline_tweak::tweak;
+use eframe::egui::{Button, Ui, Window};
 use smwe_project::Project;
 use smwe_rom::SmwRom;
-
 use crate::{
-    frame_context::FrameContext,
-    ui::{color, title_with_id, UiTool, WindowId},
+    frame_context::EFrameContext,
+    ui_new::{color, tool::UiTool},
 };
 
 pub struct UiProjectCreator {
-    title: String,
-
     project_title: String,
     base_rom_path: String,
 
@@ -22,23 +17,20 @@ pub struct UiProjectCreator {
 }
 
 impl UiTool for UiProjectCreator {
-    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
+    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
-        let title = std::mem::take(&mut self.title);
-        Window::new(&title) //
-            .always_auto_resize(true)
+        Window::new("Create new project")
+            .auto_sized()
             .resizable(false)
             .collapsible(false)
-            .opened(&mut opened)
-            .build(ctx.ui, || {
-                self.input_project_title(ctx.ui);
-                self.input_rom_file_path(ctx.ui);
-                self.create_or_cancel(ctx, &mut created_or_cancelled);
-                self.project_error_popup(ctx.ui);
+            .open(&mut opened)
+            .show(ctx.ctx, |ui| {
+                self.input_project_title(ui);
+                self.input_rom_file_path(ui);
+                self.create_or_cancel(ctx, ui, &mut created_or_cancelled);
             });
-        self.title = title;
 
         let running = opened && !created_or_cancelled;
         if !running {
@@ -49,11 +41,9 @@ impl UiTool for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn new(id: WindowId) -> Self {
+    pub fn new() -> Self {
         log::info!("Opened Project Creator");
         let mut myself = UiProjectCreator {
-            title: title_with_id("Create new project", id),
-
             project_title: String::from("My SMW hack"),
             base_rom_path: String::new(),
 
@@ -65,14 +55,13 @@ impl UiProjectCreator {
         myself
     }
 
-    fn input_project_title(&mut self, ui: &Ui) {
-        ui.text("Project title:");
-        if ui.input_text("##project_title", &mut self.project_title).build() {
+    fn input_project_title(&mut self, ui: &mut Ui) {
+        ui.label("Project title");
+        if ui.text_edit_singleline(&mut self.project_title).changed() {
             self.handle_project_title();
         }
-
         if !self.err_project_title.is_empty() {
-            ui.text_colored(color::TEXT_ERROR, &self.err_project_title);
+            ui.colored_label(color::TEXT_ERROR, &self.err_project_title);
         }
     }
 
@@ -84,18 +73,18 @@ impl UiProjectCreator {
         }
     }
 
-    fn input_rom_file_path(&mut self, ui: &Ui) {
-        ui.text("Base ROM file:");
-        if ui.input_text("##rom_file", &mut self.base_rom_path).build() {
-            self.handle_rom_file_path();
-        }
-        ui.same_line();
-        if ui.small_button("Browse...") {
-            self.open_file_selector();
-        }
-
+    fn input_rom_file_path(&mut self, ui: &mut Ui) {
+        ui.label("Base ROM file");
+        ui.horizontal(|ui| {
+            if ui.text_edit_singleline(&mut self.base_rom_path).changed() {
+                self.handle_project_title();
+            }
+            if ui.small_button("Browse...").clicked() {
+                self.open_file_selector();
+            }
+        });
         if !self.err_base_rom_path.is_empty() {
-            ui.text_colored(color::TEXT_ERROR, &self.err_base_rom_path);
+            ui.colored_label(color::TEXT_ERROR, &self.err_base_rom_path);
         }
     }
 
@@ -121,23 +110,23 @@ impl UiProjectCreator {
         }
     }
 
-    fn create_or_cancel(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
-        if self.no_creation_errors() {
-            if ctx.ui.small_button("Create") {
+    fn create_or_cancel(&mut self, ctx: &mut EFrameContext, ui: &mut Ui, created_or_cancelled: &mut bool) {
+        ui.horizontal(|ui| {
+            if ui.add_enabled(self.no_creation_errors(), Button::new("Create").small()).clicked() {
                 log::info!("Attempting to create a new project");
                 self.handle_project_creation(ctx, created_or_cancelled);
             }
-        } else {
-            ctx.ui.text_disabled("Create");
-        }
-        ctx.ui.same_line();
-        if ctx.ui.small_button("Cancel") {
-            log::info!("Cancelled project creation");
-            *created_or_cancelled = true;
+            if ui.small_button("Cancel").clicked() {
+                log::info!("Cancelled project creation");
+                *created_or_cancelled = true;
+            }
+        });
+        if !self.err_project_creation.is_empty() {
+            ui.colored_label(color::TEXT_ERROR, &self.err_project_creation);
         }
     }
 
-    fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, ctx: &mut EFrameContext, created_or_cancelled: &mut bool) {
         match SmwRom::from_file(&self.base_rom_path) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
@@ -149,24 +138,11 @@ impl UiProjectCreator {
             Err(err) => {
                 log::info!("Failed to create a new project: {err}");
                 self.err_project_creation = err.to_string();
-                ctx.ui.open_popup("Error!##project_error");
             }
         }
     }
 
-    fn project_error_popup(&self, ui: &Ui) {
-        PopupModal::new("Error!##project_error").always_auto_resize(true).resizable(false).collapsible(false).build(
-            ui,
-            || {
-                ui.text_wrapped(&self.err_project_creation);
-                if ui.button_with_size("OK", [tweak!(300.0), tweak!(20.0)]) {
-                    ui.close_current_popup();
-                }
-            },
-        );
-    }
-
     fn no_creation_errors(&self) -> bool {
-        vec![&self.err_base_rom_path, &self.err_project_title].iter().all(|s| s.is_empty())
+        self.err_base_rom_path.is_empty() && self.err_project_title.is_empty()
     }
 }

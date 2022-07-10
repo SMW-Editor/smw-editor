@@ -1,4 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    sync::Arc,
+};
 
 use smwe_rom::SmwRom;
 
@@ -7,4 +10,4 @@ pub struct Project {
     pub rom_data: SmwRom,
 }
 
-pub type ProjectRef = Rc<RefCell<Project>>;
+pub type ProjectRef = Arc<RefCell<Project>>;
