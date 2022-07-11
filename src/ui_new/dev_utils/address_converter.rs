@@ -137,13 +137,14 @@ impl UiAddressConverter {
             }
         };
 
-        if let Err(msg) = addr_dst {
-            self.text_error = msg.to_string();
-        } else {
-            let addr_dst = addr_dst.unwrap();
-            buf_dst.clear();
-            write!(buf_dst, "{addr_dst:x}").unwrap();
-            self.text_error.clear();
+        match addr_dst {
+            Ok(_) => {
+                let addr_dst = addr_dst.unwrap();
+                buf_dst.clear();
+                write!(buf_dst, "{addr_dst:x}").unwrap();
+                self.text_error.clear();
+            }
+            Err(msg) => self.text_error = msg.to_string(),
         }
     }
 }
