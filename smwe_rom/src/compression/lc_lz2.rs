@@ -26,7 +26,7 @@ const REPEAT: u8 = 0b100;
 /// ```
 const LONG_LENGTH: u8 = 0b111;
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
+pub fn decompress(input: &[u8], revised_gfx: bool) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
     let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
@@ -88,7 +88,8 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                 if in_it.len() >= 2 {
                     let bytes;
                     (bytes, in_it) = in_it.split_at(2);
-                    let read_start = usize::from(u16::from_be_bytes([bytes[0], bytes[1]]));
+                    let from_bytes = if revised_gfx { u16::from_le_bytes } else { u16::from_be_bytes };
+                    let read_start = usize::from(from_bytes([bytes[0], bytes[1]]));
                     if read_start >= output.len() {
                         return Err(
                             LcLz2Error::RepeatRangeOutOfBounds(read_start..read_start + length, output.len()).into()
@@ -117,7 +118,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
 #[cfg(test)]
 mod tests {
     fn assert_decompression(compressed: &[u8], decompressed: &[u8]) {
-        let res = super::decompress(compressed);
+        let res = super::decompress(compressed, false);
         let res = res.unwrap_or_else(|err| panic!("decompression failed unexpectedly ({err})"));
         if res.as_slice() != decompressed {
             panic!("decompression gave wrong results (got: {res:?}, expected: {decompressed:?})")

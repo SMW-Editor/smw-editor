@@ -11,7 +11,7 @@ pub mod snes_utils;
 
 use std::{fs, path::Path};
 
-pub use crate::internal_header::RomInternalHeader;
+pub use crate::internal_header::{RegionCode, RomInternalHeader};
 use crate::{
     disassembler::RomDisassembly,
     error::RomParseError,
@@ -70,7 +70,7 @@ impl SmwRom {
         let color_palettes = ColorPalettes::parse(&rom, &levels).map_err(RomParseError::ColorPalettes)?;
 
         log::info!("Parsing GFX files");
-        let gfx_files = Self::parse_gfx_files(&rom)?;
+        let gfx_files = Self::parse_gfx_files(&rom, &internal_header)?;
 
         log::info!("Parsing Map16 tilesets");
         let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
@@ -108,10 +108,12 @@ impl SmwRom {
         Ok(secondary_entrances)
     }
 
-    fn parse_gfx_files(rom: &Rom) -> Result<Vec<GfxFile>, RomParseError> {
+    fn parse_gfx_files(rom: &Rom, internal_header: &RomInternalHeader) -> Result<Vec<GfxFile>, RomParseError> {
+        let revised_gfx =
+            matches!(internal_header.region_code, RegionCode::Japan) || internal_header.version_number > 0;
         let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
         for file_num in 0..GFX_FILES_META.len() {
-            let file = GfxFile::new(rom, file_num).map_err(|e| RomParseError::GfxFile(file_num, e))?;
+            let file = GfxFile::new(rom, file_num, revised_gfx).map_err(|e| RomParseError::GfxFile(file_num, e))?;
             gfx_files.push(file);
         }
         Ok(gfx_files)

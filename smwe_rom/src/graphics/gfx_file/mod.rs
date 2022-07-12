@@ -118,7 +118,7 @@ impl Tile {
 }
 
 impl GfxFile {
-    pub fn new(rom: &Rom, file_num: usize) -> Result<Self, GfxFileParseError> {
+    pub fn new(rom: &Rom, file_num: usize, revised_gfx: bool) -> Result<Self, GfxFileParseError> {
         debug_assert!(file_num < GFX_FILES_META.len());
 
         use TileFormat::*;
@@ -141,7 +141,7 @@ impl GfxFile {
                 _ => unreachable!(),
             })
             .slice_lorom(slice)?
-            .decompress(lc_lz2::decompress)?
+            .decompress(move |slice| lc_lz2::decompress(slice, revised_gfx))?
             .view()
             .parse(many1(map_parser(take(tile_size_bytes), parser)))?;
 
