@@ -97,16 +97,20 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
             }
             Command::Repeat => {
                 if in_it.len() >= 2 {
-                    let (bytes, rest) = in_it.split_at(2);
-                    let read_start = ((bytes[0] as usize) << 8) | (bytes[1] as usize);
-                    let read_end = read_start + length;
-                    let write_start = output.len();
-                    if read_start < output.len() {
-                        output.resize(output.len() + length, 0);
-                        output.copy_within(read_start..read_end, write_start);
-                        in_it = rest;
-                    } else {
-                        return Err(LcLz2Error::RepeatRangeOutOfBounds(read_start..read_end, output.len()).into());
+                    let bytes;
+                    (bytes, in_it) = in_it.split_at(2);
+                    let read_start = usize::from(u16::from_be_bytes([bytes[0], bytes[1]]));
+                    if read_start >= output.len() {
+                        return Err(
+                            LcLz2Error::RepeatRangeOutOfBounds(read_start..read_start + length, output.len()).into()
+                        );
+                    }
+                    output.reserve(length);
+                    let mut n = length;
+                    while n > 0 {
+                        let range = read_start..(read_start + n).min(output.len());
+                        n -= range.len();
+                        output.extend_from_within(range);
                     }
                 } else {
                     return Err(LcLz2Error::RepeatIncomplete.into());
