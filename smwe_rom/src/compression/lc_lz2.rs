@@ -119,3 +119,59 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     output.shrink_to_fit();
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    fn assert_decompression(compressed: &[u8], decompressed: &[u8]) {
+        let res = super::decompress(compressed);
+        let res = res.unwrap_or_else(|err| panic!("decompression failed unexpectedly ({err})"));
+        if res.as_slice() != decompressed {
+            panic!("decompression gave wrong results (got: {res:?}, expected: {decompressed:?})")
+        }
+    }
+
+    #[test]
+    fn test_slice_repeat() {
+        let compressed = [
+            // Insert [1, 2, 3, 4]
+            (0b011 << 5) | (4 - 1),
+            1,
+            // Repeat 7 bytes from address 1
+            (0b100 << 5) | (7 - 1),
+            0,
+            1,
+        ];
+        assert_decompression(&compressed, &[1, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2]);
+    }
+
+    #[test]
+    fn test_multiple_repeat_commands_short() {
+        const EXPECTED: [u8; 6] = [1, 2, 3, 4, 2, 3];
+        for command in [0b100, 0b101, 0b110] {
+            let compressed = [
+                // Insert [1, 2, 3, 4]
+                (0b011 << 5) | (4 - 1),
+                1,
+                // Repeat 2 bytes from address 1
+                (command << 5) | (2 - 1),
+            ];
+            assert_decompression(&compressed, &EXPECTED)
+        }
+    }
+
+    #[test]
+    fn test_multiple_repeat_commands_long() {
+        const EXPECTED: [u8; 6] = [1, 2, 3, 4, 2, 3];
+        for command in [0b100, 0b101, 0b110, 0b111] {
+            let compressed = [
+                // Insert [1, 2, 3, 4]
+                (0b011 << 5) | (4 - 1),
+                1,
+                // Repeat 2 bytes from address 1
+                (0b111 << 5) | (command << 2),
+                2 - 1,
+            ];
+            assert_decompression(&compressed, &EXPECTED)
+        }
+    }
+}
