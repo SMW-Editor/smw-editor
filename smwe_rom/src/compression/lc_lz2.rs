@@ -1,38 +1,30 @@
-use std::convert::TryFrom;
-
-use num_enum::TryFromPrimitive;
-
 use crate::error::{DecompressionError, LcLz2Error};
 
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, TryFromPrimitive)]
-enum Command {
-    /// Followed by (L+1) bytes of data
-    DirectCopy     = 0b000,
+/// Followed by (L+1) bytes of data
+const DIRECT_COPY: u8 = 0b000;
 
-    /// Followed by one byte to be repeated (L+1) times
-    ByteFill       = 0b001,
+/// Followed by one byte to be repeated (L+1) times
+const BYTE_FILL: u8 = 0b001;
 
-    /// Followed by two bytes. Output first byte, then second, then first,
-    /// then second, etc. until (L+1) bytes has been outputted
-    WordFill       = 0b010,
+/// Followed by two bytes. Output first byte, then second, then first,
+/// then second, etc. until (L+1) bytes has been outputted
+const WORD_FILL: u8 = 0b010;
 
-    /// Followed by one byte to be repeated (L+1) times, but the byte is
-    /// increased by 1 after each write
-    IncreasingFill = 0b011,
+/// Followed by one byte to be repeated (L+1) times, but the byte is
+/// increased by 1 after each write
+const INCREASING_FILL: u8 = 0b011;
 
-    /// Followed by two bytes (ABCD byte order) containing address (in the
-    /// output buffer) to copy (L+1) bytes from
-    Repeat         = 0b100,
+/// Followed by two bytes (ABCD byte order) containing address (in the
+/// output buffer) to copy (L+1) bytes from
+const REPEAT: u8 = 0b100;
 
-    /// This command has got a two-byte header:
-    /// ```text
-    /// 111CCCLL LLLLLLLL
-    /// CCC:        Real command
-    /// LLLLLLLLLL: Length
-    /// ```
-    LongLength     = 0b111,
-}
+/// This command has got a two-byte header:
+/// ```text
+/// 111CCCLL LLLLLLLL
+/// CCC:        Real command
+/// LLLLLLLLLL: Length
+/// ```
+const LONG_LENGTH: u8 = 0b111;
 
 pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
@@ -43,24 +35,21 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
             break;
         }
         in_it = &in_it[1..];
-        let command = chunk_header >> 5;
-        let length = chunk_header & 0b11111;
 
-        let mut command = Command::try_from(command).map_err(|_| LcLz2Error::Command(command))?;
-        let mut length = length as usize + 1;
-
-        if let Command::LongLength = command {
-            let real_command_bits = (chunk_header >> 2) & 0b111;
-            command =
-                Command::try_from(real_command_bits).map_err(|_| LcLz2Error::LongLengthCommand(real_command_bits))?;
-            let length_part_1 = chunk_header & 0b11;
-            let length_part_2 = *in_it.first().ok_or(LcLz2Error::LongLength)?;
-            length = (((length_part_1 as usize) << 8) | (length_part_2 as usize)) + 1;
+        let (command, length) = if chunk_header & 0xe0 == 0xe0 {
+            // long command
+            let next_byte = *in_it.first().ok_or(LcLz2Error::LongLength)?;
             in_it = &in_it[1..];
-        }
+            ((chunk_header >> 2) & 7, u16::from_le_bytes([next_byte, chunk_header & 3]))
+        } else {
+            // normal command
+            (chunk_header >> 5, u16::from(chunk_header & 0x1f))
+        };
+
+        let length = usize::from(length) + 1;
 
         match command {
-            Command::DirectCopy => {
+            DIRECT_COPY => {
                 if length <= in_it.len() {
                     let (bytes, rest) = in_it.split_at(length);
                     output.extend_from_slice(bytes);
@@ -69,12 +58,12 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                     return Err(LcLz2Error::DirectCopy(length).into());
                 }
             }
-            Command::ByteFill => {
+            BYTE_FILL => {
                 let byte = *in_it.first().ok_or(LcLz2Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
             }
-            Command::WordFill => {
+            WORD_FILL => {
                 if in_it.len() >= 2 {
                     let (bytes, rest) = in_it.split_at(2);
                     output.extend(bytes.iter().cycle().take(length));
@@ -83,7 +72,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                     return Err(LcLz2Error::WordFill.into());
                 }
             }
-            Command::IncreasingFill => {
+            INCREASING_FILL => {
                 let mut byte = *in_it.first().ok_or(LcLz2Error::IncreasingFill)?;
                 output.extend(
                     std::iter::repeat_with(|| {
@@ -95,7 +84,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                 );
                 in_it = &in_it[1..];
             }
-            Command::Repeat => {
+            REPEAT..=LONG_LENGTH => {
                 if in_it.len() >= 2 {
                     let bytes;
                     (bytes, in_it) = in_it.split_at(2);
@@ -106,6 +95,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                         );
                     }
                     output.reserve(length);
+                    // `n` is the count of bytes, that is to be written
                     let mut n = length;
                     while n > 0 {
                         let range = read_start..(read_start + n).min(output.len());
@@ -116,7 +106,7 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
                     return Err(LcLz2Error::RepeatIncomplete.into());
                 }
             }
-            Command::LongLength => return Err(LcLz2Error::DoubleLongLength.into()),
+            _ => unreachable!(),
         }
     }
 
@@ -158,6 +148,8 @@ mod tests {
                 1,
                 // Repeat 2 bytes from address 1
                 (command << 5) | (2 - 1),
+                0,
+                1,
             ];
             assert_decompression(&compressed, &EXPECTED)
         }
@@ -174,6 +166,8 @@ mod tests {
                 // Repeat 2 bytes from address 1
                 (0b111 << 5) | (command << 2),
                 2 - 1,
+                0,
+                1,
             ];
             assert_decompression(&compressed, &EXPECTED)
         }
