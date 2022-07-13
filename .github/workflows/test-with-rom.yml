@@ -21,6 +21,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libgtk-3-dev libglx-dev libgl1-mesa-dev libsdl2-dev libwayland-dev libx11-dev
+      - shell: bash
+        run: curl "${{ secrets.SMW_ROM_URL }}" -o ${{ github.workspace }}/rom.smc
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -38,11 +40,6 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-      - shell: bash
-        env:
-          SMW_ROM_URL: ${{ secrets.SMW_ROM_URL }}
-        run: |
-          curl "$SMW_ROM_URL" -o ${{ github.workspace }}/rom.smc
       - uses: actions-rs/cargo@v1
         env:
           ROM_PATH: ${{ github.workspace }}/rom.smc
