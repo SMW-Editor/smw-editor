@@ -79,7 +79,7 @@ impl UiProjectCreator {
         ui.label("Base ROM file");
         ui.horizontal(|ui| {
             if ui.text_edit_singleline(&mut self.base_rom_path).changed() {
-                self.handle_project_title();
+                self.handle_rom_file_path();
             }
             if ui.small_button("Browse...").clicked() {
                 self.open_file_selector();
