@@ -14,7 +14,12 @@ use smwe_project::ProjectRef;
 use crate::{
     frame_context::EFrameContext,
     ui_new::{
-        dev_utils::{address_converter::UiAddressConverter, palette_viewer::UiPaletteViewer, rom_info::UiRomInfo},
+        dev_utils::{
+            address_converter::UiAddressConverter,
+            gfx_viewer::UiGfxViewer,
+            palette_viewer::UiPaletteViewer,
+            rom_info::UiRomInfo,
+        },
         project_creator::UiProjectCreator,
         tool::UiTool,
     },
@@ -105,7 +110,7 @@ impl UiMainWindow {
                         self.open_tool(UiPaletteViewer::default());
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("GFX files")).clicked() {
-
+                        self.open_tool(UiGfxViewer::default());
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
 

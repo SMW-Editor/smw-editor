@@ -8,17 +8,20 @@ pub struct UiRomInfo {
 }
 
 impl UiTool for UiRomInfo {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
+    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut running = true;
 
-        Window::new("Internal ROM Header").auto_sized().collapsible(false).open(&mut running).show(ctx.ctx, |ui| {
-            for (name, data) in self.display_data.iter() {
-                ui.horizontal(|ui| {
-                    ui.label(name);
-                    ui.label(RichText::new(data).monospace());
-                });
-            }
-        });
+        Window::new("Internal ROM Header") //
+            .auto_sized()
+            .open(&mut running)
+            .show(ctx.ctx, |ui| {
+                for (name, data) in self.display_data.iter() {
+                    ui.horizontal(|ui| {
+                        ui.label(name);
+                        ui.label(RichText::new(data).monospace());
+                    });
+                }
+            });
 
         if !running {
             log::info!("Closed ROM Info");

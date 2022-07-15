@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, Image, TextureHandle, Ui, Window};
+use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, TextureHandle, Ui, Window};
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::{
     color::Rgba32,
@@ -45,13 +45,16 @@ impl UiTool for UiPaletteViewer {
             self.update_palette_image(ui, ctx);
         }
 
-        Window::new("Color palettes").auto_sized().collapsible(false).open(&mut running).show(ui.ctx(), |ui| {
-            self.context_selector(ui, ctx);
-            match self.palette_context {
-                PaletteContext::Level => self.viewer_level(ui, ctx),
-                PaletteContext::Overworld => self.viewer_overworld(ui, ctx),
-            }
-        });
+        Window::new("Color palettes") //
+            .auto_sized()
+            .open(&mut running)
+            .show(ui.ctx(), |ui| {
+                self.context_selector(ui, ctx);
+                match self.palette_context {
+                    PaletteContext::Level => self.viewer_level(ui, ctx),
+                    PaletteContext::Overworld => self.viewer_overworld(ui, ctx),
+                }
+            });
 
         if !running {
             log::info!("Closed Palette Viewer");
