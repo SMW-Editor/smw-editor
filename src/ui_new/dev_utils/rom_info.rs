@@ -1,4 +1,6 @@
 use eframe::egui::{RichText, Ui, Window};
+use egui_extras::{Size, TableBuilder};
+use inline_tweak::tweak;
 use smwe_rom::RomInternalHeader;
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
@@ -15,12 +17,20 @@ impl UiTool for UiRomInfo {
             .auto_sized()
             .open(&mut running)
             .show(ctx.ctx, |ui| {
-                for (name, data) in self.display_data.iter() {
-                    ui.horizontal(|ui| {
-                        ui.label(name);
-                        ui.label(RichText::new(data).monospace());
+                TableBuilder::new(ui) //
+                    .striped(true)
+                    .columns(Size::exact(130.0), 2)
+                    .body(|body| {
+                        body.rows(15.0, self.display_data.len(), |i, mut row| {
+                            let (name, data) = &self.display_data[i];
+                            row.col(|ui| {
+                                ui.label(name);
+                            });
+                            row.col(|ui| {
+                                ui.label(RichText::new(data).monospace());
+                            });
+                        });
                     });
-                }
             });
 
         if !running {

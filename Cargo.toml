@@ -18,6 +18,7 @@ smwe_project = { path = "smwe_project" }
 smwe_rom = { path = "smwe_rom" }
 
 eframe = "0.18"
+egui_extras = "0.18"
 glium = "0.30"
 imgui = "0.8"
 imgui-glium-renderer = "0.8"
