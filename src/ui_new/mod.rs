@@ -59,7 +59,7 @@ impl UiMainWindow {
     }
 
     fn update_tools(&mut self, ctx: &Context, frame: &mut Frame, ui: &mut Ui) {
-        let mut frame_ctx = EFrameContext { project_ref: &mut self.project, ctx, frame };
+        let mut frame_ctx = EFrameContext { project_ref: &mut self.project, egui_ctx: ctx, frame };
         let mut tools_to_close = vec![];
         for (i, tool) in self.tools.iter_mut().enumerate() {
             if !tool.update(ui, &mut frame_ctx) {

@@ -13,6 +13,6 @@ pub struct FrameContext<'f, 'ui> {
 
 pub struct EFrameContext<'f> {
     pub project_ref: &'f mut Option<ProjectRef>,
-    pub ctx:         &'f Context,
+    pub egui_ctx:    &'f Context,
     pub frame:       &'f mut Frame,
 }

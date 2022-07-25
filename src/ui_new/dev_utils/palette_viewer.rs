@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, TextureHandle, Ui, Window};
+use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, TextureHandle, TopBottomPanel, Ui, Window};
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::{
     color::Rgba32,
@@ -46,14 +46,17 @@ impl UiTool for UiPaletteViewer {
         }
 
         Window::new("Color palettes") //
-            .auto_sized()
+            .resizable(false)
             .open(&mut running)
             .show(ui.ctx(), |ui| {
-                self.context_selector(ui, ctx);
-                match self.palette_context {
-                    PaletteContext::Level => self.viewer_level(ui, ctx),
-                    PaletteContext::Overworld => self.viewer_overworld(ui, ctx),
-                }
+                TopBottomPanel::top("palette_selectors_panel").show_inside(ui, |ui| {
+                    self.context_selector(ui, ctx);
+                    match self.palette_context {
+                        PaletteContext::Level => self.selectors_level(ui, ctx),
+                        PaletteContext::Overworld => self.selectors_overworld(ui, ctx),
+                    }
+                });
+                ui.centered_and_justified(|ui| self.display_palette(ui));
             });
 
         if !running {
@@ -84,7 +87,7 @@ impl UiPaletteViewer {
         }
     }
 
-    fn viewer_level(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
+    fn selectors_level(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
         let level_count = {
             let project = ctx.project_ref.as_ref().unwrap().borrow();
             project.rom_data.levels.len() as i32
@@ -97,11 +100,9 @@ impl UiPaletteViewer {
             }
             ui.label("Level number");
         });
-
-        self.display_palette(ui);
     }
 
-    fn viewer_overworld(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
+    fn selectors_overworld(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
         if ui.checkbox(&mut self.special_completed, "Special world completed").changed() {
             log::info!(
                 "Showing color palette for {}",
@@ -122,8 +123,6 @@ impl UiPaletteViewer {
             }
             ui.label("Submap number");
         });
-
-        self.display_palette(ui);
     }
 
     fn update_palette_image(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {

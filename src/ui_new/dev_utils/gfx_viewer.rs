@@ -1,5 +1,5 @@
 use constants::*;
-use eframe::egui::{Color32, ColorImage, DragValue, TextureHandle, Ui, Window};
+use eframe::egui::{CentralPanel, Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, Ui, Window};
 use smwe_rom::graphics::palette::ColorPalette;
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
@@ -55,7 +55,7 @@ impl Default for UiGfxViewer {
 }
 
 impl UiTool for UiGfxViewer {
-    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         if self.image_handle.is_none() {
             self.update_image(ctx);
         }
@@ -63,13 +63,10 @@ impl UiTool for UiGfxViewer {
         let mut running = true;
         Window::new("GFX Viewer") //
             .default_height(600.0)
-            .vscroll(true)
             .open(&mut running)
-            .show(ctx.ctx, |ui| {
-                ui.horizontal(|ui| {
-                    self.switches(ui, ctx);
-                    self.gfx_image(ui);
-                });
+            .show(ui.ctx(), |ui| {
+                SidePanel::left("switches_panel").show_inside(ui, |ui| self.switches(ui, ctx));
+                self.gfx_image(ui);
             });
 
         if !running {
@@ -96,7 +93,14 @@ impl UiGfxViewer {
             ui.vertical(|ui| {
                 let mut input_int = |label, var, max| {
                     ui.horizontal(|ui| {
-                        changed_any |= ui.add(DragValue::new(var).clamp_range(0..=max - 1)).changed();
+                        changed_any |= ui
+                            .add({
+                                DragValue::new(var)
+                                    // TODO: enable the following with next version of egui
+                                    // .custom_formatter(|n, _| format!("{:02X}", n as i64))
+                                    .clamp_range(0..=max - 1)
+                            })
+                            .changed();
                         ui.label(label);
                     })
                 };
@@ -118,7 +122,9 @@ impl UiGfxViewer {
     fn gfx_image(&mut self, ui: &mut Ui) {
         if let Some(handle) = &self.image_handle {
             let (img_w, img_h) = self.curr_image_size;
-            ui.image(handle, [(img_w * 3) as f32, (img_h * 3) as f32]);
+            ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
+                ui.image(handle, [(img_w * 3) as f32, (img_h * 3) as f32]);
+            });
         }
     }
 
@@ -158,7 +164,7 @@ impl UiGfxViewer {
                 );
             }
         }
-        self.image_handle = Some(ctx.ctx.load_texture("gfx-file-image", new_image));
+        self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image));
 
         log::info!("Successfully created a GFX file image (w = {img_w}, h = {img_h}).");
     }

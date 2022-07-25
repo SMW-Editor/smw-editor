@@ -1,6 +1,5 @@
 use eframe::egui::{RichText, Ui, Window};
 use egui_extras::{Size, TableBuilder};
-use inline_tweak::tweak;
 use smwe_rom::RomInternalHeader;
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
@@ -10,13 +9,13 @@ pub struct UiRomInfo {
 }
 
 impl UiTool for UiRomInfo {
-    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, _ctx: &mut EFrameContext) -> bool {
         let mut running = true;
 
         Window::new("Internal ROM Header") //
             .auto_sized()
             .open(&mut running)
-            .show(ctx.ctx, |ui| {
+            .show(ui.ctx(), |ui| {
                 TableBuilder::new(ui) //
                     .striped(true)
                     .columns(Size::exact(130.0), 2)

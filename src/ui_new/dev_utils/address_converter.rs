@@ -38,13 +38,13 @@ impl Default for UiAddressConverter {
 }
 
 impl UiTool for UiAddressConverter {
-    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, _ctx: &mut EFrameContext) -> bool {
         let mut running = true;
 
         Window::new("Address converter") //
             .auto_sized()
             .open(&mut running)
-            .show(ctx.ctx, |ui| {
+            .show(ui.ctx(), |ui| {
                 self.mode_selection(ui);
                 self.conversions(ui);
             });

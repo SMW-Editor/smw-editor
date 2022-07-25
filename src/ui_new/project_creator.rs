@@ -35,12 +35,12 @@ impl Default for UiProjectCreator {
 }
 
 impl UiTool for UiProjectCreator {
-    fn update(&mut self, _ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
         Window::new("Create new project").auto_sized().resizable(false).collapsible(false).open(&mut opened).show(
-            ctx.ctx,
+            ui.ctx(),
             |ui| {
                 self.input_project_title(ui);
                 self.input_rom_file_path(ui);
