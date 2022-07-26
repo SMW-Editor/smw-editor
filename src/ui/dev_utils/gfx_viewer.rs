@@ -1,4 +1,5 @@
 use std::{borrow::Cow, rc::Rc};
+use eframe::epaint::Rgba;
 
 use glium::{
     backend::Facade,
@@ -9,7 +10,7 @@ use glium::{
 };
 use imgui::{Image, TextureId, Window};
 use imgui_glium_renderer::Texture;
-use smwe_rom::graphics::{color::Rgba32, gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
+use smwe_rom::graphics::{gfx_file::N_PIXELS_IN_TILE, palette::ColorPalette};
 
 use crate::{
     frame_context::FrameContext,
@@ -155,7 +156,7 @@ impl UiGfxViewer {
         let height = (8 * row_count) as u32;
 
         let image = RawImage2d {
-            data: Cow::Owned(vec![Rgba32::default().as_tuple(); texture_size]),
+            data: Cow::Owned(vec![Rgba::default().to_tuple(); texture_size]),
             format: ClientFormat::F32F32F32F32,
             width,
             height,
@@ -210,7 +211,7 @@ impl UiGfxViewer {
             for (idx, tile) in gfx_file.tiles.iter().enumerate() {
                 let (row, col) = (idx / N_TILES_IN_ROW, idx % N_TILES_IN_ROW);
                 let (x, y) = ((col * 8) as u32, (row * 8) as u32);
-                let rgba_tile: Vec<f32> = tile.to_rgba(palette).iter().flat_map(|c| c.as_array().into_iter()).collect();
+                let rgba_tile: Vec<f32> = tile.to_rgba(palette).iter().flat_map(|c| c.to_array().into_iter()).collect();
                 let image = RawImage2d::from_raw_rgba(rgba_tile, (8, 8));
                 let rect = Rect { left: x, bottom: y, width: 8, height: 8 };
                 texture.write(rect, image);

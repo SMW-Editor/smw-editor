@@ -1948,6 +1948,7 @@ dependencies = [
 name = "smwe_rom"
 version = "0.1.0"
 dependencies = [
+ "epaint",
  "itertools",
  "log",
  "nom",

@@ -7,10 +7,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+epaint = "0.18"
+itertools = "0.10"
 log = "0.4"
 nom = "7.0"
 num_enum = "0.5"
 paste = "1.0"
 thiserror = "1.0"
-itertools = "0.10"
 smallvec = { version="1.7", features=["write", "union", "const_generics", "const_new"] }

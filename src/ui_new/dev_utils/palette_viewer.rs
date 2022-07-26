@@ -1,9 +1,6 @@
 use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, TextureHandle, TopBottomPanel, Ui, Window};
 use num_enum::TryFromPrimitive;
-use smwe_rom::graphics::{
-    color::Rgba32,
-    palette::{ColorPalette, OverworldState},
-};
+use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
 
@@ -131,13 +128,7 @@ impl UiPaletteViewer {
             for y in 0..=0xF {
                 for x in 0..=0xF {
                     let color = palette.get_color_at(y, x).unwrap();
-                    let color = Rgba32::from(color);
-                    image[(x, y)] = Color32::from_rgba_premultiplied(
-                        (color.r * 255.0) as u8,
-                        (color.g * 255.0) as u8,
-                        (color.b * 255.0) as u8,
-                        (color.a * 255.0) as u8,
-                    );
+                    image[(x, y)] = Color32::from(color);
                 }
             }
 

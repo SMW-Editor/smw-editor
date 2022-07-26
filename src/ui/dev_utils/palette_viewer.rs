@@ -1,11 +1,9 @@
 use std::convert::TryFrom;
+use eframe::epaint::Rgba;
 
 use imgui::{Ui, Window};
 use num_enum::TryFromPrimitive;
-use smwe_rom::graphics::{
-    color::Rgba32,
-    palette::{ColorPalette, OverworldState},
-};
+use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 
 use crate::{
     frame_context::FrameContext,
@@ -140,7 +138,7 @@ impl UiPaletteViewer {
 
                 let p1 = [x, y];
                 let p2 = [x + CELL_SIZE, y + CELL_SIZE];
-                let c: [f32; 4] = Rgba32::from(color).into();
+                let c = Rgba::from(color).to_array();
 
                 draw_list.add_rect(p1, p2, c).filled(true).build();
             }

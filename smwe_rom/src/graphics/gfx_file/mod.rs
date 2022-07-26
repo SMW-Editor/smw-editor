@@ -5,6 +5,7 @@ use std::{
     fmt,
     fmt::{Display, Formatter},
 };
+use epaint::Rgba;
 
 pub(crate) use data::GFX_FILES_META;
 use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
@@ -12,7 +13,7 @@ use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
 use crate::{
     compression::lc_lz2,
     error::{DecompressionError, GfxFileParseError, RomError},
-    graphics::color::{Abgr1555, Rgba32},
+    graphics::color::Abgr1555,
     snes_utils::rom::Rom,
 };
 
@@ -112,8 +113,8 @@ impl Tile {
             .collect()
     }
 
-    pub fn to_rgba(&self, palette: &[Abgr1555]) -> Box<[Rgba32]> {
-        self.to_bgr555(palette).iter().copied().map(Rgba32::from).collect()
+    pub fn to_rgba(&self, palette: &[Abgr1555]) -> Box<[Rgba]> {
+        self.to_bgr555(palette).iter().copied().map(Rgba::from).collect()
     }
 }
 

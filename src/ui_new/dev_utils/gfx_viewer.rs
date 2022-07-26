@@ -1,5 +1,5 @@
 use constants::*;
-use eframe::egui::{CentralPanel, Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, Ui, Window};
+use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, Ui, Window};
 use smwe_rom::graphics::palette::ColorPalette;
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
@@ -154,14 +154,9 @@ impl UiGfxViewer {
             let (row, col) = (idx / N_TILES_IN_ROW, idx % N_TILES_IN_ROW);
             let (tx, ty) = (col * 8, row * 8);
             let rgba_tile = tile.to_rgba(palette);
-            for (i, color) in rgba_tile.iter().enumerate() {
+            for (i, &color) in rgba_tile.iter().enumerate() {
                 let (x, y) = (tx + (i % 8), ty + (i / 8));
-                new_image[(x, y)] = Color32::from_rgba_unmultiplied(
-                    (color.r * 255.0) as u8,
-                    (color.g * 255.0) as u8,
-                    (color.b * 255.0) as u8,
-                    (color.a * 255.0) as u8,
-                );
+                new_image[(x, y)] = Color32::from(color);
             }
         }
         self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image));
