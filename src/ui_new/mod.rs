@@ -16,6 +16,7 @@ use crate::{
     ui_new::{
         dev_utils::{
             address_converter::UiAddressConverter,
+            disassembler::UiDisassembler,
             gfx_viewer::UiGfxViewer,
             palette_viewer::UiPaletteViewer,
             rom_info::UiRomInfo,
@@ -113,7 +114,7 @@ impl UiMainWindow {
                         self.open_tool(UiGfxViewer::default());
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
-
+                        self.open_tool(UiDisassembler::default());
                     }
                 });
             });
