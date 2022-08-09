@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
-use eframe::epaint::Rgba;
 
+use eframe::epaint::Rgba;
 use imgui::{Ui, Window};
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};

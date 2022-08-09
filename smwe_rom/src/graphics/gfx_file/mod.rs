@@ -5,9 +5,9 @@ use std::{
     fmt,
     fmt::{Display, Formatter},
 };
-use epaint::Rgba;
 
 pub(crate) use data::GFX_FILES_META;
+use epaint::Rgba;
 use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
 
 use crate::{

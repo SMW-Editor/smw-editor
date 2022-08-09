@@ -1,6 +1,6 @@
 use std::{borrow::Cow, rc::Rc};
-use eframe::epaint::Rgba;
 
+use eframe::epaint::Rgba;
 use glium::{
     backend::Facade,
     texture::{ClientFormat, RawImage2d},

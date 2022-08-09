@@ -1,15 +1,13 @@
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::fmt::Write;
-use std::ops::Deref;
+use std::{cell::RefCell, collections::BTreeMap, fmt::Write, ops::Deref};
 
 use eframe::egui::{Color32, Layout, RichText, SidePanel, TextEdit, Ui, Window};
 use egui_extras::{Size, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
-use smwe_rom::disassembler::binary_block::BinaryBlock;
-use smwe_rom::disassembler::instruction::Instruction;
-use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
+use smwe_rom::{
+    disassembler::{binary_block::BinaryBlock, instruction::Instruction},
+    snes_utils::addr::{Addr, AddrPc, AddrSnes},
+};
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
 
@@ -128,26 +126,52 @@ impl UiDisassembler {
         let mut current_address = curr_pc_addr_scroll;
 
         let row_height = tweak!(15.0);
-        let col_width = tweak!(170.0);
+        let header_height = tweak!(30.0);
         let total_rows = {
             let spacing = ui.spacing().item_spacing;
-            (ui.available_height() / (row_height + spacing.y)) as _
+            ((ui.available_height() - header_height) / (row_height + spacing.y)) as _
         };
 
         TableBuilder::new(ui)
             .striped(true)
-            .columns(Size::initial(col_width).at_least(col_width), 3)
+            .column(Size::exact(tweak!(90.0)))
+            .column(Size::exact(tweak!(170.0)))
+            .column(Size::exact(tweak!(250.0)))
+            .column(Size::exact(tweak!(50.0)))
+            .column(Size::exact(tweak!(70.0)))
             .cell_layout(Layout::left_to_right())
+            .header(header_height, |mut th| {
+                th.col(|ui| {
+                    ui.heading("Label");
+                });
+                th.col(|ui| {
+                    ui.heading("Bytes");
+                });
+                th.col(|ui| {
+                    ui.heading("Code");
+                });
+                th.col(|ui| {
+                    ui.heading("A Size");
+                });
+                th.col(|ui| {
+                    ui.heading("X&Y Size");
+                });
+            })
             .body(|mut tb| {
                 let mut lines_drawn_so_far = 0;
-                'draw_lines: for (chunk_idx, (chunk_pc, chunk)) in disasm.chunks.iter().enumerate().skip(first_block_idx) {
+                'draw_lines: for (chunk_idx, (chunk_pc, chunk)) in
+                    disasm.chunks.iter().enumerate().skip(first_block_idx)
+                {
                     if lines_drawn_so_far >= total_rows {
                         break 'draw_lines;
                     }
 
                     let chunk_pc = *chunk_pc;
-                    let next_chunk_pc =
-                        disasm.chunks.get(chunk_idx + 1).map(|c| c.0).unwrap_or_else(|| AddrPc::from(disasm.rom_bytes().len()));
+                    let next_chunk_pc = disasm
+                        .chunks
+                        .get(chunk_idx + 1)
+                        .map(|c| c.0)
+                        .unwrap_or_else(|| AddrPc::from(disasm.rom_bytes().len()));
                     let chunk_bytes = &disasm.rom_bytes()[chunk_pc.0..next_chunk_pc.0];
 
                     match chunk {
@@ -160,20 +184,34 @@ impl UiDisassembler {
                                 let line_addr_str = {
                                     let pc = AddrPc(chunk_pc.0 + line_number * stride);
                                     let snes = AddrSnes::try_from_lorom(pc).unwrap();
-                                    format!("${:06X}", snes.0)
+                                    format!("DATA_{:06X}:", snes.0)
                                 };
 
                                 let (bytes_str, num_bytes) = write_hex(&mut byte_line);
                                 current_address += num_bytes;
+
+                                let data_str = {
+                                    let mut s = String::with_capacity(40);
+                                    write!(s, ".db ").unwrap();
+                                    for byte in bytes_str.split(' ').filter(|s| !s.is_empty()) {
+                                        write!(s, "${},", byte).unwrap();
+                                    }
+                                    s.pop().unwrap();
+                                    s
+                                };
 
                                 tb.row(row_height, |mut tr| {
                                     tr.col(|ui| {
                                         ui.monospace(RichText::new(line_addr_str).color(COLOR_ADDRESS));
                                     });
                                     tr.col(|ui| {
-                                        ui.monospace(RichText::new(bytes_str.deref()).color(COLOR_DATA));
+                                        ui.monospace(RichText::new(bytes_str.deref()).color(COLOR_CODE_HEX));
                                     });
-                                    tr.col(|ui| {});
+                                    tr.col(|ui| {
+                                        ui.monospace(RichText::new(data_str).color(COLOR_DATA));
+                                    });
+                                    tr.col(|_ui| {});
+                                    tr.col(|_ui| {});
                                 });
 
                                 lines_drawn_so_far += 1;
@@ -188,10 +226,15 @@ impl UiDisassembler {
                             for ins in code.instructions.iter().copied().skip(first_instruction) {
                                 let Instruction { offset: addr, x_flag, m_flag, .. } = ins;
 
-                                let line_addr_str = format!("${:06X}", AddrSnes::try_from_lorom(addr).unwrap().0);
+                                let line_addr_str = format!("CODE_{:06X}:", AddrSnes::try_from_lorom(addr).unwrap().0);
 
                                 let (code_bytes_str, num_bytes) = {
-                                    let mut b_it = disasm.rom_bytes().iter().copied().skip(addr.0).take(ins.opcode.instruction_size());
+                                    let mut b_it = disasm
+                                        .rom_bytes()
+                                        .iter()
+                                        .copied()
+                                        .skip(addr.0)
+                                        .take(ins.opcode.instruction_size());
                                     write_hex(&mut b_it)
                                 };
                                 current_address += num_bytes;
@@ -206,7 +249,17 @@ impl UiDisassembler {
                                         ui.monospace(RichText::new(code_bytes_str.deref()).color(COLOR_CODE_HEX));
                                     });
                                     tr.col(|ui| {
-                                        ui.monospace(RichText::new(code_str.deref()).color(COLOR_CODE));
+                                        ui.monospace(RichText::new(code_str).color(COLOR_CODE));
+                                    });
+                                    tr.col(|ui| {
+                                        ui.monospace(
+                                            RichText::new(format!("{}", 8 * (m_flag as u32 + 1))).color(COLOR_CODE),
+                                        );
+                                    });
+                                    tr.col(|ui| {
+                                        ui.monospace(
+                                            RichText::new(format!("{}", 8 * (x_flag as u32 + 1))).color(COLOR_CODE),
+                                        );
                                     });
                                 });
 
