@@ -1,4 +1,14 @@
-use eframe::egui::{Color32, ColorImage, ComboBox, DragValue, TextureFilter, TextureHandle, TopBottomPanel, Ui, Window};
+use eframe::egui::{
+    Color32,
+    ColorImage,
+    ComboBox,
+    DragValue,
+    TextureFilter,
+    TextureHandle,
+    TopBottomPanel,
+    Ui,
+    Window,
+};
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 
@@ -91,11 +101,14 @@ impl UiPaletteViewer {
         };
 
         ui.horizontal(|ui| {
-            if ui.add({
-                DragValue::new(&mut self.level_num)
-                    .clamp_range(0..=level_count - 1)
-                    .custom_formatter(|n, _| format!("{:03X}", n as i64))
-            }).changed() {
+            if ui
+                .add({
+                    DragValue::new(&mut self.level_num)
+                        .clamp_range(0..=level_count - 1)
+                        .custom_formatter(|n, _| format!("{:03X}", n as i64))
+                })
+                .changed()
+            {
                 log::info!("Showing color palette for level {:X}", self.level_num);
                 self.update_palette_image(ui, ctx);
             }
@@ -118,11 +131,14 @@ impl UiPaletteViewer {
         };
 
         ui.horizontal(|ui| {
-            if ui.add({
-                DragValue::new(&mut self.submap_num)
-                    .clamp_range(0..=submap_count - 1)
-                    .custom_formatter(|n, _| format!("{:X}", n as i64))
-            }).changed() {
+            if ui
+                .add({
+                    DragValue::new(&mut self.submap_num)
+                        .clamp_range(0..=submap_count - 1)
+                        .custom_formatter(|n, _| format!("{:X}", n as i64))
+                })
+                .changed()
+            {
                 log::info!("Showing color palette for submap {:X}", self.submap_num);
                 self.update_palette_image(ui, ctx);
             }

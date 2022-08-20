@@ -95,7 +95,7 @@ impl UiMainWindow {
                         }
                     }
                     if ui.button("Exit").clicked() {
-                        frame.quit();
+                        frame.close();
                     }
                 });
 
