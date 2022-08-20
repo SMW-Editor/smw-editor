@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, fmt::Write, ops::Deref};
 
-use eframe::egui::{Color32, Layout, RichText, SidePanel, TextEdit, Ui, Window};
+use eframe::egui::{Align, Color32, DragValue, Layout, RichText, SidePanel, TextEdit, Ui, Window};
 use egui_extras::{Size, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
@@ -55,44 +55,15 @@ impl UiDisassembler {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disasm = &project.rom_data.disassembly;
 
-        // TODO: enable the following with the next version of egui
-        // ui.add(egui::DragValue::new(&mut self.current_address_scroll)
-        //     .clamp_range({
-        //         let min = AddrSnes::MIN;
-        //         let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap();
-        //         min.0 ..= max.0 - 1
-        //     })
-        //     .prefix("$")
-        //     .custom_formatter(|n, _| format!("{:06X}", n as i64)));
-        // ui.label("Address");
-
-        // TODO: delete the following after the above gets enabled
+        ui.add(DragValue::new(&mut self.current_address_scroll)
+            .clamp_range({
+                let min = AddrSnes::MIN;
+                let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap();
+                min.0 ..= max.0 - 1
+            })
+            .prefix("$")
+            .custom_formatter(|n, _| format!("{:06X}", n as i64)));
         ui.label("Address");
-        ui.horizontal(|ui| {
-            let mut addr_buf = format!("{:06X}", self.current_address_scroll);
-            let mut addr_changed = false;
-            if ui.add(TextEdit::singleline(&mut addr_buf).desired_width(50.0)).changed() {
-                addr_buf.retain(|c| "0123456789abcdef".contains(c.to_ascii_lowercase()));
-                self.current_address_scroll = u32::from_str_radix(&addr_buf, 16).unwrap();
-                addr_changed = true;
-            }
-            if ui.button("+").clicked() {
-                self.current_address_scroll += 4;
-                addr_changed = true;
-            }
-            if ui.button("-").clicked() {
-                self.current_address_scroll -= 4;
-                addr_changed = true;
-            }
-
-            if addr_changed {
-                self.current_address_scroll = self.current_address_scroll.clamp(
-                    AddrSnes::MIN.0 as u32,
-                    AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap().0 as u32,
-                );
-                log::info!("Changed address to: ${:06X}", self.current_address_scroll);
-            }
-        });
 
         ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
     }
@@ -134,12 +105,12 @@ impl UiDisassembler {
 
         TableBuilder::new(ui)
             .striped(true)
+            .cell_layout(Layout::left_to_right(Align::Min))
             .column(Size::exact(tweak!(90.0)))
             .column(Size::exact(tweak!(170.0)))
             .column(Size::exact(tweak!(250.0)))
             .column(Size::exact(tweak!(50.0)))
             .column(Size::exact(tweak!(70.0)))
-            .cell_layout(Layout::left_to_right())
             .header(header_height, |mut th| {
                 th.col(|ui| {
                     ui.heading("Label");

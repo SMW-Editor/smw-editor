@@ -52,7 +52,7 @@ impl From<Abgr1555> for Rgba {
     fn from(color: Abgr1555) -> Self {
         let cmf = SNES_BGR_CHANNEL_MAX as f32;
         let Abgr1555(color) = color;
-        Rgba::from_rgba_premultiplied(
+        Rgba::from_rgba_unmultiplied(
             ((color >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
             ((color >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
             ((color >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,

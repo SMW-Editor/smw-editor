@@ -1,5 +1,5 @@
 use constants::*;
-use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, Ui, Window};
+use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureFilter, TextureHandle, Ui, Window};
 use smwe_rom::graphics::palette::ColorPalette;
 
 use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
@@ -96,8 +96,7 @@ impl UiGfxViewer {
                         changed_any |= ui
                             .add({
                                 DragValue::new(var)
-                                    // TODO: enable the following with next version of egui
-                                    // .custom_formatter(|n, _| format!("{:02X}", n as i64))
+                                    .custom_formatter(|n, _| format!("{:02X}", n as i64))
                                     .clamp_range(0..=max - 1)
                             })
                             .changed();
@@ -159,7 +158,7 @@ impl UiGfxViewer {
                 new_image[(x, y)] = Color32::from(color);
             }
         }
-        self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image));
+        self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image, TextureFilter::Nearest));
 
         log::info!("Successfully created a GFX file image (w = {img_w}, h = {img_h}).");
     }
