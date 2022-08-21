@@ -90,25 +90,25 @@ impl UiGfxViewer {
             let sp_pals_count = rom.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
             let pl_pals_count = rom.color_palettes.players.len() as i32 / 10;
 
+            let inputs = [
+                ("GFX file number", &mut self.curr_gfx_file_num, level_count),
+                ("Palette row index", &mut self.curr_palette_row_idx, palette_row_count),
+                ("Background palette index", &mut self.curr_bg_palette_num, bg_pals_count),
+                ("Foreground palette index", &mut self.curr_fg_palette_num, fg_pals_count),
+                ("Sprite palette index", &mut self.curr_sp_palette_num, sp_pals_count),
+                ("Player palette index", &mut self.curr_pl_palette_num, pl_pals_count),
+            ];
+
             ui.vertical(|ui| {
-                let mut input_int = |label, var, max| {
+                for (label, var, max) in inputs {
                     ui.horizontal(|ui| {
-                        changed_any |= ui
-                            .add({
-                                DragValue::new(var)
-                                    .custom_formatter(|n, _| format!("{:02X}", n as i64))
-                                    .clamp_range(0..=max - 1)
-                            })
-                            .changed();
+                        let dv = DragValue::new(var)
+                            .custom_formatter(|n, _| format!("{:02X}", n as i64))
+                            .clamp_range(0..=max - 1);
+                        changed_any |= ui.add(dv).changed();
                         ui.label(label);
-                    })
-                };
-                input_int("GFX file number", &mut self.curr_gfx_file_num, level_count);
-                input_int("Palette row index", &mut self.curr_palette_row_idx, palette_row_count);
-                input_int("Background palette index", &mut self.curr_bg_palette_num, bg_pals_count);
-                input_int("Foreground palette index", &mut self.curr_fg_palette_num, fg_pals_count);
-                input_int("Sprite palette index", &mut self.curr_sp_palette_num, sp_pals_count);
-                input_int("Player palette index", &mut self.curr_pl_palette_num, pl_pals_count);
+                    });
+                }
                 ui.label(format!("{} x {} px", self.curr_image_size.0, self.curr_image_size.1));
             });
         }
