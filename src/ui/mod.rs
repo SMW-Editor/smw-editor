@@ -81,8 +81,11 @@ impl UiMainWindow {
                 ui.menu_button("File", |ui| {
                     if ui.button("New project").clicked() {
                         self.open_tool(UiProjectCreator::default());
+                        ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Save ROM dump")).clicked() {
+                        ui.close_menu();
+
                         use nfd2::Response;
                         if let Response::Okay(path) =
                             nfd2::open_save_dialog(Some("txt"), None) //
@@ -102,19 +105,24 @@ impl UiMainWindow {
                 ui.menu_button("Tools", |ui| {
                     if ui.button("Address converter").clicked() {
                         self.open_tool(UiAddressConverter::default());
+                        ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Internal ROM Header")).clicked() {
                         let rom_info = UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
                         self.open_tool(rom_info);
+                        ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Color palettes")).clicked() {
                         self.open_tool(UiPaletteViewer::default());
+                        ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("GFX files")).clicked() {
                         self.open_tool(UiGfxViewer::default());
+                        ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
                         self.open_tool(UiDisassembler::default());
+                        ui.close_menu();
                     }
                 });
             });
