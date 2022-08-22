@@ -65,17 +65,19 @@ impl UiDisassembler {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disasm = &project.rom_data.disassembly;
 
-        ui.add(
-            DragValue::new(&mut self.current_address_scroll)
-                .clamp_range({
-                    let min = AddrSnes::MIN;
-                    let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap();
-                    min.0..=max.0 - 1
-                })
-                .prefix("$")
-                .custom_formatter(|n, _| format!("{:06X}", n as i64)),
-        );
-        ui.label("Address");
+        ui.horizontal(|ui| {
+            ui.add(
+                DragValue::new(&mut self.current_address_scroll)
+                    .clamp_range({
+                        let min = AddrSnes::MIN;
+                        let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap();
+                        min.0..=max.0 - 1
+                    })
+                    .prefix("$")
+                    .custom_formatter(|n, _| format!("{:06X}", n as i64)),
+            );
+            ui.label("Address");
+        });
 
         // ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
     }
