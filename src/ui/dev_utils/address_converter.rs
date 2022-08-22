@@ -91,7 +91,7 @@ impl UiAddressConverter {
             };
 
             if ui.add(TextEdit::singleline(buf).desired_width(50.0)).changed() {
-                buf.retain(|c| "0123456789abcdef".contains(c));
+                buf.retain(|c| c.is_ascii_hexdigit());
                 log::info!("Changed input '{}' to: {}", direction, buf);
                 self.update_addresses(direction);
             }
