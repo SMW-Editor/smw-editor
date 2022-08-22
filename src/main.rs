@@ -1,16 +1,12 @@
-mod backend;
 mod frame_context;
 mod ui;
-mod ui_new;
 
 use std::{cell::RefCell, env, sync::Arc};
 
 use smwe_project::{Project, ProjectRef};
 use smwe_rom::SmwRom;
 
-use crate::ui_new::UiMainWindow;
-
-// use crate::{backend::Backend, ui::UiMainWindow};
+use crate::ui::UiMainWindow;
 
 fn main() {
     log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize log4rs");
@@ -33,10 +29,6 @@ fn main() {
             None
         }
     };
-
-    // let backend = Backend::new(800, 600, "NSMWE v0.1.0");
-    // let mut main_window = UiMainWindow::new();
-    // backend.run(move |ctx| main_window.tick(ctx), project);
 
     let options = eframe::NativeOptions::default();
     eframe::run_native("SMW Editor v0.1.0", options, Box::new(|_| Box::new(UiMainWindow::new(project))));

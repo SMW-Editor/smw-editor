@@ -1,20 +1,21 @@
 use std::fmt::Write;
 
-use imgui::{Ui, Window};
+use eframe::egui::{TextEdit, Ui, Window};
 use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
 
-use self::{helpers::*, modes::*};
 use crate::{
     frame_context::FrameContext,
     ui::{
         color,
-        tool::{title_with_id, UiTool, WindowId},
+        dev_utils::address_converter::{
+            helpers::adjust_to_header,
+            modes::{ConvDir, ConversionMode},
+        },
+        tool::UiTool,
     },
 };
 
 pub struct UiAddressConverter {
-    title: String,
-
     conversion_mode: ConversionMode,
     include_header:  bool,
 
@@ -23,22 +24,30 @@ pub struct UiAddressConverter {
     text_error: String,
 }
 
+impl Default for UiAddressConverter {
+    fn default() -> Self {
+        log::info!("Opened Address Converter");
+        UiAddressConverter {
+            conversion_mode: ConversionMode::LoRom,
+            include_header:  false,
+            text_pc:         String::from("0"),
+            text_snes:       String::from("8000"),
+            text_error:      String::new(),
+        }
+    }
+}
+
 impl UiTool for UiAddressConverter {
-    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        let title = std::mem::take(&mut self.title);
-        Window::new(&title)
-            .always_auto_resize(true)
-            .resizable(false)
-            .collapsible(false)
-            .scroll_bar(false)
-            .opened(&mut running)
-            .build(ctx.ui, || {
-                self.mode_selection(ctx.ui);
-                self.conversions(ctx.ui);
+        Window::new("Address converter") //
+            .auto_sized()
+            .open(&mut running)
+            .show(ui.ctx(), |ui| {
+                self.mode_selection(ui);
+                self.conversions(ui);
             });
-        self.title = title;
 
         if !running {
             log::info!("Closed Address Converter");
@@ -48,54 +57,46 @@ impl UiTool for UiAddressConverter {
 }
 
 impl UiAddressConverter {
-    pub fn new(id: WindowId) -> Self {
-        log::info!("Opened Address Converter");
-        UiAddressConverter {
-            title:           title_with_id("Address converter", id),
-            conversion_mode: ConversionMode::LoRom,
-            include_header:  false,
-            text_pc:         String::from("0"),
-            text_snes:       String::from("8000"),
-            text_error:      String::new(),
-        }
-    }
-
-    fn mode_selection(&mut self, ui: &Ui) {
-        let lorom_changed = ui.radio_button("PC and LoROM", &mut self.conversion_mode, ConversionMode::LoRom);
-        let hirom_changed = ui.radio_button("PC and HiROM", &mut self.conversion_mode, ConversionMode::HiRom);
+    fn mode_selection(&mut self, ui: &mut Ui) {
+        let lorom_changed = ui.radio_value(&mut self.conversion_mode, ConversionMode::LoRom, "PC and LoROM").clicked();
+        let hirom_changed = ui.radio_value(&mut self.conversion_mode, ConversionMode::HiRom, "PC and HiROM").clicked();
         if lorom_changed || hirom_changed {
             log::info!("Conversion mode changed to {}", self.conversion_mode);
             self.update_addresses(ConvDir::PcToSnes);
         }
 
-        if ui.checkbox("Include header", &mut self.include_header) {
+        if ui.checkbox(&mut self.include_header, "Include header").clicked() {
             log::info!("Inclusion of SMC header: {}", if self.include_header { "ON" } else { "OFF" });
             let addr_pc = usize::from_str_radix(&self.text_pc, 16).unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
             self.text_pc.clear();
-            write!(&mut self.text_pc, "{:x}", addr_pc).unwrap();
+            write!(&mut self.text_pc, "{addr_pc:x}").unwrap();
             self.update_addresses(ConvDir::PcToSnes);
         }
     }
 
-    fn conversions(&mut self, ui: &Ui) {
+    fn conversions(&mut self, ui: &mut Ui) {
         self.address_input(ui, ConvDir::PcToSnes);
         self.address_input(ui, ConvDir::SnesToPc);
         if !self.text_error.is_empty() {
-            ui.text_colored(color::TEXT_ERROR, &self.text_error);
+            ui.colored_label(color::TEXT_ERROR, &self.text_error);
         }
     }
 
-    fn address_input(&mut self, ui: &Ui, direction: ConvDir) {
-        let (label, buf) = match direction {
-            ConvDir::PcToSnes => ("PC", &mut self.text_pc),
-            ConvDir::SnesToPc => ("SNES", &mut self.text_snes),
-        };
+    fn address_input(&mut self, ui: &mut Ui, direction: ConvDir) {
+        ui.horizontal(|ui| {
+            let (label, buf) = match direction {
+                ConvDir::PcToSnes => ("PC", &mut self.text_pc),
+                ConvDir::SnesToPc => ("SNES", &mut self.text_snes),
+            };
 
-        if ui.input_text(label, buf).chars_hexadecimal(true).chars_noblank(true).auto_select_all(true).build() {
-            log::info!("Changed input '{}' to: {}", direction, buf);
-            self.update_addresses(direction);
-        }
+            if ui.add(TextEdit::singleline(buf).desired_width(50.0)).changed() {
+                buf.retain(|c| "0123456789abcdef".contains(c));
+                log::info!("Changed input '{}' to: {}", direction, buf);
+                self.update_addresses(direction);
+            }
+            ui.label(label);
+        });
     }
 
     fn update_addresses(&mut self, direction: ConvDir) {
@@ -139,13 +140,14 @@ impl UiAddressConverter {
             }
         };
 
-        if let Err(msg) = addr_dst {
-            self.text_error = msg.to_string();
-        } else {
-            let addr_dst = addr_dst.unwrap();
-            buf_dst.clear();
-            write!(buf_dst, "{:x}", addr_dst).unwrap();
-            self.text_error.clear();
+        match addr_dst {
+            Ok(_) => {
+                let addr_dst = addr_dst.unwrap();
+                buf_dst.clear();
+                write!(buf_dst, "{addr_dst:x}").unwrap();
+                self.text_error.clear();
+            }
+            Err(msg) => self.text_error = msg.to_string(),
         }
     }
 }

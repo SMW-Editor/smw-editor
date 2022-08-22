@@ -1,31 +1,36 @@
-use imgui::Window;
+use eframe::egui::{RichText, Ui, Window};
+use egui_extras::{Size, TableBuilder};
 use smwe_rom::RomInternalHeader;
 
-use crate::{
-    frame_context::FrameContext,
-    ui::{title_with_id, UiTool, WindowId},
-};
+use crate::{frame_context::FrameContext, ui::tool::UiTool};
 
 pub struct UiRomInfo {
-    title:        String,
-    display_data: Vec<String>,
+    display_data: Vec<(String, String)>,
 }
 
 impl UiTool for UiRomInfo {
-    fn tick(&mut self, ctx: &mut FrameContext) -> bool {
+    fn update(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        let title = std::mem::take(&mut self.title);
-        Window::new(&title)
-            .always_auto_resize(true)
-            .resizable(false)
-            .collapsible(false)
-            .scroll_bar(false)
-            .opened(&mut running)
-            .build(ctx.ui, || {
-                self.display_data.iter().for_each(|t| ctx.ui.text(t));
+        Window::new("Internal ROM Header") //
+            .auto_sized()
+            .open(&mut running)
+            .show(ui.ctx(), |ui| {
+                TableBuilder::new(ui) //
+                    .striped(true)
+                    .columns(Size::exact(130.0), 2)
+                    .body(|body| {
+                        body.rows(15.0, self.display_data.len(), |i, mut row| {
+                            let (name, data) = &self.display_data[i];
+                            row.col(|ui| {
+                                ui.label(name);
+                            });
+                            row.col(|ui| {
+                                ui.label(RichText::new(data).monospace());
+                            });
+                        });
+                    });
             });
-        self.title = title;
 
         if !running {
             log::info!("Closed ROM Info");
@@ -35,19 +40,18 @@ impl UiTool for UiRomInfo {
 }
 
 impl UiRomInfo {
-    pub fn new(id: WindowId, header: &RomInternalHeader) -> Self {
+    pub fn new(header: &RomInternalHeader) -> Self {
         log::info!("Opened ROM Info");
         Self {
-            title:        title_with_id("ROM info", id),
             display_data: vec![
-                format!("Internal ROM name: {}", header.internal_rom_name),
-                format!("Map mode:          {}", header.map_mode),
-                format!("ROM type:          {}", header.rom_type),
-                format!("ROM size:          {} kB", header.rom_size_in_kb()),
-                format!("SRAM size:         {} kB", header.sram_size_in_kb()),
-                format!("Region:            {}", header.region_code),
-                format!("Developer ID:      ${:x}", header.developer_id),
-                format!("Version:           1.{}", header.version_number),
+                (String::from("Internal ROM name:"), header.internal_rom_name.clone()),
+                (String::from("Map mode:"), format!("{}", header.map_mode)),
+                (String::from("ROM type:"), format!("{}", header.rom_type)),
+                (String::from("ROM size:"), format!("{} kB", header.rom_size_in_kb())),
+                (String::from("SRAM size:"), format!("{} kB", header.sram_size_in_kb())),
+                (String::from("Region:"), format!("{}", header.region_code)),
+                (String::from("Developer ID:"), format!("0x{:x}", header.developer_id)),
+                (String::from("Version:"), format!("1.{}", header.version_number)),
             ],
         }
     }
