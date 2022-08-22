@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, fmt::Write, ops::Deref};
 
-use eframe::egui::{Align, Color32, DragValue, Layout, RichText, SidePanel, Ui, Window};
+use eframe::egui::{Align, Color32, DragValue, Layout, Pos2, Rect, RichText, SidePanel, Stroke, Ui, Window};
 use egui_extras::{Size, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
@@ -14,7 +14,14 @@ use crate::{frame_context::EFrameContext, ui_new::tool::UiTool};
 pub struct UiDisassembler {
     current_address_scroll: u32,
     address_y_map:          BTreeMap<AddrSnes, f32>,
-    opt_draw_debug_info:    bool,
+    // opt_draw_debug_info:    bool,
+    branch_arrows:          Vec<BranchArrow>,
+}
+
+#[derive(Clone, Default)]
+struct BranchArrow {
+    source: AddrSnes,
+    target: AddrSnes,
 }
 
 impl Default for UiDisassembler {
@@ -23,7 +30,8 @@ impl Default for UiDisassembler {
         Self {
             current_address_scroll: AddrSnes::MIN.0 as u32,
             address_y_map:          BTreeMap::new(),
-            opt_draw_debug_info:    false,
+            // opt_draw_debug_info:    false,
+            branch_arrows:          Vec::with_capacity(30),
         }
     }
 }
@@ -40,7 +48,9 @@ impl UiTool for UiDisassembler {
             .resizable(true)
             .show(ui.ctx(), |ui| {
                 SidePanel::left("disasm_switches_panel").show_inside(ui, |ui| self.switches(ui, ctx));
-                self.display_code(ui, ctx);
+                let avail_area = ui.available_rect_before_wrap();
+                self.code(ui, ctx);
+                self.branch_arrows(ui, ctx, avail_area);
             });
 
         if !running {
@@ -67,17 +77,19 @@ impl UiDisassembler {
         );
         ui.label("Address");
 
-        ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
+        // ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
     }
 
-    fn display_code(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
+    fn code(&mut self, ui: &mut Ui, ctx: &mut EFrameContext) {
         const COLOR_ADDRESS: Color32 = Color32::from_rgba_premultiplied(0xaa, 0xaa, 0xaa, 0xff);
         const COLOR_DATA: Color32 = Color32::from_rgba_premultiplied(0xdd, 0xdd, 0xee, 0xff);
         const COLOR_CODE: Color32 = Color32::from_rgba_premultiplied(0xee, 0xdd, 0xdd, 0xff);
-        const COLOR_BRANCH_TARGET: Color32 = Color32::from_rgba_premultiplied(0xbb, 0xaa, 0xaa, 0xff);
+        // const COLOR_BRANCH_TARGET: Color32 = Color32::from_rgba_premultiplied(0xbb, 0xaa, 0xaa, 0xff);
         const COLOR_CODE_HEX: Color32 = Color32::from_rgba_premultiplied(0xdd, 0xcc, 0xcc, 0xff);
-        const COLOR_DEBUG_NOTE: Color32 = Color32::from_rgba_premultiplied(0xee, 0xee, 0x55, 0xff);
+        // const COLOR_DEBUG_NOTE: Color32 = Color32::from_rgba_premultiplied(0xee, 0xee, 0x55, 0xff);
 
+        self.address_y_map.clear();
+        
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disasm = &project.rom_data.disassembly;
 
@@ -98,12 +110,12 @@ impl UiDisassembler {
         let first_block_idx = disasm.chunks.partition_point(|(a, _)| a.0 < curr_pc_addr_scroll).max(1) - 1;
         let mut current_address = curr_pc_addr_scroll;
 
-        let row_height = tweak!(15.0);
+        let row_height = tweak!(17.0);
         let header_height = tweak!(30.0);
-        let total_rows = {
-            let spacing = ui.spacing().item_spacing;
-            ((ui.available_height() - header_height) / (row_height + spacing.y)) as _
-        };
+        let spacing = ui.spacing().item_spacing;
+        let total_rows = ((ui.available_height() - header_height) / (row_height + spacing.y)) as _;
+
+        let mut curr_y = ui.cursor().top() + header_height + (0.5 * row_height + spacing.y);
 
         TableBuilder::new(ui)
             .striped(true)
@@ -157,6 +169,7 @@ impl UiDisassembler {
                                 let line_addr_str = {
                                     let pc = AddrPc(chunk_pc.0 + line_number * stride);
                                     let snes = AddrSnes::try_from_lorom(pc).unwrap();
+                                    self.address_y_map.insert(snes, curr_y);
                                     format!("DATA_{:06X}:", snes.0)
                                 };
 
@@ -187,6 +200,7 @@ impl UiDisassembler {
                                     tr.col(|_ui| {});
                                 });
 
+                                curr_y += row_height + spacing.y;
                                 lines_drawn_so_far += 1;
                                 if lines_drawn_so_far >= total_rows {
                                     break 'draw_lines;
@@ -199,7 +213,11 @@ impl UiDisassembler {
                             for ins in code.instructions.iter().copied().skip(first_instruction) {
                                 let Instruction { offset: addr, x_flag, m_flag, .. } = ins;
 
-                                let line_addr_str = format!("CODE_{:06X}:", AddrSnes::try_from_lorom(addr).unwrap().0);
+                                let line_addr_str = {
+                                    let snes = AddrSnes::try_from_lorom(addr).unwrap();
+                                    self.address_y_map.insert(snes, curr_y);
+                                    format!("CODE_{:06X}:", snes.0)
+                                };
 
                                 let (code_bytes_str, num_bytes) = {
                                     let mut b_it = disasm
@@ -236,6 +254,14 @@ impl UiDisassembler {
                                     });
                                 });
 
+                                if ins.is_branch_or_jump() {
+                                    let source = addr.try_into().unwrap();
+                                    for &target in code.exits.iter() {
+                                        self.branch_arrows.push(BranchArrow { source, target });
+                                    }
+                                }
+
+                                curr_y += row_height + spacing.y;
                                 lines_drawn_so_far += 1;
                                 if lines_drawn_so_far >= total_rows {
                                     break 'draw_lines;
@@ -246,5 +272,69 @@ impl UiDisassembler {
                     current_address = next_chunk_pc.0;
                 }
             });
+    }
+
+    fn branch_arrows(&mut self, ui: &mut Ui, _ctx: &mut EFrameContext, avail_area: Rect) {
+        const ARROW_SZ: f32 = 4.0f32;
+        const ARROW_SEP: f32 = 3.0f32;
+
+        let first_visible_addr = self.address_y_map.iter().next().map(|(&e, _)| e).unwrap_or_default();
+        let branch_colors: [Color32; 6] = [
+            Color32::from_rgba_premultiplied(0xaa, 0xaa, 0xee, 0xff),
+            Color32::from_rgba_premultiplied(0xaa, 0xee, 0xaa, 0xff),
+            Color32::from_rgba_premultiplied(0xee, 0xaa, 0xaa, 0xff),
+            Color32::from_rgba_premultiplied(0xee, 0xee, 0xaa, 0xff),
+            Color32::from_rgba_premultiplied(0xee, 0xaa, 0xee, 0xff),
+            Color32::from_rgba_premultiplied(0xaa, 0xee, 0xee, 0xff),
+        ];
+        let mut branch_color_it = branch_colors.iter().copied().cycle();
+        let mut arrx = avail_area.left() - ARROW_SZ;
+        let mut arrows_at_addr: BTreeMap<AddrSnes, i32> = BTreeMap::new();
+
+        for arrow in self.branch_arrows.iter() {
+            arrx = (arrx - ARROW_SEP).max(ARROW_SZ);
+            let start_arrows = arrows_at_addr.entry(arrow.source).or_insert(0);
+            let arrow_ystart = self.address_y_map.get(&arrow.source).copied().unwrap() + (*start_arrows as f32);
+            *start_arrows += 1;
+            let end_arrows = arrows_at_addr.entry(arrow.target).or_insert(0);
+            let target_y = self.address_y_map.get(&arrow.target).copied().map(|v| v + (*end_arrows as f32));
+            *end_arrows += 1;
+            let arrow_yend =
+                target_y.unwrap_or(if arrow.target < first_visible_addr { 0.0f32 } else { avail_area.bottom() });
+            let color = branch_color_it.next().unwrap();
+            let stroke = Stroke::new(1.0, color);
+            ui.painter().line_segment([
+                Pos2::new(arrx, arrow_ystart),
+                Pos2::new(avail_area.left(), arrow_ystart),
+            ], stroke);
+            ui.painter().line_segment([
+                Pos2::new(arrx, arrow_ystart),
+                Pos2::new(arrx, arrow_yend),
+            ], stroke);
+
+            if target_y.is_some() {
+                let xoff = avail_area.left() - (*end_arrows - 1) as f32 * ARROW_SEP;
+
+                // - insn
+                ui.painter().line_segment([
+                    Pos2::new(arrx, arrow_yend),
+                    Pos2::new(avail_area.left(), arrow_yend),
+                ], stroke);
+
+                // \ insn
+                ui.painter().line_segment([
+                    Pos2::new(xoff - ARROW_SZ, arrow_yend - ARROW_SZ),
+                    Pos2::new(xoff, arrow_yend),
+                ], stroke);
+
+                // / insn
+                ui.painter().line_segment([
+                    Pos2::new(xoff - ARROW_SZ, arrow_yend + ARROW_SZ),
+                    Pos2::new(xoff, arrow_yend),
+                ], stroke);
+            }
+        }
+
+        self.branch_arrows.clear();
     }
 }
