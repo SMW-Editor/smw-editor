@@ -9,8 +9,8 @@ and none of the main features are there yet.
 
 ## Currently in progress
 
-Porting the GUI from imgui-rs to egui.
-You can track the progress in the [egui branch](https://github.com/SMW-Editor/smw-editor/tree/egui).
+Moving to the approach of getting data from disassembly rather than directly from the ROM.
+You can track the progress in the `data-from-disasm` branch.
 
 The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
