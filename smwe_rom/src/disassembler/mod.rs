@@ -14,7 +14,6 @@ use std::{
     fmt::{Debug, Formatter, Write},
     ops::Deref,
     rc::Rc,
-    sync::Arc,
 };
 
 use itertools::Itertools;
@@ -39,16 +38,16 @@ use crate::{
 
 // -------------------------------------------------------------------------------------------------
 
-pub struct RomDisassembly {
-    rom_bytes:  Arc<[u8]>,
+pub struct RomDisassembly<'r> {
+    pub rom:    Rom,
     /// Start index, Block data
-    pub chunks: Vec<(AddrPc, BinaryBlock)>,
+    pub chunks: Vec<(AddrPc, BinaryBlock<'r>)>,
 }
 
 struct RomAssemblyWalker<'r> {
-    rom:        &'r Rom,
+    rom:        Rom,
     /// Start index, Block data
-    pub chunks: Vec<(AddrPc, BinaryBlock)>,
+    pub chunks: Vec<(AddrPc, BinaryBlock<'r>)>,
 
     // Algorithm state
     analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)>,
@@ -100,19 +99,19 @@ enum BlockFindResult {
 
 // -------------------------------------------------------------------------------------------------
 
-impl RomDisassembly {
-    pub fn new(rom: &Rom, rih: &RomInternalHeader) -> Self {
-        let mut walker = RomAssemblyWalker::new(rom, rih);
+impl<'r> RomDisassembly<'r> {
+    pub fn new(rom: Rom, rih: &RomInternalHeader) -> Self {
+        let mut walker = RomAssemblyWalker::new(rom.clone(), rih);
         walker.full_analysis().unwrap();
-        Self { rom_bytes: Arc::clone(&rom.0), chunks: walker.chunks }
+        Self { rom, chunks: walker.chunks }
     }
 
     pub fn rom_bytes(&self) -> &[u8] {
-        &self.rom_bytes
+        &self.rom.0
     }
 }
 
-impl Debug for RomDisassembly {
+impl<'r> Debug for RomDisassembly<'r> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
             writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
@@ -122,7 +121,7 @@ impl Debug for RomDisassembly {
                         writeln!(f, "# Exit: {}", exit)?;
                     }
                     for i in code.instructions.iter() {
-                        let ibytes = &self.rom_bytes[i.offset.0..][..i.opcode.instruction_size()];
+                        let ibytes = &self.rom.0[i.offset.0..][..i.opcode.instruction_size()];
                         write!(f, "${:6}   {:<20} # ", i.offset, i.display())?;
                         for &byte in ibytes {
                             write!(f, "{:02x} ", byte)?;
@@ -131,7 +130,6 @@ impl Debug for RomDisassembly {
                     }
                 }
                 BinaryBlock::Data(_data) => writeln!(f, "# Data")?,
-                BinaryBlock::Unused => writeln!(f, "# Unused")?,
                 BinaryBlock::Unknown => writeln!(f, "# Unknown")?,
                 BinaryBlock::EndOfRom => writeln!(f, "# End of ROM")?,
             }
@@ -141,7 +139,7 @@ impl Debug for RomDisassembly {
 }
 
 impl<'r> RomAssemblyWalker<'r> {
-    fn new(rom: &'r Rom, rih: &RomInternalHeader) -> Self {
+    fn new(rom: Rom, rih: &RomInternalHeader) -> Self {
         let remaining_steps = [AddrSnes::MIN, EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR]
             .iter()
             .chain(rih.interrupt_vectors.iter())
@@ -364,7 +362,7 @@ impl<'r> RomAssemblyWalker<'r> {
                 match JUMP_TABLES.iter().find(|t| t.begin == jump_table_addr) {
                     None => log::warn!("Could not find jump table at {jump_table_addr:?}"),
                     Some(&jtv) => {
-                        let addresses = get_jump_table_from_rom(self.rom, jtv).unwrap();
+                        let addresses = get_jump_table_from_rom(&self.rom, jtv).unwrap();
                         for addr in addresses.into_iter().filter(|a| a.absolute() != 0) {
                             if !NON_CODE_JUMP_ADDRESSES.contains(&addr) {
                                 next_instructions.push(addr);

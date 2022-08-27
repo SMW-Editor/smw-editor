@@ -163,7 +163,7 @@ impl UiDisassembler {
 
                     match chunk {
                         BinaryBlock::EndOfRom => break 'draw_lines,
-                        BinaryBlock::Unknown | BinaryBlock::Unused | BinaryBlock::Data(_) => {
+                        BinaryBlock::Unknown | BinaryBlock::Data(_) => {
                             let stride = 8;
                             let skip_lines = (current_address - chunk_pc.0) / stride;
                             let chunks = chunk_bytes.iter().copied().chunks(stride);

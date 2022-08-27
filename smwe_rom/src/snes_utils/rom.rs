@@ -50,6 +50,7 @@ pub trait IsDecompressed {
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Clone)]
 pub struct Rom(pub Arc<[u8]>);
 
 pub struct RomWithErrorMapper<'r, EM, ET>
@@ -69,10 +70,12 @@ where
     _phantom:     std::marker::PhantomData<&'r [u8]>,
 }
 
+#[derive(Clone)]
 pub struct SnesSliced<'r> {
     pc_sliced: PcSliced<'r>,
 }
 
+#[derive(Clone)]
 pub struct PcSliced<'r> {
     slice: PcSlice,
     rom:   &'r Rom,

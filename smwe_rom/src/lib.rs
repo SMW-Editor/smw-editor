@@ -28,8 +28,8 @@ use crate::{
     snes_utils::rom::Rom,
 };
 
-pub struct SmwRom {
-    pub disassembly:         RomDisassembly,
+pub struct SmwRom<'r> {
+    pub disassembly:         RomDisassembly<'r>,
     pub internal_header:     RomInternalHeader,
     pub levels:              Vec<Level>,
     pub secondary_entrances: Vec<SecondaryEntrance>,
@@ -38,7 +38,7 @@ pub struct SmwRom {
     pub map16_tilesets:      Tilesets,
 }
 
-impl SmwRom {
+impl<'r> SmwRom<'r> {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, RomParseError> {
         log::info!("Reading ROM from file: {}", path.as_ref().display());
         let smw_rom = fs::read(path)
@@ -60,23 +60,23 @@ impl SmwRom {
         log::info!("Parsing internal ROM header");
         let internal_header = RomInternalHeader::parse(&rom).map_err(RomParseError::InternalHeader)?;
 
+        log::info!("Creating disassembly map");
+        let disassembly = RomDisassembly::new(rom, &internal_header);
+
         log::info!("Parsing level data");
-        let levels = Self::parse_levels(&rom)?;
+        let levels = Self::parse_levels(&disassembly.rom)?;
 
         log::info!("Parsing secondary entrances");
-        let secondary_entrances = Self::parse_secondary_entrances(&rom)?;
+        let secondary_entrances = Self::parse_secondary_entrances(&disassembly.rom)?;
 
         log::info!("Parsing color palettes");
-        let color_palettes = ColorPalettes::parse(&rom, &levels).map_err(RomParseError::ColorPalettes)?;
+        let color_palettes = ColorPalettes::parse(&disassembly.rom, &levels).map_err(RomParseError::ColorPalettes)?;
 
         log::info!("Parsing GFX files");
-        let gfx_files = Self::parse_gfx_files(&rom, &internal_header)?;
+        let gfx_files = Self::parse_gfx_files(&disassembly.rom, &internal_header)?;
 
         log::info!("Parsing Map16 tilesets");
-        let map16_tilesets = Tilesets::parse(&rom).map_err(RomParseError::Map16Tilesets)?;
-
-        log::info!("Creating disassembly map");
-        let disassembly = RomDisassembly::new(&rom, &internal_header);
+        let map16_tilesets = Tilesets::parse(&disassembly.rom).map_err(RomParseError::Map16Tilesets)?;
 
         Ok(Self {
             disassembly,
