@@ -2,9 +2,9 @@ use std::{cell::RefCell, sync::Arc};
 
 use smwe_rom::SmwRom;
 
-pub struct Project {
+pub struct Project<'r> {
     pub title:    String,
-    pub rom_data: SmwRom,
+    pub rom_data: SmwRom<'r>,
 }
 
-pub type ProjectRef = Arc<RefCell<Project>>;
+pub type ProjectRef<'r> = Arc<RefCell<Project<'r>>>;
