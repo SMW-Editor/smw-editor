@@ -64,7 +64,7 @@ impl SmwRom {
         let mut disassembly = RomDisassembly::new(rom, &internal_header);
 
         log::info!("Parsing level data");
-        let levels = Self::parse_levels(&disassembly.rom)?;
+        let levels = Self::parse_levels(&mut disassembly)?;
 
         log::info!("Parsing secondary entrances");
         let secondary_entrances = Self::parse_secondary_entrances(&mut disassembly)?;
@@ -89,10 +89,10 @@ impl SmwRom {
         })
     }
 
-    fn parse_levels(rom: &Rom) -> Result<Vec<Level>, RomParseError> {
+    fn parse_levels(disasm: &mut RomDisassembly) -> Result<Vec<Level>, RomParseError> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
-            let level = Level::parse(rom, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
+            let level = Level::parse(disasm, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
             levels.push(level);
         }
         Ok(levels)

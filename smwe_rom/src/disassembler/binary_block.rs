@@ -16,27 +16,38 @@ pub enum BinaryBlock {
     EndOfRom,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct DataBlock {
     pub slice: SnesSlice,
     pub kind:  DataKind,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DataKind {
     Empty,
     Graphics,
     InternalRomHeader,
     JumpTable,
     JumpTableLong,
-    LevelBackgroundLayer,
-    LevelObjectLayer,
+
+    // Level
+    LevelPointersLayer1,
+    LevelPointersLayer2,
+    LevelPointersSprite,
+    LevelHeaderPrimary,
+    LevelHeaderSecondaryByteTable,
+    LevelHeaderSprites,
+    LevelLayer2Background,
+    LevelLayer2Objects,
     LevelSpriteLayer,
-    Music,
+    SecondaryEntranceTable,
+
+    // Overworld
     OverworldLayer1,
     OverworldLayer2,
     OverworldSpriteLayer,
-    SecondaryEntranceTable,
+
+    Music,
     SoundSample,
     Text,
     Unknown,
