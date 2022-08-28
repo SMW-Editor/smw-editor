@@ -20,7 +20,7 @@ use itertools::Itertools;
 
 use crate::{
     disassembler::{
-        binary_block::{BinaryBlock, CodeBlock},
+        binary_block::{BinaryBlock, CodeBlock, DataBlock, DataKind},
         jump_tables::{
             get_jump_table_from_rom,
             EXECUTE_PTR_LONG_TRAMPOLINE_ADDR,
@@ -31,23 +31,26 @@ use crate::{
         processor::Processor,
     },
     error::DisassemblyError,
-    snes_utils::addr::{Addr, AddrPc, AddrSnes},
+    snes_utils::{
+        addr::{Addr, AddrPc, AddrSnes},
+        rom_slice::SnesSlice,
+    },
     Rom,
     RomInternalHeader,
 };
 
 // -------------------------------------------------------------------------------------------------
 
-pub struct RomDisassembly<'r> {
+pub struct RomDisassembly {
     pub rom:    Rom,
     /// Start index, Block data
-    pub chunks: Vec<(AddrPc, BinaryBlock<'r>)>,
+    pub chunks: Vec<(AddrPc, BinaryBlock)>,
 }
 
-struct RomAssemblyWalker<'r> {
+struct RomAssemblyWalker {
     rom:        Rom,
     /// Start index, Block data
-    pub chunks: Vec<(AddrPc, BinaryBlock<'r>)>,
+    pub chunks: Vec<(AddrPc, BinaryBlock)>,
 
     // Algorithm state
     analysed_chunks: BTreeMap<AddrPc, (AddrPc, usize)>,
@@ -99,7 +102,7 @@ enum BlockFindResult {
 
 // -------------------------------------------------------------------------------------------------
 
-impl<'r> RomDisassembly<'r> {
+impl RomDisassembly {
     pub fn new(rom: Rom, rih: &RomInternalHeader) -> Self {
         let mut walker = RomAssemblyWalker::new(rom.clone(), rih);
         walker.full_analysis().unwrap();
@@ -111,7 +114,7 @@ impl<'r> RomDisassembly<'r> {
     }
 }
 
-impl<'r> Debug for RomDisassembly<'r> {
+impl Debug for RomDisassembly {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
             writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
@@ -138,7 +141,7 @@ impl<'r> Debug for RomDisassembly<'r> {
     }
 }
 
-impl<'r> RomAssemblyWalker<'r> {
+impl RomAssemblyWalker {
     fn new(rom: Rom, rih: &RomInternalHeader) -> Self {
         let remaining_steps = [AddrSnes::MIN, EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR]
             .iter()
@@ -368,6 +371,13 @@ impl<'r> RomAssemblyWalker<'r> {
                                 next_instructions.push(addr);
                             }
                         }
+                        self.chunks.push((
+                            addr_after_block,
+                            BinaryBlock::Data(DataBlock {
+                                data: SnesSlice::new(jtv.begin, jtv.length),
+                                kind: if jtv.long_ptrs { DataKind::JumpTableLong } else { DataKind::JumpTable },
+                            }),
+                        ));
                     }
                 }
             } else if last_instruction.is_subroutine_call() {
