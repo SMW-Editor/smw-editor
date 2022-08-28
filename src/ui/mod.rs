@@ -26,15 +26,15 @@ use crate::{
     },
 };
 
-pub struct UiMainWindow<'p> {
-    project: Option<ProjectRef<'p>>,
+pub struct UiMainWindow{
+    project: Option<ProjectRef>,
     style:   Arc<Style>,
 
     tools:              Vec<Box<dyn UiTool>>,
     last_open_tool_idx: usize,
 }
 
-impl<'p> eframe::App for UiMainWindow<'p> {
+impl eframe::App for UiMainWindow {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_style(self.style.clone());
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -45,8 +45,8 @@ impl<'p> eframe::App for UiMainWindow<'p> {
     }
 }
 
-impl<'p> UiMainWindow<'p> {
-    pub fn new(project: Option<ProjectRef<'p>>) -> Self {
+impl UiMainWindow {
+    pub fn new(project: Option<ProjectRef>) -> Self {
         let mut style = Style::default();
         style.visuals.dark_mode = true;
         Self { project, style: Arc::new(style), tools: vec![], last_open_tool_idx: 0 }

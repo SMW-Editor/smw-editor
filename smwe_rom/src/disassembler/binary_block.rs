@@ -2,23 +2,23 @@ use crate::{
     disassembler::{instruction::Instruction, processor::Processor},
     snes_utils::{
         addr::{AddrPc, AddrSnes},
-        rom::SnesSliced,
+        rom_slice::SnesSlice,
     },
 };
 
 // -------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
-pub enum BinaryBlock<'r> {
+pub enum BinaryBlock {
     Code(CodeBlock),
-    Data(DataBlock<'r>),
+    Data(DataBlock),
     Unknown,
     EndOfRom,
 }
 
 #[derive(Clone)]
-pub struct DataBlock<'r> {
-    pub data: SnesSliced<'r>,
+pub struct DataBlock {
+    pub data: SnesSlice,
     pub kind: DataKind,
 }
 
@@ -52,7 +52,7 @@ pub struct CodeBlock {
 
 // -------------------------------------------------------------------------------------------------
 
-impl<'r> BinaryBlock<'r> {
+impl BinaryBlock {
     pub fn type_name(&self) -> &'static str {
         use BinaryBlock::*;
         match self {
@@ -84,7 +84,7 @@ impl<'r> BinaryBlock<'r> {
         }
     }
 
-    pub fn data_block_mut(&mut self) -> Option<&'r mut DataBlock> {
+    pub fn data_block_mut(&mut self) -> Option<&mut DataBlock> {
         match self {
             Self::Data(data) => Some(data),
             _ => None,

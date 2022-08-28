@@ -28,8 +28,8 @@ use crate::{
     snes_utils::rom::Rom,
 };
 
-pub struct SmwRom<'r> {
-    pub disassembly:         RomDisassembly<'r>,
+pub struct SmwRom {
+    pub disassembly:         RomDisassembly,
     pub internal_header:     RomInternalHeader,
     pub levels:              Vec<Level>,
     pub secondary_entrances: Vec<SecondaryEntrance>,
@@ -38,7 +38,7 @@ pub struct SmwRom<'r> {
     pub map16_tilesets:      Tilesets,
 }
 
-impl<'r> SmwRom<'r> {
+impl SmwRom {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, RomParseError> {
         log::info!("Reading ROM from file: {}", path.as_ref().display());
         let smw_rom = fs::read(path)
