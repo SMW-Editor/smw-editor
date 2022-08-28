@@ -3,8 +3,10 @@ use std::convert::TryInto;
 use nom::{bytes::complete::take, IResult};
 
 use crate::{
+    disassembler::binary_block::{DataBlock, DataKind},
     error::RomError,
-    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
+    snes_utils::{addr::AddrSnes, rom::noop_error_mapper, rom_slice::SnesSlice},
+    RomDisassembly,
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
@@ -105,13 +107,18 @@ impl PrimaryHeader {
 }
 
 impl SecondaryHeader {
-    pub fn read_from_rom(rom: &Rom, level_num: usize) -> Result<Self, RomError> {
-        let take_byte = |addr| {
-            let slice = SnesSlice::new(AddrSnes(addr), 0x200);
-            let byte_table = rom.view().slice_lorom(slice)?.as_bytes()?;
-            Ok(byte_table[level_num])
-        };
-        Ok(Self([take_byte(0x05F000)?, take_byte(0x05F200)?, take_byte(0x05F400)?, take_byte(0x05F600)?]))
+    pub fn read_from_rom(disasm: &mut RomDisassembly, level_num: usize) -> Result<Self, RomError> {
+        let mut bytes = [0; 4];
+        let byte_table_addrs = [0x05F000, 0x05F200, 0x05F400, 0x05F600];
+        for (byte, addr) in bytes.iter_mut().zip(byte_table_addrs.into_iter()) {
+            let data_block = DataBlock {
+                slice: SnesSlice::new(AddrSnes(addr), 0x200),
+                kind:  DataKind::LevelHeaderSecondaryByteTable,
+            };
+            let byte_table = disasm.data_block_at(data_block, noop_error_mapper)?.as_bytes()?;
+            *byte = byte_table[level_num];
+        }
+        Ok(Self(bytes))
     }
 
     pub fn layer2_scroll(&self) -> u8 {

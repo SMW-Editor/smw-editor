@@ -91,6 +91,12 @@ pub struct DecompressedView<'r> {
 
 // -------------------------------------------------------------------------------------------------
 
+pub fn noop_error_mapper<ET>(e: ET) -> ET {
+    e
+}
+
+// -------------------------------------------------------------------------------------------------
+
 impl Rom {
     pub fn new(mut data: Vec<u8>) -> Result<Self, RomError> {
         if !data.is_empty() {
@@ -109,7 +115,7 @@ impl Rom {
     }
 
     pub fn view(&self) -> RomWithErrorMapper<'_, impl Fn(RomError) -> RomError, RomError> {
-        self.with_error_mapper(|e| e)
+        self.with_error_mapper(noop_error_mapper)
     }
 
     pub fn with_error_mapper<'r, EM, ET>(&'r self, error_mapper: EM) -> RomWithErrorMapper<'r, EM, ET>
