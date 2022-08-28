@@ -10,6 +10,7 @@ pub mod registers;
 
 use std::{
     cell::RefCell,
+    cmp::Ordering,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt::{Debug, Formatter, Write},
     ops::Deref,
@@ -30,9 +31,10 @@ use crate::{
         },
         processor::Processor,
     },
-    error::DisassemblyError,
+    error::{DisassemblyError, RomError},
     snes_utils::{
         addr::{Addr, AddrPc, AddrSnes},
+        rom::{RomViewWithErrorMapper, SnesSliced},
         rom_slice::SnesSlice,
     },
     Rom,
@@ -111,6 +113,84 @@ impl RomDisassembly {
 
     pub fn rom_bytes(&self) -> &[u8] {
         &self.rom.0
+    }
+
+    pub fn data_block_at(
+        &mut self, data_block: DataBlock,
+    ) -> std::result::Result<
+        RomViewWithErrorMapper<'_, impl Fn(RomError) -> RomError, RomError, SnesSliced<'_>>,
+        RomError,
+    > {
+        enum SplitType {
+            None,
+            Start(usize),
+            Middle(usize),
+        }
+
+        let addr = AddrPc::try_from(data_block.slice.begin).unwrap();
+
+        let mut split_type = SplitType::None;
+        let mut found = false;
+        for (i, ((begin, block), (next_begin, _))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
+            let next_chunk_start = AddrSnes::try_from_lorom(*next_begin).unwrap();
+            match begin.cmp(&addr) {
+                Ordering::Equal => {
+                    match block {
+                        BinaryBlock::Code(_) | BinaryBlock::EndOfRom => {
+                            return Err(RomError::DataBlockNotFound(data_block))
+                        }
+                        BinaryBlock::Data(found_block) => {
+                            if *found_block != data_block {
+                                return Err(RomError::DataBlockNotFound(data_block));
+                            }
+                        }
+                        BinaryBlock::Unknown => {
+                            if data_block.slice.contains(next_chunk_start) {
+                                // Requested data block overlaps with the next code block
+                                return Err(RomError::DataBlockNotFound(data_block));
+                            }
+                            split_type = SplitType::Start(i);
+                        }
+                    }
+                    found = true;
+                    break;
+                }
+                Ordering::Less => {
+                    split_type = SplitType::Middle(i);
+                    found = true;
+                    break;
+                }
+                Ordering::Greater => {
+                    // skip
+                }
+            }
+        }
+
+        if !found {
+            return Err(RomError::DataBlockNotFound(data_block));
+        }
+
+        let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
+        match split_type {
+            SplitType::Start(index) => {
+                self.chunks[index].0 += data_block.slice.size;
+                self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
+            }
+            SplitType::Middle(index) => {
+                self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
+                let data_end = begin_pc + data_block.slice.size;
+                let next_begin = self.chunks[index + 2].0;
+                assert!(data_end <= next_begin);
+                if data_end < next_begin {
+                    self.chunks.insert(index + 2, (data_end, BinaryBlock::Unknown));
+                }
+            }
+            SplitType::None => {
+                // No-op
+            }
+        }
+
+        self.rom.view().slice_lorom(data_block.slice)
     }
 }
 
@@ -374,8 +454,8 @@ impl RomAssemblyWalker {
                         self.chunks.push((
                             addr_after_block,
                             BinaryBlock::Data(DataBlock {
-                                data: SnesSlice::new(jtv.begin, jtv.length),
-                                kind: if jtv.long_ptrs { DataKind::JumpTableLong } else { DataKind::JumpTable },
+                                slice: SnesSlice::new(jtv.begin, jtv.length),
+                                kind:  if jtv.long_ptrs { DataKind::JumpTableLong } else { DataKind::JumpTable },
                             }),
                         ));
                     }
