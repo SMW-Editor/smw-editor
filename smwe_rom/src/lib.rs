@@ -61,13 +61,13 @@ impl SmwRom {
         let internal_header = RomInternalHeader::parse(&rom).map_err(RomParseError::InternalHeader)?;
 
         log::info!("Creating disassembly map");
-        let disassembly = RomDisassembly::new(rom, &internal_header);
+        let mut disassembly = RomDisassembly::new(rom, &internal_header);
 
         log::info!("Parsing level data");
         let levels = Self::parse_levels(&disassembly.rom)?;
 
         log::info!("Parsing secondary entrances");
-        let secondary_entrances = Self::parse_secondary_entrances(&disassembly.rom)?;
+        let secondary_entrances = Self::parse_secondary_entrances(&mut disassembly)?;
 
         log::info!("Parsing color palettes");
         let color_palettes = ColorPalettes::parse(&disassembly.rom, &levels).map_err(RomParseError::ColorPalettes)?;
@@ -98,10 +98,10 @@ impl SmwRom {
         Ok(levels)
     }
 
-    fn parse_secondary_entrances(rom: &Rom) -> Result<Vec<SecondaryEntrance>, RomParseError> {
+    fn parse_secondary_entrances(disasm: &mut RomDisassembly) -> Result<Vec<SecondaryEntrance>, RomParseError> {
         let mut secondary_entrances = Vec::with_capacity(SECONDARY_ENTRANCE_TABLE.size);
         for entrance_id in 0..SECONDARY_ENTRANCE_TABLE.size {
-            let entrance = SecondaryEntrance::read_from_rom(rom, entrance_id)
+            let entrance = SecondaryEntrance::read_from_rom(disasm, entrance_id)
                 .map_err(|e| RomParseError::SecondaryEntrance(entrance_id, e))?;
             secondary_entrances.push(entrance);
         }

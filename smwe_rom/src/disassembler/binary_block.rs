@@ -36,6 +36,7 @@ pub enum DataKind {
     OverworldLayer1,
     OverworldLayer2,
     OverworldSpriteLayer,
+    SecondaryEntranceTable,
     SoundSample,
     Text,
     Unknown,

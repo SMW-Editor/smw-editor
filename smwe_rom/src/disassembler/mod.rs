@@ -156,9 +156,12 @@ impl RomDisassembly {
                     break;
                 }
                 Ordering::Less => {
-                    split_type = SplitType::Middle(i);
-                    found = true;
-                    break;
+                    let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
+                    if (*begin..*next_begin).contains(&begin_pc) {
+                        split_type = SplitType::Middle(i);
+                        found = true;
+                        break;
+                    }
                 }
                 Ordering::Greater => {
                     // skip
@@ -177,10 +180,10 @@ impl RomDisassembly {
                 self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
             }
             SplitType::Middle(index) => {
-                self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
                 let data_end = begin_pc + data_block.slice.size;
-                let next_begin = self.chunks[index + 2].0;
-                assert!(data_end <= next_begin);
+                let next_begin = self.chunks[index + 1].0;
+                assert!(data_end <= next_begin, "data_end = {data_end}, next_begin = {next_begin}, index = {index}");
+                self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
                 if data_end < next_begin {
                     self.chunks.insert(index + 2, (data_end, BinaryBlock::Unknown));
                 }
