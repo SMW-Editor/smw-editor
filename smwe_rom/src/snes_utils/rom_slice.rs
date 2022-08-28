@@ -2,7 +2,7 @@ use std::{fmt, fmt::Formatter};
 
 use crate::snes_utils::addr::{Addr, AddrPc, AddrSnes};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RomSlice<A: Addr> {
     pub begin: A,
     pub size:  usize,

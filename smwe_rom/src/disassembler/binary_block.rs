@@ -16,10 +16,10 @@ pub enum BinaryBlock {
     EndOfRom,
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct DataBlock {
-    pub data: SnesSlice,
-    pub kind: DataKind,
+    pub slice: SnesSlice,
+    pub kind:  DataKind,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

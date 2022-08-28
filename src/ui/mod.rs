@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-pub struct UiMainWindow{
+pub struct UiMainWindow {
     project: Option<ProjectRef>,
     style:   Arc<Style>,
 

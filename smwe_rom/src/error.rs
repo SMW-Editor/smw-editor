@@ -3,7 +3,7 @@ use std::ops::Range;
 use thiserror::Error;
 
 use crate::{
-    disassembler::instruction::Instruction,
+    disassembler::{binary_block::DataBlock, instruction::Instruction},
     snes_utils::{
         addr::{AddrPc, AddrSnes},
         rom_slice::{PcSlice, SnesSlice},
@@ -227,6 +227,8 @@ pub enum RomError {
     Decompress(DecompressionError),
     #[error("Could not parse ROM slice")]
     Parse,
+    #[error("Data block not found: {0:?}")]
+    DataBlockNotFound(DataBlock),
 }
 
 #[derive(Debug, Error)]
