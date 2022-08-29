@@ -53,10 +53,12 @@ impl SpriteInstance {
 }
 
 impl SpriteLayer {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
+    /// Returns self and the number of bytes consumed by parsing.
+    pub fn parse(input: &[u8]) -> IResult<&[u8], (Self, usize)> {
         let mut read_sprite_layer = many_till(take(SPRITE_INSTANCE_SIZE), tag(&[0xFFu8]));
-        let (input, (sprites_raw, _)) = read_sprite_layer(input)?;
+        let (rest, (sprites_raw, _)) = read_sprite_layer(input)?;
         let sprites = sprites_raw.into_iter().map(|spr| SpriteInstance(spr.try_into().unwrap())).collect();
-        Ok((input, Self { _sprites: sprites }))
+        let bytes_consumed = input.len() - rest.len();
+        Ok((rest, (Self { _sprites: sprites }, bytes_consumed)))
     }
 }

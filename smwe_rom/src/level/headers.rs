@@ -115,7 +115,7 @@ impl SecondaryHeader {
                 slice: SnesSlice::new(AddrSnes(addr), 0x200),
                 kind:  DataKind::LevelHeaderSecondaryByteTable,
             };
-            let byte_table = disasm.data_block_at(data_block, noop_error_mapper)?.as_bytes()?;
+            let byte_table = disasm.rom_slice_at_block(data_block, noop_error_mapper)?.as_bytes()?;
             *byte = byte_table[level_num];
         }
         Ok(Self(bytes))

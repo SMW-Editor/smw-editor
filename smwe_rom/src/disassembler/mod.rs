@@ -117,85 +117,127 @@ impl RomDisassembly {
         &self.rom.0
     }
 
-    pub fn data_block_at<EM, ET>(
-        &mut self, data_block: DataBlock, error_mapper: EM,
+    /// Requests a data block from disassembly. If the data block hasn't been determined before, this function finds
+    /// a `BinaryBlock::Unknown` containing the area of `data_block` and splits or replaces it with `BinaryBlock::Data`,
+    /// depending on the size and location of `data_block`. The newly established data block is also marked with its
+    /// `kind`.
+    ///
+    /// If requested `data_block` overlaps with two already established blocks or is inside a `BinaryBlock::Code`, this
+    /// function returns an error from `error_mapper`.
+    ///
+    /// If requested `data_block` has unknown size (its `slice` is infinite) it means that the intention is to later
+    /// update its size with another request for a block with the same location and kind. The second request does not
+    /// cause this function to panic.
+    ///
+    /// Panics when the block at requested location was previously determined and has a different size, and either:
+    /// - Has a different kind,
+    /// - The already determined block has known size (its `slice` is not infinite).
+    pub fn rom_slice_at_block<EM, ET>(
+        &mut self, mut data_block: DataBlock, error_mapper: EM,
     ) -> std::result::Result<RomViewWithErrorMapper<'_, EM, ET, SnesSliced<'_>>, ET>
     where
         EM: Fn(RomError) -> ET,
     {
-        enum SplitType {
-            None,
-            Start(usize),
-            Middle(usize),
-        }
-
         if !self.cached_data_blocks.contains(&data_block) {
-            let addr = AddrPc::try_from(data_block.slice.begin).unwrap();
+            if let Some(&old_block) = self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin) {
+                // `data_block` and `old_block` differ in size, which means one of the following:
+                // 1. `old_block` is infinite - the block at this address was previously requested when its size was not
+                // known, but now is and `data_block` is used to update that information.
+                // 2. `data_block` is infinite - the block at this address has known size but the caller doesn't know it
+                // yet. That means we can use `old_block` to slice the ROM instead.
+                assert_eq!(old_block.kind, data_block.kind);
+                if !data_block.slice.is_infinite() {
+                    assert!(
+                        old_block.slice.is_infinite(),
+                        "Cannot request two blocks of different sizes at the same location! old = {old_block:?}, req = {data_block:?}"
+                    );
+                    self.cached_data_blocks.remove(&old_block);
+                } else {
+                    // `data_block` is infinite and `old_block` is not: that means a block of unspecified size is being
+                    // requested, but since the size has been previously established, we can return it.
+                    data_block = old_block;
+                }
+            } else {
+                // Requested block hasn't been established yet.
 
-            let mut split_type = SplitType::None;
-            let mut found = false;
-            for (i, ((begin, block), (next_begin, _))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
-                let next_chunk_start = AddrSnes::try_from_lorom(*next_begin).unwrap();
-                match begin.cmp(&addr) {
-                    Ordering::Equal => {
-                        match block {
-                            BinaryBlock::Code(_) | BinaryBlock::EndOfRom => {
-                                return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
-                            }
-                            BinaryBlock::Data(found_block) => {
-                                if *found_block != data_block {
+                enum SplitType {
+                    None,
+                    Start(usize),
+                    Middle(usize),
+                }
+
+                let addr = AddrPc::try_from(data_block.slice.begin).unwrap();
+
+                let mut split_type = SplitType::None;
+                let mut found = false;
+                for (i, ((begin, block), (next_begin, _))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
+                    let next_chunk_start = AddrSnes::try_from_lorom(*next_begin).unwrap();
+                    match begin.cmp(&addr) {
+                        Ordering::Equal => {
+                            match block {
+                                BinaryBlock::Code(_) | BinaryBlock::EndOfRom => {
                                     return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
                                 }
-                            }
-                            BinaryBlock::Unknown => {
-                                if data_block.slice.contains(next_chunk_start) {
-                                    // Requested data block overlaps with the next code block
-                                    return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
+                                BinaryBlock::Data(found_block) => {
+                                    if *found_block != data_block {
+                                        //
+                                        return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
+                                    }
                                 }
-                                split_type = SplitType::Start(i);
+                                BinaryBlock::Unknown => {
+                                    if data_block.slice.contains(next_chunk_start) {
+                                        // Requested data block overlaps with the next code block
+                                        return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
+                                    }
+                                    if !data_block.slice.is_infinite() {
+                                        split_type = SplitType::Start(i);
+                                    }
+                                }
                             }
-                        }
-                        found = true;
-                        break;
-                    }
-                    Ordering::Less => {
-                        let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
-                        if (*begin..*next_begin).contains(&begin_pc) {
-                            split_type = SplitType::Middle(i);
                             found = true;
                             break;
                         }
-                    }
-                    Ordering::Greater => {
-                        // skip
+                        Ordering::Less => {
+                            let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
+                            if (*begin..*next_begin).contains(&begin_pc) {
+                                if !data_block.slice.is_infinite() {
+                                    split_type = SplitType::Middle(i);
+                                }
+                                found = true;
+                                break;
+                            }
+                        }
+                        Ordering::Greater => {
+                            // skip
+                        }
                     }
                 }
-            }
 
-            if !found {
-                return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
-            }
+                if !found {
+                    return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
+                }
 
-            let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
-            match split_type {
-                SplitType::Start(index) => {
-                    self.chunks[index].0 += data_block.slice.size;
-                    self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
-                }
-                SplitType::Middle(index) => {
-                    let data_end = begin_pc + data_block.slice.size;
-                    let next_begin = self.chunks[index + 1].0;
-                    assert!(
-                        data_end <= next_begin,
-                        "data_end = {data_end}, next_begin = {next_begin}, index = {index}"
-                    );
-                    self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
-                    if data_end < next_begin {
-                        self.chunks.insert(index + 2, (data_end, BinaryBlock::Unknown));
+                let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
+                match split_type {
+                    SplitType::Start(index) => {
+                        self.chunks[index].0 += data_block.slice.size;
+                        self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
                     }
-                }
-                SplitType::None => {
-                    // No-op
+                    SplitType::Middle(index) => {
+                        let data_end = begin_pc + data_block.slice.size;
+                        let next_begin = self.chunks[index + 1].0;
+                        assert!(
+                            data_end <= next_begin,
+                            "data_end = {data_end}, next_begin = {next_begin}, index = {index}"
+                        );
+                        self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
+                        if data_end < next_begin {
+                            self.chunks.insert(index + 2, (data_end, BinaryBlock::Unknown));
+                        }
+                    }
+                    SplitType::None => {
+                        // No-op
+                    }
                 }
             }
 

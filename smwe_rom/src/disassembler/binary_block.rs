@@ -37,6 +37,7 @@ pub enum DataKind {
     LevelHeaderPrimary,
     LevelHeaderSecondaryByteTable,
     LevelHeaderSprites,
+    LevelLayer1Objects,
     LevelLayer2Background,
     LevelLayer2Objects,
     LevelSpriteLayer,
@@ -50,7 +51,6 @@ pub enum DataKind {
     Music,
     SoundSample,
     Text,
-    Unknown,
 }
 
 #[derive(Default, Clone)]
