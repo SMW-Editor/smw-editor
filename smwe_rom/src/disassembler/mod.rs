@@ -238,6 +238,7 @@ impl RomAssemblyWalker {
         let remaining_steps = [AddrSnes::MIN, EXECUTE_PTR_TRAMPOLINE_ADDR, EXECUTE_PTR_LONG_TRAMPOLINE_ADDR]
             .iter()
             .chain(rih.interrupt_vectors.iter())
+            .filter(|a| a.0 != 0xFFFF)
             .map(|&addr| StepBasicBlock {
                 code_start: AddrPc::try_from(addr).unwrap(),
                 processor:  Processor::new(),

@@ -25,7 +25,7 @@ pub mod offsets {
 
 #[rustfmt::skip]
 pub mod sizes {
-    pub const INTERNAL_HEADER:   usize = 32;
+    pub const INTERNAL_HEADER:   usize = 64;
     pub const INTERNAL_ROM_NAME: usize = 21;
 }
 
@@ -184,8 +184,8 @@ impl RomInternalHeader {
     }
 
     fn find(rom: &Rom) -> Result<PcSlice, InternalHeaderParseError> {
-        const HEADER_LOROM: PcSlice = PcSlice::new(AddrPc(0x007FC0), 64);
-        const HEADER_HIROM: PcSlice = PcSlice::new(AddrPc(0x00FFC0), 64);
+        const HEADER_LOROM: PcSlice = PcSlice::new(AddrPc(0x007FC0), sizes::INTERNAL_HEADER);
+        const HEADER_HIROM: PcSlice = PcSlice::new(AddrPc(0x00FFC0), sizes::INTERNAL_HEADER);
 
         let lo_cpl_csm = HEADER_LOROM.offset_forward(offsets::COMPLEMENT_CHECK).resize(4);
         let hi_cpl_csm = HEADER_HIROM.offset_forward(offsets::COMPLEMENT_CHECK).resize(4);
