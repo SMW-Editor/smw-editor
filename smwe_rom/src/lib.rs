@@ -88,7 +88,7 @@ impl SmwRom {
         let gfx_files = Self::parse_gfx_files(&mut disassembly, &internal_header)?;
 
         log::info!("Parsing Map16 tilesets");
-        let map16_tilesets = Tilesets::parse(&disassembly.rom).map_err(RomParseError::Map16Tilesets)?;
+        let map16_tilesets = Tilesets::parse(&mut disassembly).map_err(RomParseError::Map16Tilesets)?;
 
         Ok(Self {
             disassembly,
