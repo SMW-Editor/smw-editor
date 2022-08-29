@@ -510,7 +510,7 @@ impl RomAssemblyWalker {
                             addr_after_block,
                             BinaryBlock::Data(DataBlock {
                                 slice: SnesSlice::new(jtv.begin, jtv.length),
-                                kind:  if jtv.long_ptrs { DataKind::JumpTableLong } else { DataKind::JumpTable },
+                                kind:  if jtv.long_ptrs { DataKind::JumpTableLong } else { DataKind::JumpTableShort },
                             }),
                         ));
                     }

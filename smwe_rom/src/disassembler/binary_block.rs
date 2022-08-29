@@ -1,7 +1,7 @@
 use crate::{
     disassembler::{instruction::Instruction, processor::Processor},
     snes_utils::{
-        addr::{AddrPc, AddrSnes},
+        addr::{Addr, AddrPc, AddrSnes},
         rom_slice::SnesSlice,
     },
 };
@@ -16,6 +16,15 @@ pub enum BinaryBlock {
     EndOfRom,
 }
 
+#[derive(Default, Clone)]
+pub struct CodeBlock {
+    pub instructions:          Vec<Instruction>,
+    pub exits:                 Vec<AddrSnes>,
+    pub entrances:             Vec<AddrSnes>,
+    pub entry_processor_state: Processor,
+    pub final_processor_state: Processor,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct DataBlock {
     pub slice: SnesSlice,
@@ -25,9 +34,16 @@ pub struct DataBlock {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DataKind {
     Empty,
-    Graphics,
-    InternalRomHeader,
-    JumpTable,
+
+    // Color palettes
+    ColorPaletteCommon,
+    ColorPaletteLevel,
+    ColorPaletteOverworld,
+    ColorPaletteOverworldLayer2Indirect1,
+    ColorPaletteOverworldLayer2Indirect2,
+
+    // Jump tables
+    JumpTableShort,
     JumpTableLong,
 
     // Level
@@ -48,18 +64,12 @@ pub enum DataKind {
     OverworldLayer2,
     OverworldSpriteLayer,
 
+    // Misc.
+    Graphics,
+    InternalRomHeader,
     Music,
     SoundSample,
     Text,
-}
-
-#[derive(Default, Clone)]
-pub struct CodeBlock {
-    pub instructions:          Vec<Instruction>,
-    pub exits:                 Vec<AddrSnes>,
-    pub entrances:             Vec<AddrSnes>,
-    pub entry_processor_state: Processor,
-    pub final_processor_state: Processor,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -138,5 +148,35 @@ impl CodeBlock {
             processor.execute(insn);
         }
         self.final_processor_state = processor;
+    }
+}
+
+impl DataBlock {
+    pub fn empty_with_kind(kind: DataKind) -> Self {
+        Self { slice: SnesSlice::new(AddrSnes::MIN, 0), kind }
+    }
+
+    #[must_use]
+    pub fn with_slice(mut self, slice: SnesSlice) -> Self {
+        self.slice = slice;
+        self
+    }
+
+    #[must_use]
+    pub fn with_addr(mut self, begin: AddrSnes) -> Self {
+        self.slice.begin = begin;
+        self
+    }
+
+    #[must_use]
+    pub fn with_size(mut self, size: usize) -> Self {
+        self.slice.size = size;
+        self
+    }
+
+    #[must_use]
+    pub fn with_kind(mut self, kind: DataKind) -> Self {
+        self.kind = kind;
+        self
     }
 }
