@@ -13,8 +13,11 @@ use std::{fs, path::Path};
 
 pub use crate::internal_header::{RegionCode, RomInternalHeader};
 use crate::{
-    disassembler::RomDisassembly,
-    error::RomParseError,
+    disassembler::{
+        binary_block::{DataBlock, DataKind},
+        RomDisassembly,
+    },
+    error::{InternalHeaderParseError, RomParseError},
     graphics::{
         gfx_file::{GfxFile, GFX_FILES_META},
         palette::ColorPalettes,
@@ -25,7 +28,11 @@ use crate::{
         LEVEL_COUNT,
     },
     objects::tilesets::Tilesets,
-    snes_utils::rom::Rom,
+    snes_utils::{
+        addr::AddrSnes,
+        rom::Rom,
+        rom_slice::SnesSlice,
+    },
 };
 
 pub struct SmwRom {
@@ -62,6 +69,15 @@ impl SmwRom {
 
         log::info!("Creating disassembly map");
         let mut disassembly = RomDisassembly::new(rom, &internal_header);
+
+        // Mark IRH
+        disassembly.data_block_at(
+            DataBlock {
+                slice: SnesSlice::new(AddrSnes(0x00FFC0), internal_header::sizes::INTERNAL_HEADER),
+                kind:  DataKind::InternalRomHeader,
+            },
+            |_| RomParseError::InternalHeader(InternalHeaderParseError::NotFound),
+        )?;
 
         log::info!("Parsing level data");
         let levels = Self::parse_levels(&mut disassembly)?;
