@@ -126,12 +126,12 @@ impl RomDisassembly {
     /// function returns an error from `error_mapper`.
     ///
     /// If requested `data_block` has unknown size (its `slice` is infinite) it means that the intention is to later
-    /// update its size with another request for a block with the same location and kind. The second request does not
-    /// cause this function to panic.
+    /// update its size with another request for a block with the same location and kind.
     ///
-    /// Panics when the block at requested location was previously determined and has a different size, and either:
-    /// - Has a different kind,
-    /// - The already determined block has known size (its `slice` is not infinite).
+    /// If a block has been determined at the same location as the requested `data_block` but they have different sizes,
+    /// the larger one gets chosen.
+    ///
+    /// Panics when the block at requested location was previously determined and has a different kind.
     pub fn rom_slice_at_block<EM, ET>(
         &mut self, mut data_block: DataBlock, error_mapper: EM,
     ) -> std::result::Result<RomViewWithErrorMapper<'_, EM, ET, SnesSliced<'_>>, ET>
@@ -142,21 +142,24 @@ impl RomDisassembly {
             if let Some(&old_data_block) =
                 self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin)
             {
+                assert_eq!(old_data_block.kind, data_block.kind);
                 // `data_block` and `old_block` differ in size, which means one of the following:
                 // 1. `old_block` is infinite - the block at this address was previously requested when its size was not
                 // known, but now is and `data_block` is used to update that information.
                 // 2. `data_block` is infinite - the block at this address has known size but the caller doesn't know it
                 // yet. That means we can use `old_block` to slice the ROM instead.
-                assert_eq!(old_data_block.kind, data_block.kind);
                 if !data_block.slice.is_infinite() {
-                    assert!(
-                        old_data_block.slice.is_infinite(),
-                        "Cannot request two blocks of different sizes at the same location! old = {:?}, req = {:?}",
-                        old_data_block,
-                        data_block,
-                    );
-                    self.cached_data_blocks.remove(&old_data_block);
-                    // self.split_unknown_block_with(data_block, &error_mapper)?;
+                    if old_data_block.slice.is_infinite() {
+                        self.cached_data_blocks.remove(&old_data_block);
+                        // self.split_unknown_block_with(data_block, &error_mapper)?;
+                    } else if data_block.slice.size > old_data_block.slice.size {
+                        self.cached_data_blocks.remove(&old_data_block);
+                        let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
+                        self.chunks.retain(|(addr, _)| *addr != block_addr_pc);
+                        self.split_unknown_block_with(data_block, &error_mapper)?;
+                    } else {
+                        data_block = old_data_block;
+                    }
                 } else {
                     // `data_block` is infinite and `old_block` is not: that means a block of unspecified size is being
                     // requested, but since the size has been previously established, we can return it.
@@ -189,23 +192,37 @@ impl RomDisassembly {
 
         let mut split_type = SplitType::None;
         let mut found = false;
-        for (i, ((begin, block), (next_begin, _))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
+        for (i, ((begin, block), (next_begin, next_block))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
             let next_chunk_start = AddrSnes::try_from_lorom(*next_begin).unwrap();
             match begin.cmp(&addr) {
                 Ordering::Equal => {
                     match block {
                         BinaryBlock::Code(_) | BinaryBlock::EndOfRom => {
+                            log::error!("Inside code block at {begin:?}");
                             return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
                         }
                         BinaryBlock::Data(found_block) => {
                             if *found_block != data_block {
-                                //
+                                log::error!("Data block mismatch: {found_block:?}");
                                 return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
                             }
                         }
                         BinaryBlock::Unknown => {
                             if data_block.slice.contains(next_chunk_start) {
-                                // Requested data block overlaps with the next code block
+                                match next_block {
+                                    BinaryBlock::Code(_) => {
+                                        log::error!("Requested data block overlaps with the next code block at: {next_begin:?}");
+                                    }
+                                    BinaryBlock::Data(db) => {
+                                        log::error!("Requested data block overlaps with the next data block:\ndata_block = {data_block:?}\nnext_block = {db:?}");
+                                    }
+                                    BinaryBlock::Unknown => {
+                                        log::error!("Requested data block overlaps with the next unknown block at: {next_begin:?}");
+                                    }
+                                    BinaryBlock::EndOfRom => {
+                                        log::error!("Requested data block doesn't fit in the ROM");
+                                    }
+                                }
                                 return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
                             }
                             if !data_block.slice.is_infinite() {
@@ -233,6 +250,7 @@ impl RomDisassembly {
         }
 
         if !found {
+            log::error!("Data block not found");
             return Err(error_mapper(RomError::DataBlockNotFound(data_block)));
         }
 
