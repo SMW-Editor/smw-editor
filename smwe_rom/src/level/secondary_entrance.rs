@@ -15,7 +15,7 @@ impl SecondaryEntrance {
         for (i, byte) in bytes.iter_mut().enumerate() {
             let data_block =
                 DataBlock { slice: SECONDARY_ENTRANCE_TABLE.skip_forward(i), kind: DataKind::SecondaryEntranceTable };
-            *byte = disasm.data_block_at(data_block, noop_error_mapper)?.as_bytes()?[entrance_id];
+            *byte = disasm.rom_slice_at_block(data_block, noop_error_mapper)?.as_bytes()?[entrance_id];
         }
 
         Ok(Self(bytes))

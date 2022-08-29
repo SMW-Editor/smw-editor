@@ -28,11 +28,7 @@ use crate::{
         LEVEL_COUNT,
     },
     objects::tilesets::Tilesets,
-    snes_utils::{
-        addr::AddrSnes,
-        rom::Rom,
-        rom_slice::SnesSlice,
-    },
+    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
 };
 
 pub struct SmwRom {
@@ -71,7 +67,7 @@ impl SmwRom {
         let mut disassembly = RomDisassembly::new(rom, &internal_header);
 
         // Mark IRH
-        disassembly.data_block_at(
+        disassembly.rom_slice_at_block(
             DataBlock {
                 slice: SnesSlice::new(AddrSnes(0x00FFC0), internal_header::sizes::INTERNAL_HEADER),
                 kind:  DataKind::InternalRomHeader,

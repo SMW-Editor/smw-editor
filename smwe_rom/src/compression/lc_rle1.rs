@@ -11,7 +11,8 @@ enum Command {
     ByteFill   = 1,
 }
 
-pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
+/// Returns decompressed data and the size of compressed data.
+pub fn decompress(input: &[u8]) -> Result<(Vec<u8>, usize), DecompressionError> {
     assert!(!input.is_empty());
     assert!(!input.len() >= 2);
     let mut output = Vec::with_capacity(input.len() * 2);
@@ -46,5 +47,6 @@ pub fn decompress(input: &[u8]) -> Result<Vec<u8>, DecompressionError> {
     }
 
     output.shrink_to_fit();
-    Ok(output)
+    let bytes_consumed = input.len() - in_it.len();
+    Ok((output, bytes_consumed))
 }

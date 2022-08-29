@@ -138,8 +138,10 @@ impl ObjectLayer {
         }
     }
 
-    pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, (objects, _)) = many_till(Self::parse_object, tag(&[0xFFu8]))(input)?;
-        Ok((input, Self { _objects: objects }))
+    /// Returns self and the number of bytes consumed by parsing.
+    pub fn parse(input: &[u8]) -> IResult<&[u8], (Self, usize)> {
+        let (rest, (objects, _)) = many_till(Self::parse_object, tag(&[0xFFu8]))(input)?;
+        let bytes_consumed = input.len() - rest.len();
+        Ok((rest, (Self { _objects: objects }, bytes_consumed)))
     }
 }

@@ -58,20 +58,20 @@ impl Level {
         let l1_ptr_block =
             DataBlock { slice: SnesSlice::new(AddrSnes(0x05E000), 0x200 * 3), kind: DataKind::LevelPointersLayer1 };
         let ph_addr = disasm
-            .data_block_at(l1_ptr_block, LevelParseError::Layer1AddressRead)?
+            .rom_slice_at_block(l1_ptr_block, LevelParseError::Layer1AddressRead)?
             .parse(count(map(le_u24, AddrSnes::from), 0x200))?[level_num];
 
         let ph_block =
             DataBlock { slice: SnesSlice::new(ph_addr, PRIMARY_HEADER_SIZE), kind: DataKind::LevelHeaderPrimary };
-        let primary_header = disasm.data_block_at(ph_block, LevelParseError::PrimaryHeaderRead)?.as_bytes()?;
+        let primary_header = disasm.rom_slice_at_block(ph_block, LevelParseError::PrimaryHeaderRead)?.as_bytes()?;
         let primary_header = PrimaryHeader::new(primary_header);
 
-        let layer1_slice = ph_block.slice.skip_forward(1).infinite();
-        let layer1 = disasm
-            .rom
-            .with_error_mapper(LevelParseError::Layer1Read)
-            .slice_lorom(layer1_slice)?
-            .parse(ObjectLayer::parse)?;
+        let mut layer1_block =
+            DataBlock { slice: ph_block.slice.skip_forward(1).infinite(), kind: DataKind::LevelLayer1Objects };
+        let (layer1, consumed_size) =
+            disasm.rom_slice_at_block(layer1_block, LevelParseError::Layer1Read)?.parse(ObjectLayer::parse)?;
+        layer1_block.slice.size = consumed_size;
+        disasm.rom_slice_at_block(layer1_block, LevelParseError::Layer1Read)?;
 
         Ok((primary_header, layer1))
     }
@@ -82,21 +82,29 @@ impl Level {
         let l2_addr_block =
             DataBlock { slice: SnesSlice::new(LAYER2_DATA + (3 * level_num), 3), kind: DataKind::LevelPointersLayer2 };
         let l2_ptr = disasm
-            .data_block_at(l2_addr_block, LevelParseError::Layer2AddressRead)?
+            .rom_slice_at_block(l2_addr_block, LevelParseError::Layer2AddressRead)?
             .parse(map(le_u24, AddrSnes::from))?;
 
         if l2_ptr.bank() == 0xFF {
-            let slice = SnesSlice::new(l2_ptr.with_bank(0x0C) + PRIMARY_HEADER_SIZE, usize::MAX);
-            let layer2 = disasm.rom.with_error_mapper(LevelParseError::Layer2Isolate).slice_lorom(slice)?.as_bytes()?;
-            let background = BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
+            let mut block = DataBlock {
+                slice: SnesSlice::new(l2_ptr.with_bank(0x0C) + PRIMARY_HEADER_SIZE, usize::MAX),
+                kind:  DataKind::LevelLayer2Background,
+            };
+            let layer2 = disasm.rom_slice_at_block(block, LevelParseError::Layer2Isolate)?.as_bytes()?;
+            let (background, consumed_size) =
+                BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
+            block.slice.size = consumed_size;
+            disasm.rom_slice_at_block(block, LevelParseError::Layer2Isolate)?;
             Ok(Layer2Data::Background(background))
         } else {
-            let slice = SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX);
-            let objects = disasm
-                .rom
-                .with_error_mapper(LevelParseError::Layer2Read)
-                .slice_lorom(slice)?
-                .parse(ObjectLayer::parse)?;
+            let mut block = DataBlock {
+                slice: SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX),
+                kind:  DataKind::LevelLayer2Objects,
+            };
+            let (objects, consumed_size) =
+                disasm.rom_slice_at_block(block, LevelParseError::Layer2Read)?.parse(ObjectLayer::parse)?;
+            block.slice.size = consumed_size;
+            disasm.rom_slice_at_block(block, LevelParseError::Layer2Read)?;
             Ok(Layer2Data::Objects(objects))
         }
     }
@@ -108,20 +116,20 @@ impl Level {
 
         let sprite_ptr_block =
             DataBlock { slice: SnesSlice::new(SPRITE_DATA + (2 * level_num), 2), kind: DataKind::LevelPointersSprite };
-        let sh_addr = disasm.data_block_at(sprite_ptr_block, LevelParseError::SpriteAddressRead)?.parse(le_u16)?;
+        let sh_addr = disasm.rom_slice_at_block(sprite_ptr_block, LevelParseError::SpriteAddressRead)?.parse(le_u16)?;
         let sh_addr = AddrSnes(sh_addr as usize).with_bank(0x07);
 
         let sh_block =
             DataBlock { slice: SnesSlice::new(sh_addr, SPRITE_HEADER_SIZE), kind: DataKind::LevelHeaderSprites };
         let sprite_header =
-            disasm.data_block_at(sh_block, LevelParseError::SpriteHeaderRead)?.parse(SpriteHeader::read_from)?;
+            disasm.rom_slice_at_block(sh_block, LevelParseError::SpriteHeaderRead)?.parse(SpriteHeader::read_from)?;
 
-        let sl_slice = SnesSlice::new(sh_addr + 1, usize::MAX);
-        let sprite_layer = disasm
-            .rom
-            .with_error_mapper(LevelParseError::SpriteRead)
-            .slice_lorom(sl_slice)?
-            .parse(SpriteLayer::parse)?;
+        let mut sl_block =
+            DataBlock { slice: SnesSlice::new(sh_addr + 1, usize::MAX), kind: DataKind::LevelSpriteLayer };
+        let (sprite_layer, consumed_size) =
+            disasm.rom_slice_at_block(sl_block, LevelParseError::SpriteRead)?.parse(SpriteLayer::parse)?;
+        sl_block.slice.size = consumed_size;
+        disasm.rom_slice_at_block(sl_block, LevelParseError::SpriteRead)?;
 
         Ok((sprite_header, sprite_layer))
     }
