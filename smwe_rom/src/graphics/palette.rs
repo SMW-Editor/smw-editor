@@ -6,7 +6,10 @@ use crate::{
     error::{ColorPaletteError, ColorPaletteParseError},
     graphics::color::{Abgr1555, ABGR1555_SIZE},
     level::{headers::PrimaryHeader, Level},
-    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
+    snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
+    DataBlock,
+    DataKind,
+    RomDisassembly,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -150,13 +153,13 @@ pub enum OverworldState {
 // -------------------------------------------------------------------------------------------------
 
 fn make_color_parser(
-    rom: &Rom,
-) -> impl Fn(SnesSlice, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
-    move |slice, err| rom.with_error_mapper(move |_| err).slice_lorom(slice)?.parse(many1(map(le_u16, Abgr1555)))
+    disasm: &mut RomDisassembly,
+) -> impl FnMut(DataBlock, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
+    move |data_block, err| disasm.rom_slice_at_block(data_block, move |_| err)?.parse(many1(map(le_u16, Abgr1555)))
 }
 
 impl ColorPalettes {
-    pub fn parse(rom: &Rom, levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
+    pub fn parse(disasm: &mut RomDisassembly, levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
         const PLAYER_PALETTE: SnesSlice = SnesSlice::new(AddrSnes(0x00B2C8), 4 * 0x14);
         const OW_LAYER1_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B528), ABGR1555_SIZE * 7 * 6);
         const OW_LAYER3_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B5EC), ABGR1555_SIZE * 8 * 2);
@@ -167,18 +170,29 @@ impl ColorPalettes {
         const LV_BERRY_PALETTE: SnesSlice = SnesSlice::new(AddrSnes(0x00B674), 3 * 0x0E);
         const LV_ANIMATED_COLOR: SnesSlice = SnesSlice::new(AddrSnes(0x00B60C), ABGR1555_SIZE * 8);
 
-        let parse_colors = make_color_parser(rom);
+        let mut parse_colors = make_color_parser(disasm);
 
-        let players = parse_colors(PLAYER_PALETTE, ColorPaletteParseError::PlayerPalette)?;
-        let ow_layer1_colors = parse_colors(OW_LAYER1_PALETTES, ColorPaletteParseError::OverworldLayer1Palette)?;
-        let ow_layer3_colors = parse_colors(OW_LAYER3_PALETTES, ColorPaletteParseError::OverworldLayer3Palette)?;
-        let ow_sprite_colors = parse_colors(OW_SPRITE_PALETTES, ColorPaletteParseError::OverworldSpritePalette)?;
-        let lv_wtf = parse_colors(LV_WTF_PALETTE, ColorPaletteParseError::LevelMiscPalette)?;
-        let lv_layer3 = parse_colors(LV_LAYER3_PALETTE, ColorPaletteParseError::LevelLayer3Palette)?;
-        let lv_berry = parse_colors(LV_BERRY_PALETTE, ColorPaletteParseError::LevelBerryPalette)?;
-        let lv_animated = parse_colors(LV_ANIMATED_COLOR, ColorPaletteParseError::LevelAnimatedColor)?;
-        let lv_specific_set = LevelColorPaletteSet::parse(rom, levels)?;
-        let ow_specific_set = OverworldColorPaletteSet::parse(rom)?;
+        let data_block = DataBlock::empty_with_kind(DataKind::ColorPaletteLevel);
+
+        let players = parse_colors(data_block.with_slice(PLAYER_PALETTE), ColorPaletteParseError::PlayerPalette)?;
+        let ow_layer1_colors =
+            parse_colors(data_block.with_slice(OW_LAYER1_PALETTES), ColorPaletteParseError::OverworldLayer1Palette)?;
+        let ow_layer3_colors =
+            parse_colors(data_block.with_slice(OW_LAYER3_PALETTES), ColorPaletteParseError::OverworldLayer3Palette)?;
+        let ow_sprite_colors =
+            parse_colors(data_block.with_slice(OW_SPRITE_PALETTES), ColorPaletteParseError::OverworldSpritePalette)?;
+        let lv_wtf = parse_colors(data_block.with_slice(LV_WTF_PALETTE), ColorPaletteParseError::LevelMiscPalette)?;
+        let lv_layer3 =
+            parse_colors(data_block.with_slice(LV_LAYER3_PALETTE), ColorPaletteParseError::LevelLayer3Palette)?;
+        let lv_berry =
+            parse_colors(data_block.with_slice(LV_BERRY_PALETTE), ColorPaletteParseError::LevelBerryPalette)?;
+        let lv_animated =
+            parse_colors(data_block.with_slice(LV_ANIMATED_COLOR), ColorPaletteParseError::LevelAnimatedColor)?;
+
+        drop(parse_colors);
+
+        let lv_specific_set = LevelColorPaletteSet::parse(disasm, levels)?;
+        let ow_specific_set = OverworldColorPaletteSet::parse(disasm)?;
 
         Ok(ColorPalettes {
             players: players.into(),
@@ -206,13 +220,13 @@ impl ColorPalettes {
 }
 
 impl LevelColorPaletteSet {
-    fn parse(rom: &Rom, levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
+    fn parse(disasm: &mut RomDisassembly, levels: &[Level]) -> Result<Self, ColorPaletteParseError> {
         const BACK_AREA_COLORS: SnesSlice = SnesSlice::new(AddrSnes(0x00B0A0), ABGR1555_SIZE);
         const BG_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B0B0), 0x18);
         const FG_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B190), 0x18);
         const SPRITE_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B318), 0x18);
 
-        let parse_colors = make_color_parser(rom);
+        let mut parse_colors = make_color_parser(disasm);
 
         let mut palette_set = Self {
             back_area_colors: Vec::with_capacity(8),
@@ -229,20 +243,22 @@ impl LevelColorPaletteSet {
             let idx_fg = header.palette_fg() as usize;
             let idx_sp = header.palette_sprite() as usize;
 
+            let data_block = DataBlock::empty_with_kind(DataKind::ColorPaletteLevel);
+
             let bc = parse_colors(
-                BACK_AREA_COLORS.skip_forward(idx_bc),
+                data_block.with_slice(BACK_AREA_COLORS.skip_forward(idx_bc)),
                 ColorPaletteParseError::LevelBackAreaColor(level_num),
             )?;
             let bg = parse_colors(
-                BG_PALETTES.skip_forward(idx_bg),
+                data_block.with_slice(BG_PALETTES.skip_forward(idx_bg)),
                 ColorPaletteParseError::LevelBackgroundPalette(level_num),
             )?;
             let fg = parse_colors(
-                FG_PALETTES.skip_forward(idx_fg),
+                data_block.with_slice(FG_PALETTES.skip_forward(idx_fg)),
                 ColorPaletteParseError::LevelForegroundPalette(level_num),
             )?;
             let sp = parse_colors(
-                SPRITE_PALETTES.skip_forward(idx_sp),
+                data_block.with_slice(SPRITE_PALETTES.skip_forward(idx_sp)),
                 ColorPaletteParseError::LevelSpritePalette(level_num),
             )?;
 
@@ -305,8 +321,8 @@ impl LevelColorPaletteSet {
 }
 
 impl OverworldColorPaletteSet {
-    fn parse(rom: &Rom) -> Result<OverworldColorPaletteSet, ColorPaletteParseError> {
-        let parse_colors = make_color_parser(rom);
+    fn parse(disasm: &mut RomDisassembly) -> Result<OverworldColorPaletteSet, ColorPaletteParseError> {
+        let mut parse_colors = make_color_parser(disasm);
 
         const LAYER2_NORMAL_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B3D8), ABGR1555_SIZE * 7 * 4);
         const LAYER2_SPECIAL_PALETTES: SnesSlice = SnesSlice::new(AddrSnes(0x00B732), ABGR1555_SIZE * 7 * 4);
@@ -319,12 +335,13 @@ impl OverworldColorPaletteSet {
 
         for i in 0..6 {
             let subworld_pal_idx = i * 14 * 4;
+            let data_block = DataBlock::empty_with_kind(DataKind::ColorPaletteOverworld);
             let layer2_colors_normal = parse_colors(
-                LAYER2_NORMAL_PALETTES.offset_forward(subworld_pal_idx),
+                data_block.with_slice(LAYER2_NORMAL_PALETTES.offset_forward(subworld_pal_idx)),
                 ColorPaletteParseError::OverworldLayer2NormalPalette(i),
             )?;
             let layer2_colors_special = parse_colors(
-                LAYER2_SPECIAL_PALETTES.offset_forward(subworld_pal_idx),
+                data_block.with_slice(LAYER2_SPECIAL_PALETTES.offset_forward(subworld_pal_idx)),
                 ColorPaletteParseError::OverworldLayer2SpecialPalette(i),
             )?;
 
@@ -332,19 +349,24 @@ impl OverworldColorPaletteSet {
             layer2_post_special.push(layer2_colors_special.into());
         }
 
-        let indirect_table_1 = rom
-            .with_error_mapper(|_| {
-                ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1)
-            })
-            .slice_lorom(LAYER2_PALETTE_INDIRECT1)?
-            .as_bytes()?;
+        drop(parse_colors);
+
+        let indirect_table_1 = disasm
+            .rom_slice_at_block(
+                DataBlock { slice: LAYER2_PALETTE_INDIRECT1, kind: DataKind::ColorPaletteOverworldLayer2Indirect1 },
+                |_| ColorPaletteParseError::OverworldLayer2IndicesIndirect1Read(LAYER2_PALETTE_INDIRECT1),
+            )?
+            .as_bytes()?
+            .to_vec();
 
         for &offset in indirect_table_1.iter() {
             let index_offset = LAYER2_PALETTE_INDIRECT2.offset_forward(2 * offset as usize).begin;
-            let ptr16_slice = SnesSlice::new(index_offset, 2);
-            let ptr16 = rom
-                .with_error_mapper(|_| ColorPaletteParseError::OverworldLayer2IndexRead(offset as usize))
-                .slice_lorom(ptr16_slice)?
+            let ptr16_block = DataBlock {
+                slice: SnesSlice::new(index_offset, 2),
+                kind:  DataKind::ColorPaletteOverworldLayer2Indirect2,
+            };
+            let ptr16 = disasm
+                .rom_slice_at_block(ptr16_block, |_| ColorPaletteParseError::OverworldLayer2IndexRead(offset as usize))?
                 .parse(le_u16)?;
 
             let idx = ptr16 / 0x38;

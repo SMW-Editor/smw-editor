@@ -82,7 +82,7 @@ impl SmwRom {
         let secondary_entrances = Self::parse_secondary_entrances(&mut disassembly)?;
 
         log::info!("Parsing color palettes");
-        let color_palettes = ColorPalettes::parse(&disassembly.rom, &levels).map_err(RomParseError::ColorPalettes)?;
+        let color_palettes = ColorPalettes::parse(&mut disassembly, &levels).map_err(RomParseError::ColorPalettes)?;
 
         log::info!("Parsing GFX files");
         let gfx_files = Self::parse_gfx_files(&disassembly.rom, &internal_header)?;
