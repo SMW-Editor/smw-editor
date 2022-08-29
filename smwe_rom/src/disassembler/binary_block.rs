@@ -65,11 +65,12 @@ pub enum DataKind {
     OverworldSpriteLayer,
 
     // Misc.
-    Graphics,
+    GfxFile,
     InternalRomHeader,
     Music,
     SoundSample,
     Text,
+    Tileset,
 }
 
 // -------------------------------------------------------------------------------------------------

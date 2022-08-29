@@ -85,7 +85,7 @@ impl SmwRom {
         let color_palettes = ColorPalettes::parse(&mut disassembly, &levels).map_err(RomParseError::ColorPalettes)?;
 
         log::info!("Parsing GFX files");
-        let gfx_files = Self::parse_gfx_files(&disassembly.rom, &internal_header)?;
+        let gfx_files = Self::parse_gfx_files(&mut disassembly, &internal_header)?;
 
         log::info!("Parsing Map16 tilesets");
         let map16_tilesets = Tilesets::parse(&disassembly.rom).map_err(RomParseError::Map16Tilesets)?;
@@ -120,12 +120,14 @@ impl SmwRom {
         Ok(secondary_entrances)
     }
 
-    fn parse_gfx_files(rom: &Rom, internal_header: &RomInternalHeader) -> Result<Vec<GfxFile>, RomParseError> {
+    fn parse_gfx_files(
+        disasm: &mut RomDisassembly, internal_header: &RomInternalHeader,
+    ) -> Result<Vec<GfxFile>, RomParseError> {
         let revised_gfx =
             matches!(internal_header.region_code, RegionCode::Japan) || internal_header.version_number > 0;
         let mut gfx_files = Vec::with_capacity(GFX_FILES_META.len());
         for file_num in 0..GFX_FILES_META.len() {
-            let file = GfxFile::new(rom, file_num, revised_gfx).map_err(|e| RomParseError::GfxFile(file_num, e))?;
+            let file = GfxFile::new(disasm, file_num, revised_gfx).map_err(|e| RomParseError::GfxFile(file_num, e))?;
             gfx_files.push(file);
         }
         Ok(gfx_files)

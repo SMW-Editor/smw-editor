@@ -14,7 +14,9 @@ use crate::{
     compression::lc_lz2,
     error::{DecompressionError, GfxFileParseError, RomError},
     graphics::color::Abgr1555,
-    snes_utils::rom::Rom,
+    DataBlock,
+    DataKind,
+    RomDisassembly,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -119,7 +121,7 @@ impl Tile {
 }
 
 impl GfxFile {
-    pub fn new(rom: &Rom, file_num: usize, revised_gfx: bool) -> Result<Self, GfxFileParseError> {
+    pub fn new(disasm: &mut RomDisassembly, file_num: usize, revised_gfx: bool) -> Result<Self, GfxFileParseError> {
         debug_assert!(file_num < GFX_FILES_META.len());
 
         use TileFormat::*;
@@ -134,14 +136,13 @@ impl GfxFile {
             TileMode7 => (Tile::from_mode7, 8 * 8),
         };
 
-        let tiles = rom
-            .with_error_mapper(|e| match e {
+        let tiles = disasm
+            .rom_slice_at_block(DataBlock { slice, kind: DataKind::GfxFile }, |e| match e {
                 RomError::SliceSnes(_) | RomError::SlicePc(_) => GfxFileParseError::IsolatingData(e),
                 RomError::Decompress(DecompressionError::LcLz2(l)) => GfxFileParseError::DecompressingData(l),
                 RomError::Parse => GfxFileParseError::ParsingTile,
                 _ => unreachable!(),
-            })
-            .slice_lorom(slice)?
+            })?
             .decompress(move |slice| lc_lz2::decompress(slice, revised_gfx))?
             .view()
             .parse(many1(map_parser(take(tile_size_bytes), parser)))?;
