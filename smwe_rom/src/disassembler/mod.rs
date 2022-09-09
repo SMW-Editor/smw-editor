@@ -151,7 +151,7 @@ impl RomDisassembly {
                 if !data_block.slice.is_infinite() {
                     if old_data_block.slice.is_infinite() {
                         self.cached_data_blocks.remove(&old_data_block);
-                        // self.split_unknown_block_with(data_block, &error_mapper)?;
+                        self.split_unknown_block_with(data_block, &error_mapper)?;
                     } else if data_block.slice.size > old_data_block.slice.size {
                         self.cached_data_blocks.remove(&old_data_block);
                         let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
@@ -211,13 +211,15 @@ impl RomDisassembly {
                             if data_block.slice.contains(next_chunk_start) {
                                 match next_block {
                                     BinaryBlock::Code(_) => {
-                                        log::error!("Requested data block overlaps with the next code block at: {next_begin:?}");
+                                        log::error!("Requested data block overlaps with the next code block at: {next_chunk_start:?}");
                                     }
-                                    BinaryBlock::Data(db) => {
-                                        log::error!("Requested data block overlaps with the next data block:\ndata_block = {data_block:?}\nnext_block = {db:?}");
+                                    BinaryBlock::Data(next_data_block) => {
+                                        log::error!("Requested data block overlaps with the next data block:");
+                                        eprintln!("> data_block = {data_block:?}");
+                                        eprintln!("> next_block = {next_data_block:?}");
                                     }
                                     BinaryBlock::Unknown => {
-                                        log::error!("Requested data block overlaps with the next unknown block at: {next_begin:?}");
+                                        log::error!("Requested data block overlaps with the next unknown block at: {next_chunk_start:?}");
                                     }
                                     BinaryBlock::EndOfRom => {
                                         log::error!("Requested data block doesn't fit in the ROM");
