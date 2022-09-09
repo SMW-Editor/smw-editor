@@ -192,7 +192,8 @@ impl RomDisassembly {
 
         let mut split_type = SplitType::None;
         let mut found = false;
-        for (i, ((begin, block), (next_begin, next_block))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate() {
+        for (i, ((begin, block), (next_begin, next_block))) in self.chunks.iter().tuple_windows::<(_, _)>().enumerate()
+        {
             let next_chunk_start = AddrSnes::try_from_lorom(*next_begin).unwrap();
             match begin.cmp(&addr) {
                 Ordering::Equal => {
