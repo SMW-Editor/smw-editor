@@ -87,7 +87,7 @@ impl Level {
 
         if l2_ptr.bank() == 0xFF {
             let mut block = DataBlock {
-                slice: SnesSlice::new(l2_ptr.with_bank(0x0C) + PRIMARY_HEADER_SIZE, usize::MAX),
+                slice: SnesSlice::new(l2_ptr.with_bank(0x0C), usize::MAX),
                 kind:  DataKind::LevelLayer2Background,
             };
             let layer2 = disasm.rom_slice_at_block(block, LevelParseError::Layer2Isolate)?.as_bytes()?;

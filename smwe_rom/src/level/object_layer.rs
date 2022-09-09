@@ -2,7 +2,6 @@ use std::convert::TryInto;
 
 use nom::{
     bytes::complete::{tag, take},
-    combinator::cond,
     multi::many_till,
     IResult,
 };
@@ -14,19 +13,28 @@ pub type StandardObjectID = u8;
 pub type ExtendedObjectID = u8;
 
 #[derive(Clone)]
-pub struct ExitInstance([u8; EXIT_INSTANCE_SIZE]);
+pub struct StandardObject([u8; NON_EXIT_INSTANCE_SIZE]);
 
 #[derive(Clone)]
-pub struct NonExitInstance([u8; NON_EXIT_INSTANCE_SIZE]);
+pub struct ExitObject([u8; EXIT_INSTANCE_SIZE]);
 
 #[derive(Clone)]
-pub struct ScreenJumpInstance([u8; NON_EXIT_INSTANCE_SIZE]);
+pub struct ScreenJumpObject([u8; NON_EXIT_INSTANCE_SIZE]);
+
+#[derive(Clone)]
+pub struct ExtendedOtherObject([u8; NON_EXIT_INSTANCE_SIZE]);
+
+#[derive(Clone)]
+pub enum ExtendedInstance {
+    Exit(ExitObject),
+    ScreenJump(ScreenJumpObject),
+    Other(ExtendedOtherObject),
+}
 
 #[derive(Clone)]
 pub enum ObjectInstance {
-    Exit(ExitInstance),
-    NonExit(NonExitInstance),
-    ScreenJump(ScreenJumpInstance),
+    Standard(StandardObject),
+    Extended(ExtendedInstance),
 }
 
 #[derive(Clone)]
@@ -34,7 +42,7 @@ pub struct ObjectLayer {
     _objects: Vec<ObjectInstance>,
 }
 
-impl ExitInstance {
+impl ExitObject {
     pub fn screen_number(&self) -> u8 {
         // ---ppppp -------- -------- --------
         // screen_number = ppppp
@@ -56,7 +64,7 @@ impl ExitInstance {
     }
 }
 
-impl NonExitInstance {
+impl StandardObject {
     pub fn new_screen(&self) -> bool {
         // N----- -------- --------
         // new_screen = N
@@ -100,7 +108,7 @@ impl NonExitInstance {
     }
 }
 
-impl ScreenJumpInstance {
+impl ScreenJumpObject {
     pub fn screen_number(&self) -> u8 {
         // ---HHHHH -------- --------
         // screen_number = HHHHH
@@ -111,8 +119,8 @@ impl ScreenJumpInstance {
 impl ObjectInstance {
     pub fn is_extended(&self) -> bool {
         match self {
-            ObjectInstance::NonExit(i) => i.is_extended(),
-            ObjectInstance::Exit(_) | ObjectInstance::ScreenJump(_) => true,
+            ObjectInstance::Standard(i) => i.is_extended(),
+            ObjectInstance::Extended(_) => true,
         }
     }
 }
@@ -120,21 +128,27 @@ impl ObjectInstance {
 impl ObjectLayer {
     fn parse_object(input: &[u8]) -> IResult<&[u8], ObjectInstance> {
         let (input, first_three) = take(3usize)(input)?;
-        let (input, last) = cond((first_three[0] & 0b11100000) == 0 && first_three[2] == 0, take(1usize))(input)?;
-        match last {
-            Some(l) => {
-                let instance = ExitInstance([first_three, l].concat().try_into().unwrap());
-                Ok((input, ObjectInstance::Exit(instance)))
-            }
-            None => {
-                if first_three[2] == 1 {
-                    let instance = ScreenJumpInstance(first_three.try_into().unwrap());
-                    Ok((input, ObjectInstance::ScreenJump(instance)))
-                } else {
-                    let instance = NonExitInstance(first_three.try_into().unwrap());
-                    Ok((input, ObjectInstance::NonExit(instance)))
+        if first_three[0] & 0b01100000 == 0 && first_three[1] & 0b11110000 == 0 {
+            // Extended objects
+            match first_three[2] {
+                0 => {
+                    let (input, last) = take(1usize)(input)?;
+                    let instance = ExtendedInstance::Exit(ExitObject([first_three, last].concat().try_into().unwrap()));
+                    Ok((input, ObjectInstance::Extended(instance)))
+                }
+                1 => {
+                    let instance = ExtendedInstance::ScreenJump(ScreenJumpObject(first_three.try_into().unwrap()));
+                    Ok((input, ObjectInstance::Extended(instance)))
+                }
+                _ => {
+                    let instance = ExtendedInstance::Other(ExtendedOtherObject(first_three.try_into().unwrap()));
+                    Ok((input, ObjectInstance::Extended(instance)))
                 }
             }
+        } else {
+            // Standard objects
+            let instance = StandardObject(first_three.try_into().unwrap());
+            Ok((input, ObjectInstance::Standard(instance)))
         }
     }
 

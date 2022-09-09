@@ -1,15 +1,7 @@
-use std::convert::TryFrom;
-
-use num_enum::TryFromPrimitive;
-
 use crate::error::{DecompressionError, LcRle1Error};
 
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, TryFromPrimitive)]
-enum Command {
-    DirectCopy = 0,
-    ByteFill   = 1,
-}
+const COMMAND_DIRECT_COPY: u8 = 0;
+const COMMAND_BYTE_FILL: u8 = 1;
 
 /// Returns decompressed data and the size of compressed data.
 pub fn decompress(input: &[u8]) -> Result<(Vec<u8>, usize), DecompressionError> {
@@ -23,13 +15,10 @@ pub fn decompress(input: &[u8]) -> Result<(Vec<u8>, usize), DecompressionError> 
         }
         in_it = &in_it[1..];
         let command = chunk_header >> 7;
-        let length = chunk_header & 0b1111111;
-
-        let command = Command::try_from(command).map_err(|_| LcRle1Error::Command(command))?;
-        let length = length as usize + 1;
+        let length = (chunk_header & 0b01111111) as usize + 1;
 
         match command {
-            Command::DirectCopy => {
+            COMMAND_DIRECT_COPY => {
                 if length <= in_it.len() {
                     let (bytes, rest) = in_it.split_at(length);
                     output.extend_from_slice(bytes);
@@ -38,11 +27,12 @@ pub fn decompress(input: &[u8]) -> Result<(Vec<u8>, usize), DecompressionError> 
                     return Err(LcRle1Error::DirectCopy(length).into());
                 }
             }
-            Command::ByteFill => {
+            COMMAND_BYTE_FILL => {
                 let byte = *in_it.first().ok_or(LcRle1Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
             }
+            _ => unreachable!(),
         }
     }
 
