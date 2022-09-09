@@ -117,6 +117,30 @@ impl RomDisassembly {
         &self.rom.0
     }
 
+    /// Parses a data block and marks it with given kind and size determined by the `parse` function. `parse` returns
+    /// the parsed data and number of ROM bytes consumed by the parser.
+    pub fn parse_and_mark_data<EM, ET, RT, PF>(
+        &mut self, block_start: AddrSnes, data_kind: DataKind, error_mapper: EM, parse: PF,
+    ) -> std::result::Result<RT, ET>
+    where
+        PF: FnOnce(RomViewWithErrorMapper<'_, EM, ET, SnesSliced<'_>>) -> std::result::Result<(RT, usize), ET>,
+        EM: Fn(RomError) -> ET + Clone,
+    {
+        let mut block = DataBlock { slice: SnesSlice::new(block_start, usize::MAX), kind: data_kind };
+        let rom_view = self.rom_slice_at_block(block, error_mapper.clone())?;
+        let (ret, size) = parse(rom_view)?;
+
+        // Replace data block if its size hasn't been determined yet.
+        if self.cached_data_blocks.contains(&block) {
+            self.cached_data_blocks.remove(&block);
+            block.slice.size = size;
+            self.split_unknown_block_with(block, &error_mapper)?;
+            self.cached_data_blocks.insert(block);
+        }
+
+        Ok(ret)
+    }
+
     /// Requests a data block from disassembly. If the data block hasn't been determined before, this function finds
     /// a `BinaryBlock::Unknown` containing the area of `data_block` and splits or replaces it with `BinaryBlock::Data`,
     /// depending on the size and location of `data_block`. The newly established data block is also marked with its

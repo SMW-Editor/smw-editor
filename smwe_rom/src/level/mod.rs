@@ -63,15 +63,17 @@ impl Level {
 
         let ph_block =
             DataBlock { slice: SnesSlice::new(ph_addr, PRIMARY_HEADER_SIZE), kind: DataKind::LevelHeaderPrimary };
-        let primary_header = disasm.rom_slice_at_block(ph_block, LevelParseError::PrimaryHeaderRead)?.as_bytes()?;
-        let primary_header = PrimaryHeader::new(primary_header);
+        let primary_header = {
+            let bytes = disasm.rom_slice_at_block(ph_block, LevelParseError::PrimaryHeaderRead)?.as_bytes()?;
+            PrimaryHeader::new(bytes)
+        };
 
-        let mut layer1_block =
-            DataBlock { slice: ph_block.slice.skip_forward(1).infinite(), kind: DataKind::LevelLayer1Objects };
-        let (layer1, consumed_size) =
-            disasm.rom_slice_at_block(layer1_block, LevelParseError::Layer1Read)?.parse(ObjectLayer::parse)?;
-        layer1_block.slice.size = consumed_size;
-        disasm.rom_slice_at_block(layer1_block, LevelParseError::Layer1Read)?;
+        let layer1 = disasm.parse_and_mark_data(
+            ph_addr + PRIMARY_HEADER_SIZE,
+            DataKind::LevelLayer1Objects,
+            LevelParseError::Layer1Read,
+            |rom_view| rom_view.parse(ObjectLayer::parse),
+        )?;
 
         Ok((primary_header, layer1))
     }
@@ -86,25 +88,23 @@ impl Level {
             .parse(map(le_u24, AddrSnes::from))?;
 
         if l2_ptr.bank() == 0xFF {
-            let mut block = DataBlock {
-                slice: SnesSlice::new(l2_ptr.with_bank(0x0C), usize::MAX),
-                kind:  DataKind::LevelLayer2Background,
-            };
-            let layer2 = disasm.rom_slice_at_block(block, LevelParseError::Layer2Isolate)?.as_bytes()?;
-            let (background, consumed_size) =
-                BackgroundData::read_from(layer2).map_err(LevelParseError::Layer2BackgroundRead)?;
-            block.slice.size = consumed_size;
-            disasm.rom_slice_at_block(block, LevelParseError::Layer2Isolate)?;
+            let background = disasm.parse_and_mark_data(
+                l2_ptr.with_bank(0x0C),
+                DataKind::LevelLayer2Background,
+                LevelParseError::Layer2Isolate,
+                |rom_view| {
+                    let bytes = rom_view.as_bytes()?;
+                    BackgroundData::read_from(bytes).map_err(LevelParseError::Layer2BackgroundRead)
+                },
+            )?;
             Ok(Layer2Data::Background(background))
         } else {
-            let mut block = DataBlock {
-                slice: SnesSlice::new(l2_ptr + PRIMARY_HEADER_SIZE, usize::MAX),
-                kind:  DataKind::LevelLayer2Objects,
-            };
-            let (objects, consumed_size) =
-                disasm.rom_slice_at_block(block, LevelParseError::Layer2Read)?.parse(ObjectLayer::parse)?;
-            block.slice.size = consumed_size;
-            disasm.rom_slice_at_block(block, LevelParseError::Layer2Read)?;
+            let objects = disasm.parse_and_mark_data(
+                l2_ptr + PRIMARY_HEADER_SIZE,
+                DataKind::LevelLayer2Objects,
+                LevelParseError::Layer2Read,
+                |rom_view| rom_view.parse(ObjectLayer::parse),
+            )?;
             Ok(Layer2Data::Objects(objects))
         }
     }
@@ -124,12 +124,12 @@ impl Level {
         let sprite_header =
             disasm.rom_slice_at_block(sh_block, LevelParseError::SpriteHeaderRead)?.parse(SpriteHeader::read_from)?;
 
-        let mut sl_block =
-            DataBlock { slice: SnesSlice::new(sh_addr + 1, usize::MAX), kind: DataKind::LevelSpriteLayer };
-        let (sprite_layer, consumed_size) =
-            disasm.rom_slice_at_block(sl_block, LevelParseError::SpriteRead)?.parse(SpriteLayer::parse)?;
-        sl_block.slice.size = consumed_size;
-        disasm.rom_slice_at_block(sl_block, LevelParseError::SpriteRead)?;
+        let sprite_layer = disasm.parse_and_mark_data(
+            sh_addr + 1,
+            DataKind::LevelSpriteLayer,
+            LevelParseError::SpriteRead,
+            |rom_view| rom_view.parse(SpriteLayer::parse),
+        )?;
 
         Ok((sprite_header, sprite_layer))
     }

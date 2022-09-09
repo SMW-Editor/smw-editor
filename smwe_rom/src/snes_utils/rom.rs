@@ -30,7 +30,7 @@ pub trait RomView<'r> {
         Ok(Decompressed { bytes })
     }
 
-    fn parse<'s, Ret, Parser>(&'s mut self, mut f: Parser) -> Result<Ret, RomError>
+    fn parse<'s, Ret, Parser>(&'s self, mut f: Parser) -> Result<Ret, RomError>
     where
         Parser: nom::Parser<&'r [u8], Ret, nom::error::Error<&'r [u8]>>,
         Self: Sized,
@@ -180,7 +180,7 @@ where
         })
     }
 
-    pub fn parse<'s, Ret: 's, Parser>(&'s mut self, f: Parser) -> Result<Ret, ET>
+    pub fn parse<'s, Ret: 's, Parser>(&'s self, f: Parser) -> Result<Ret, ET>
     where
         Parser: nom::Parser<&'r [u8], Ret, nom::error::Error<&'r [u8]>>,
         Self: Sized,
