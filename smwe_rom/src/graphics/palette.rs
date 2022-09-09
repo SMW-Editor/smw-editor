@@ -155,7 +155,10 @@ pub enum OverworldState {
 fn make_color_parser(
     disasm: &mut RomDisassembly,
 ) -> impl FnMut(DataBlock, ColorPaletteParseError) -> Result<Vec<Abgr1555>, ColorPaletteParseError> + '_ {
-    |data_block, err| disasm.rom_slice_at_block(data_block, move |_| err)?.parse(many1(map(le_u16, Abgr1555)))
+    |data_block, err| {
+        let palette_parser = many1(map(le_u16, Abgr1555));
+        disasm.rom_slice_at_block(data_block, move |_| err)?.parse(palette_parser)
+    }
 }
 
 impl ColorPalettes {
