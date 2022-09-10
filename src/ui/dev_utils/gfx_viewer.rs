@@ -102,9 +102,7 @@ impl UiGfxViewer {
             ui.vertical(|ui| {
                 for (label, var, max) in inputs {
                     ui.horizontal(|ui| {
-                        let dv = DragValue::new(var)
-                            .hexadecimal(2, false, true)
-                            .clamp_range(0..=max - 1);
+                        let dv = DragValue::new(var).hexadecimal(2, false, true).clamp_range(0..=max - 1);
                         changed_any |= ui.add(dv).changed();
                         ui.label(label);
                     });

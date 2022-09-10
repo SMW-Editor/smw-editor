@@ -103,9 +103,7 @@ impl UiPaletteViewer {
         ui.horizontal(|ui| {
             if ui
                 .add({
-                    DragValue::new(&mut self.level_num)
-                        .clamp_range(0..=level_count - 1)
-                        .hexadecimal(3, false, true)
+                    DragValue::new(&mut self.level_num).clamp_range(0..=level_count - 1).hexadecimal(3, false, true)
                 })
                 .changed()
             {
@@ -133,9 +131,7 @@ impl UiPaletteViewer {
         ui.horizontal(|ui| {
             if ui
                 .add({
-                    DragValue::new(&mut self.submap_num)
-                        .clamp_range(0..=submap_count - 1)
-                        .hexadecimal(1, false, true)
+                    DragValue::new(&mut self.submap_num).clamp_range(0..=submap_count - 1).hexadecimal(1, false, true)
                 })
                 .changed()
             {
