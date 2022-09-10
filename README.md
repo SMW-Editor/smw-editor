@@ -1,16 +1,16 @@
 # SMW Editor
 
-SMW Editor aims to become an open-source, multi-platform, modern alternative to Lunar
-Magic bundled with many more tools for SMW romhacking.
+SMW Editor aims to become an open-source, multi-platform, modern alternative to
+Lunar Magic, providing all the necessary tools for SMW romhacking.
 
-This project is in a very early stage of development, currently far from anything
-presentable. I haven't yet decided what the final name of this project will be,
-and none of the main features are there yet.
+This project is still in very early in development, currently far from anything
+usable. None of the planned features are completed or worked on yet since I'm
+currently focusing on reverse-engineering the vanilla Super Mario World ROM.
 
 ## Currently in progress
 
-Moving to the approach of getting data from disassembly rather than directly from the ROM.
-You can track the progress in the `data-from-disasm` branch.
+Constructing objects (e.g. blocks) from Map16 and tileset data and displaying them in a list.
+You can track the progress in the `map16` branch.
 
 The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 
@@ -24,7 +24,7 @@ The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
 - Background editor
 - ASM code editor
 - Music editor
-- Plugins and extensions
+- Custom plugins and extensions
 - Multiple language support
 
 ## Building
@@ -34,7 +34,7 @@ Make sure you have [rustup](https://rustup.rs/) installed.
 Clone this repository, and execute this command in the root directory:
 
 ```bash
-$ cargo run 
+$ cargo run --release 
 ```
 
 You can run the editor with the `ROM_PATH` environment variable set to the file path
@@ -47,8 +47,7 @@ We are a team of two working on this project in our free time. Due to the scale 
 this project and the amount of time available to us, the development is pretty slow.
 
 For this reason we encourage you to contribute: simply clone the repository, create
-a branch, push your changes, and create a pull request. Don't forget to run
-`format-apply.sh` before you push!
+a branch, push your changes, and open a pull request.
 
 We also think expanding our development team would speed things up and help us deliver
 a better product. If you want to join us and are experienced in at least one of these
@@ -58,6 +57,4 @@ a better product. If you want to join us and are experienced in at least one of 
 - SMW romhacking
 - UI design
 
-Then please contact me on:
-- Discord (Ąhoš#8981)
-- Email: a.gasior@newcastle.ac.uk
+then please contact me via Discord (`Ąhoš#8981`) or email (a.gasior@newcastle.ac.uk).
