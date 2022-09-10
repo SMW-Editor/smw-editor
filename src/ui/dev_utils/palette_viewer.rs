@@ -105,7 +105,7 @@ impl UiPaletteViewer {
                 .add({
                     DragValue::new(&mut self.level_num)
                         .clamp_range(0..=level_count - 1)
-                        .custom_formatter(|n, _| format!("{:03X}", n as i64))
+                        .hexadecimal(3, false, true)
                 })
                 .changed()
             {
@@ -135,7 +135,7 @@ impl UiPaletteViewer {
                 .add({
                     DragValue::new(&mut self.submap_num)
                         .clamp_range(0..=submap_count - 1)
-                        .custom_formatter(|n, _| format!("{:X}", n as i64))
+                        .hexadecimal(1, false, true)
                 })
                 .changed()
             {

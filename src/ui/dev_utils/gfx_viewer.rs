@@ -103,7 +103,7 @@ impl UiGfxViewer {
                 for (label, var, max) in inputs {
                     ui.horizontal(|ui| {
                         let dv = DragValue::new(var)
-                            .custom_formatter(|n, _| format!("{:02X}", n as i64))
+                            .hexadecimal(2, false, true)
                             .clamp_range(0..=max - 1);
                         changed_any |= ui.add(dv).changed();
                         ui.label(label);

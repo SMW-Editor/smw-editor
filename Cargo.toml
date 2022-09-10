@@ -17,8 +17,8 @@ readme = "README.md"
 smwe_project = { path = "smwe_project" }
 smwe_rom = { path = "smwe_rom" }
 
-eframe = "0.19"
-egui_extras = "0.19"
+eframe = { git = "https://github.com/emilk/egui" }
+egui_extras = { git = "https://github.com/emilk/egui" }
 inline_tweak = "1.0"
 itertools = "0.10"
 log = "0.4"

@@ -74,7 +74,7 @@ impl UiDisassembler {
                         min.0..=max.0 - 1
                     })
                     .prefix("$")
-                    .custom_formatter(|n, _| format!("{:06X}", n as i64)),
+                    .hexadecimal(6, false, true),
             );
             ui.label("Address");
         });
