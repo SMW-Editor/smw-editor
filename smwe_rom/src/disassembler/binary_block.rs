@@ -64,6 +64,10 @@ pub enum DataKind {
     OverworldLayer2,
     OverworldSpriteLayer,
 
+    // GFX lists
+    GfxListObjects,
+    GfxListSprites,
+
     // Misc.
     GfxFile,
     InternalRomHeader,

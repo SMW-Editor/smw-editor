@@ -255,6 +255,10 @@ pub enum RomParseError {
 #[error("Could not parse Map16 tiles at:\n- {0}")]
 pub struct TilesetParseError(pub SnesSlice);
 
+#[derive(Debug, Error)]
+#[error("Could not GFX list at:\n- {0}")]
+pub struct GfxListParseError(pub SnesSlice);
+
 pub type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
 
 // -------------------------------------------------------------------------------------------------
