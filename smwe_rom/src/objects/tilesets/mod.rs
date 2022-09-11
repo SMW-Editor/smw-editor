@@ -1,18 +1,6 @@
 mod data;
 
-pub use data::{
-    TILES_000_072,
-    TILES_073_0FF,
-    TILES_100_106,
-    TILES_107_110,
-    TILES_111_152,
-    TILES_153_16D,
-    TILES_16E_1C3,
-    TILES_1C4_1C7,
-    TILES_1C8_1EB,
-    TILES_1EC_1EF,
-    TILES_1F0_1FF,
-};
+pub use data::*;
 use itertools::Itertools;
 use nom::{combinator::map, multi::many0, number::complete::le_u16};
 
