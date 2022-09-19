@@ -52,7 +52,7 @@ impl Tile8x8 {
     }
 
     pub fn layer(&self) -> TileLayer {
-        (0x200 / self.tile_number()) as TileLayer
+        (self.tile_number() / (0x200 / 4)) as TileLayer
     }
 }
 
