@@ -6,7 +6,10 @@ use nom::{combinator::map, multi::many0, number::complete::le_u16};
 
 use crate::{
     error::TilesetParseError,
-    objects::map16::{Map16Tile, Tile8x8},
+    objects::{
+        gfx_list::ObjectGfxList,
+        map16::{Map16Tile, Tile8x8},
+    },
     snes_utils::rom_slice::SnesSlice,
     DataBlock,
     DataKind,
@@ -15,13 +18,18 @@ use crate::{
 
 // -------------------------------------------------------------------------------------------------
 
+pub const TILESETS_COUNT: usize = 5;
+
+// -------------------------------------------------------------------------------------------------
+
 pub struct Tilesets {
-    tiles: Vec<Tile>,
+    pub tiles:    Vec<Tile>,
+    pub gfx_list: ObjectGfxList,
 }
 
 pub enum Tile {
     Shared(Map16Tile),
-    TilesetSpecific([Map16Tile; 5]),
+    TilesetSpecific([Map16Tile; TILESETS_COUNT]),
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -30,7 +38,7 @@ impl Tilesets {
     pub fn parse(disasm: &mut RomDisassembly) -> Result<Self, TilesetParseError> {
         let mut parse_16x16 = |slice| {
             let it = disasm
-                .rom_slice_at_block(DataBlock { slice, kind: DataKind::Tileset }, |_| TilesetParseError(slice))?
+                .rom_slice_at_block(DataBlock { slice, kind: DataKind::Tileset }, |_| TilesetParseError::Slice(slice))?
                 .parse(many0(map(le_u16, Tile8x8)))?
                 .into_iter()
                 .tuple_windows::<(Tile8x8, Tile8x8, Tile8x8, Tile8x8)>()
@@ -70,7 +78,7 @@ impl Tilesets {
         tiles.extend(parse_tileset_specific(TILES_100_106)?);
         tiles.extend(parse_tileset_specific(TILES_153_16D)?);
 
-        Ok(Tilesets { tiles })
+        Ok(Tilesets { tiles, gfx_list: ObjectGfxList::parse(disasm).map_err(TilesetParseError::GfxList)? })
     }
 
     pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Map16Tile> {

@@ -1,3 +1,9 @@
+use crate::{
+    graphics::gfx_file,
+    objects::{gfx_list::ObjectGfxList, tilesets::TILESETS_COUNT},
+    GfxFile,
+};
+
 // Format: YXPCCCTT TTTTTTTT
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile8x8(pub u16);
@@ -9,6 +15,8 @@ pub struct Map16Tile {
     pub upper_right: Tile8x8,
     pub lower_right: Tile8x8,
 }
+
+pub type TileLayer = usize;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -41,5 +49,19 @@ impl Tile8x8 {
         // ---CCC-- --------
         // palette = CCC
         ((self.0.to_be() >> 10) & 0b111) as u8
+    }
+
+    pub fn layer(&self) -> TileLayer {
+        (0x200 / self.tile_number()) as TileLayer
+    }
+}
+
+impl Map16Tile {
+    pub fn gfx<'gfx>(
+        &self, gfx_list: &ObjectGfxList, gfx_files: &'gfx [GfxFile], tileset: usize,
+    ) -> [&'gfx gfx_file::Tile; 4] {
+        assert!(tileset < TILESETS_COUNT);
+        let ref_gfx = |tile| &gfx_files[gfx_list.gfx_file_for_object_tile(tile, tileset)].tiles[tile.0 as usize];
+        [ref_gfx(self.upper_left), ref_gfx(self.lower_left), ref_gfx(self.upper_right), ref_gfx(self.lower_right)]
     }
 }
