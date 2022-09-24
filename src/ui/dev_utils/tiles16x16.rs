@@ -43,7 +43,7 @@ impl UiTool for UiTiles16x16 {
         let mut running = true;
 
         Window::new("16x16 Tiles") //
-            .auto_sized()
+            .default_height(600.0)
             .open(&mut running)
             .show(ui.ctx(), |ui| {
                 SidePanel::new(Side::Left, ui.id().with("sp")).show_inside(ui, |ui| {
@@ -70,9 +70,9 @@ impl UiTool for UiTiles16x16 {
                     });
                 });
 
-                ScrollArea::vertical().show(ui, |ui| {
+                ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
                     TableBuilder::new(ui).columns(Size::exact(70.0), 16).body(|tb| {
-                        tb.rows(80.0, self.tile_images.len(), |row, mut tr| {
+                        tb.rows(80.0, self.tile_images.len() / 16, |row, mut tr| {
                             for tile in (row * 16)..((row * 16) + 16).min(0x1FF) {
                                 tr.col(|ui| {
                                     ui.label(format!("0x{:X}", tile));
