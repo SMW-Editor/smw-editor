@@ -41,7 +41,7 @@ impl Tilesets {
                 .rom_slice_at_block(DataBlock { slice, kind: DataKind::Tileset }, |_| TilesetParseError::Slice(slice))?
                 .parse(many0(map(le_u16, Tile8x8)))?
                 .into_iter()
-                .tuple_windows::<(Tile8x8, Tile8x8, Tile8x8, Tile8x8)>()
+                .tuples::<(Tile8x8, Tile8x8, Tile8x8, Tile8x8)>()
                 .map(|(upper_left, lower_left, upper_right, lower_right)| Map16Tile {
                     upper_left,
                     lower_left,
