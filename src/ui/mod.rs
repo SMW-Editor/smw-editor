@@ -20,6 +20,7 @@ use crate::{
             gfx_viewer::UiGfxViewer,
             palette_viewer::UiPaletteViewer,
             rom_info::UiRomInfo,
+            tiles16x16::UiTiles16x16,
         },
         project_creator::UiProjectCreator,
         tool::UiTool,
@@ -112,6 +113,10 @@ impl UiMainWindow {
                         self.open_tool(rom_info);
                         ui.close_menu();
                     }
+                    if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
+                        self.open_tool(UiDisassembler::default());
+                        ui.close_menu();
+                    }
                     if ui.add_enabled(is_project_loaded, Button::new("Color palettes")).clicked() {
                         self.open_tool(UiPaletteViewer::default());
                         ui.close_menu();
@@ -120,8 +125,8 @@ impl UiMainWindow {
                         self.open_tool(UiGfxViewer::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
-                        self.open_tool(UiDisassembler::default());
+                    if ui.add_enabled(is_project_loaded, Button::new("16x16 tiles")).clicked() {
+                        self.open_tool(UiTiles16x16::default());
                         ui.close_menu();
                     }
                 });
