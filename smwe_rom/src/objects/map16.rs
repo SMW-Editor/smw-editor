@@ -23,7 +23,7 @@ pub type TileLayer = usize;
 impl Tile8x8 {
     pub fn tile_number(&self) -> u16 {
         // ------tt TTTTTTTT
-        // tile_number = TTTTTTTTtt
+        // tile_number = ttTTTTTTTT
         self.0 & 0x3FF
     }
 
