@@ -16,6 +16,7 @@ use eframe::egui::{
     Window,
 };
 use egui_extras::{Size, TableBuilder};
+use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_project::Project;
 use smwe_rom::graphics::palette::ColorPalette;
@@ -70,13 +71,14 @@ impl UiTool for UiTiles16x16 {
                     });
                 });
 
+                let block_size = tweak!(32.0);
                 ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
-                    TableBuilder::new(ui).columns(Size::exact(70.0), 16).body(|tb| {
-                        tb.rows(80.0, self.tile_images.len() / 16, |row, mut tr| {
+                    TableBuilder::new(ui).columns(Size::exact(block_size + tweak!(5.0)), 16).body(|tb| {
+                        tb.rows(block_size + tweak!(17.0), self.tile_images.len() / 16, |row, mut tr| {
                             for tile in (row * 16)..((row * 16) + 16).min(0x1FF) {
                                 tr.col(|ui| {
-                                    ui.label(format!("0x{:X}", tile));
-                                    ui.image(&self.tile_images[tile], Vec2::splat(64.0));
+                                    ui.label(format!("{:X}", tile));
+                                    ui.image(&self.tile_images[tile], Vec2::splat(block_size));
                                 });
                             }
                         });
