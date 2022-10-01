@@ -34,7 +34,10 @@ pub trait ColorPalette {
     fn get_row(&self, r: usize) -> [Abgr1555; 16] {
         let mut row = [Abgr1555::TRANSPARENT; 16];
         for (c, color) in row.iter_mut().enumerate() {
-            *color = self.get_color_at(r, c).unwrap_or(Abgr1555::MAGENTA);
+            *color = self.get_color_at(r, c).unwrap_or_else(|| {
+                println!("ColorPalette::get_row: r={r}, c={c}");
+                Abgr1555::MAGENTA
+            });
         }
         row
     }
@@ -410,11 +413,11 @@ impl_color_palette!(SpecificLevelColorPalette {
     [0x0..=0x1, 0x2..=0x7] => background,
     [0x2..=0x3, 0x2..=0x7] => foreground,
     [0xE..=0xF, 0x2..=0x7] => sprite,
+    [0x8..=0x8, 0x6..=0xF] => players,
     [0x4..=0xD, 0x2..=0x7] => wtf,
     [0x0..=0x1, 0x8..=0xF] => layer3,
     [0x2..=0x4, 0x9..=0xF] => berry,
     [0x9..=0xB, 0x9..=0xF] => berry,
-    [0x8..=0x8, 0x6..=0xF] => players,
     default_color_1 => Abgr1555::WHITE,
 });
 

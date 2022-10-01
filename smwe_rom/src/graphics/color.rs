@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use epaint::{Color32, Rgba};
-use epaint::color::gamma_u8_from_linear_f32;
 
 pub const ABGR1555_SIZE: usize = std::mem::size_of::<Abgr1555>();
 
