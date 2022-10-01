@@ -1,14 +1,5 @@
-use eframe::egui::{
-    Color32,
-    ColorImage,
-    ComboBox,
-    DragValue,
-    TextureFilter,
-    TextureHandle,
-    TopBottomPanel,
-    Ui,
-    Window,
-};
+use eframe::egui::{Align2, Color32, ColorImage, ComboBox, DragValue, FontId, Rect, Sense, Shape, TextureFilter, TextureHandle, TopBottomPanel, Ui, Vec2, Window};
+use inline_tweak::tweak;
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 
@@ -101,12 +92,9 @@ impl UiPaletteViewer {
         };
 
         ui.horizontal(|ui| {
-            if ui
-                .add({
-                    DragValue::new(&mut self.level_num).clamp_range(0..=level_count - 1).hexadecimal(3, false, true)
-                })
-                .changed()
-            {
+            let drag_level_num =
+                DragValue::new(&mut self.level_num).clamp_range(0..=level_count - 1).hexadecimal(3, false, true);
+            if ui.add(drag_level_num).changed() {
                 log::info!("Showing color palette for level {:X}", self.level_num);
                 self.update_palette_image(ui, ctx);
             }
@@ -129,12 +117,9 @@ impl UiPaletteViewer {
         };
 
         ui.horizontal(|ui| {
-            if ui
-                .add({
-                    DragValue::new(&mut self.submap_num).clamp_range(0..=submap_count - 1).hexadecimal(1, false, true)
-                })
-                .changed()
-            {
+            let drag_submap_num =
+                DragValue::new(&mut self.submap_num).clamp_range(0..=submap_count - 1).hexadecimal(1, false, true);
+            if ui.add(drag_submap_num).changed() {
                 log::info!("Showing color palette for submap {:X}", self.submap_num);
                 self.update_palette_image(ui, ctx);
             }
@@ -173,6 +158,22 @@ impl UiPaletteViewer {
     fn display_palette(&mut self, ui: &mut Ui) {
         const CELL_SIZE: f32 = 20.0;
         let image_handle: &TextureHandle = self.palette_image_handle.as_ref().unwrap();
-        ui.image(image_handle, image_handle.size_vec2() * CELL_SIZE);
+        let label_size = tweak!(18.0);
+        let (mut rect, _) = ui.allocate_exact_size(Vec2::splat(16.0 * CELL_SIZE + label_size), Sense::focusable_noninteractive());
+
+        // Row and column labels
+        for col in 0..=0xF {
+            let mut cpos = rect.min;
+            let mut rpos = rect.min;
+            cpos.x += (1 + col) as f32 * CELL_SIZE + tweak!(3.0);
+            rpos.y += (1 + col) as f32 * CELL_SIZE;
+            ui.painter().text(cpos, Align2::LEFT_TOP, format!("{:X}", col), FontId::proportional(label_size), ui.visuals().text_color());
+            ui.painter().text(rpos, Align2::LEFT_TOP, format!("{:X}", col), FontId::proportional(label_size), ui.visuals().text_color());
+        }
+
+        // Palette image
+        rect.min += Vec2::splat(label_size);
+        let image = Shape::image(image_handle.id(), rect, Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), Color32::WHITE);
+        ui.painter().add(image);
     }
 }

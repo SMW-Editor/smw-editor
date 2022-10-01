@@ -111,7 +111,12 @@ impl Tile {
         self.color_indices
             .iter()
             .copied()
-            .map(|color_index| palette.get(color_index as usize).copied().unwrap_or(Abgr1555::MAGENTA))
+            .map(|color_index| {
+                palette.get(color_index as usize).copied().unwrap_or_else(|| {
+                    eprintln!("Tile::to_bgr555: i={color_index}, pl={}", palette.len());
+                    Abgr1555::MAGENTA
+                })
+            })
             .collect()
     }
 
