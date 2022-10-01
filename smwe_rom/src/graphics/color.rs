@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use epaint::{Color32, Rgba};
+use epaint::color::gamma_u8_from_linear_f32;
 
 pub const ABGR1555_SIZE: usize = std::mem::size_of::<Abgr1555>();
 
@@ -51,12 +52,11 @@ impl From<Color32> for Abgr1555 {
 impl From<Abgr1555> for Rgba {
     fn from(color: Abgr1555) -> Self {
         let cmf = SNES_BGR_CHANNEL_MAX as f32;
-        let Abgr1555(color) = color;
-        Rgba::from_rgba_unmultiplied(
-            ((color >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            ((color >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            ((color >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf,
-            1.0 - ((color >> 0xF) & 1) as f32,
+        Rgba::from_srgba_unmultiplied(
+            ((((color.0 >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.0) as u8,
+            ((((color.0 >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.0) as u8,
+            ((((color.0 >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.0) as u8,
+            (1 - ((color.0 >> 0xF) & 1) as u8) * 255,
         )
     }
 }
