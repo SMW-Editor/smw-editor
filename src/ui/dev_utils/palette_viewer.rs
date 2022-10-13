@@ -1,4 +1,20 @@
-use eframe::egui::{Align2, Color32, ColorImage, ComboBox, DragValue, FontId, Rect, Sense, Shape, TextureFilter, TextureHandle, TopBottomPanel, Ui, Vec2, Window};
+use eframe::egui::{
+    Align2,
+    Color32,
+    ColorImage,
+    ComboBox,
+    DragValue,
+    FontId,
+    Rect,
+    Sense,
+    Shape,
+    TextureFilter,
+    TextureHandle,
+    TopBottomPanel,
+    Ui,
+    Vec2,
+    Window,
+};
 use inline_tweak::tweak;
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
@@ -159,7 +175,8 @@ impl UiPaletteViewer {
         const CELL_SIZE: f32 = 20.0;
         let image_handle: &TextureHandle = self.palette_image_handle.as_ref().unwrap();
         let label_size = tweak!(18.0);
-        let (mut rect, _) = ui.allocate_exact_size(Vec2::splat(16.0 * CELL_SIZE + label_size), Sense::focusable_noninteractive());
+        let (mut rect, _) =
+            ui.allocate_exact_size(Vec2::splat(16.0 * CELL_SIZE + label_size), Sense::focusable_noninteractive());
 
         // Row and column labels
         for col in 0..=0xF {
@@ -167,8 +184,20 @@ impl UiPaletteViewer {
             let mut rpos = rect.min;
             cpos.x += (1 + col) as f32 * CELL_SIZE + tweak!(3.0);
             rpos.y += (1 + col) as f32 * CELL_SIZE;
-            ui.painter().text(cpos, Align2::LEFT_TOP, format!("{:X}", col), FontId::proportional(label_size), ui.visuals().text_color());
-            ui.painter().text(rpos, Align2::LEFT_TOP, format!("{:X}", col), FontId::proportional(label_size), ui.visuals().text_color());
+            ui.painter().text(
+                cpos,
+                Align2::LEFT_TOP,
+                format!("{:X}", col),
+                FontId::proportional(label_size),
+                ui.visuals().text_color(),
+            );
+            ui.painter().text(
+                rpos,
+                Align2::LEFT_TOP,
+                format!("{:X}", col),
+                FontId::proportional(label_size),
+                ui.visuals().text_color(),
+            );
         }
 
         // Palette image
