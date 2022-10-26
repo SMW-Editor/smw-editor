@@ -1,5 +1,6 @@
 use constants::*;
 use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureFilter, TextureHandle, Ui, Window};
+use smwe_rom::graphics::gfx_file::TileFormat;
 use smwe_rom::graphics::palette::ColorPalette;
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
@@ -30,6 +31,7 @@ mod constants {
 pub struct UiGfxViewer {
     image_handle:         Option<TextureHandle>,
     curr_image_size:      (usize, usize),
+    curr_image_format:    TileFormat,
     curr_gfx_file_num:    i32,
     curr_palette_row_idx: i32,
     curr_bg_palette_num:  i32,
@@ -44,6 +46,7 @@ impl Default for UiGfxViewer {
         UiGfxViewer {
             image_handle:         None,
             curr_image_size:      (0, 0),
+            curr_image_format:    TileFormat::Tile2bpp,
             curr_gfx_file_num:    0,
             curr_palette_row_idx: 0,
             curr_bg_palette_num:  0,
@@ -108,6 +111,13 @@ impl UiGfxViewer {
                     });
                 }
                 ui.label(format!("{} x {} px", self.curr_image_size.0, self.curr_image_size.1));
+                ui.label(match self.curr_image_format {
+                    TileFormat::Tile2bpp => "2BPP",
+                    TileFormat::Tile3bpp => "3BPP",
+                    TileFormat::Tile4bpp => "4BPP",
+                    TileFormat::Tile8bpp => "8BPP",
+                    TileFormat::TileMode7 => "Mode7",
+                });
             });
         }
 
@@ -145,6 +155,7 @@ impl UiGfxViewer {
         let img_w = (gfx_file.tiles.len() * 8).clamp(8, N_TILES_IN_ROW * 8);
         let img_h = ((1 + (gfx_file.tiles.len() / N_TILES_IN_ROW)) * 8).max(8);
         self.curr_image_size = (img_w, img_h);
+        self.curr_image_format = gfx_file.tile_format;
 
         let mut new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
         for (idx, tile) in gfx_file.tiles.iter().enumerate() {
