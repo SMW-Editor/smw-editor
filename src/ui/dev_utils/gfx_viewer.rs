@@ -1,7 +1,6 @@
 use constants::*;
 use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureFilter, TextureHandle, Ui, Window};
-use smwe_rom::graphics::gfx_file::TileFormat;
-use smwe_rom::graphics::palette::ColorPalette;
+use smwe_rom::graphics::{gfx_file::TileFormat, palette::ColorPalette};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
 
