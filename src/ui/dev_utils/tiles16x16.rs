@@ -75,7 +75,7 @@ impl UiTool for UiTiles16x16 {
                 ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
                     TableBuilder::new(ui).columns(Size::exact(block_size + tweak!(5.0)), 16).body(|tb| {
                         tb.rows(block_size + tweak!(17.0), self.tile_images.len() / 16, |row, mut tr| {
-                            for tile in (row * 16)..((row * 16) + 16).min(0x1FF) {
+                            for tile in (row * 16)..((row * 16) + 16).min(0x200) {
                                 tr.col(|ui| {
                                     ui.label(format!("{:X}", tile));
                                     ui.image(&self.tile_images[tile], Vec2::splat(block_size));
