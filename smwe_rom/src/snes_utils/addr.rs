@@ -229,7 +229,7 @@ pub mod types {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let snes = AddrSnes::try_from(*self);
             if let Ok(snes) = snes {
-                write!(f, "0x{:06x} (SNES: {})", self.0, snes)
+                write!(f, "0x{:06x} (SNES: {snes})", self.0)
             } else {
                 write!(f, "0x{:06x}", self.0)
             }
@@ -240,7 +240,7 @@ pub mod types {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let snes = AddrSnes::try_from(*self);
             if let Ok(snes) = snes {
-                write!(f, "AddrPc(0x{:06x} (SNES: {}))", self.0, snes)
+                write!(f, "AddrPc(0x{:06x} (SNES: {snes}))", self.0)
             } else {
                 write!(f, "AddrPc(0x{:06x})", self.0)
             }

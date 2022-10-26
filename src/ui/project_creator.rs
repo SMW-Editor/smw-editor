@@ -105,7 +105,7 @@ impl UiProjectCreator {
         log::info!("Opened File Selector");
         use nfd2::Response;
         if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None) //
-            .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
+            .unwrap_or_else(|e| panic!("Cannot open file selector: {e}"))
         {
             self.base_rom_path = String::from(path.to_str().unwrap());
             self.handle_rom_file_path();

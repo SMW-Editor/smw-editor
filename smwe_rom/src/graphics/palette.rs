@@ -25,8 +25,8 @@ pub trait ColorPalette {
         for (idx, &color) in subpalette.iter().enumerate() {
             let row = *rows.start() + (idx / n_cols);
             let col = *cols.start() + (idx % n_cols);
-            debug_assert!(rows.contains(&row), "Row {} not between {}-{}", row, *rows.start(), *rows.end());
-            debug_assert!(cols.contains(&col), "Col {} not between {}-{}", col, *cols.start(), *cols.end());
+            debug_assert!(rows.contains(&row), "Row {row} not between {}-{}", *rows.start(), *rows.end());
+            debug_assert!(cols.contains(&col), "Col {col} not between {}-{}", *cols.start(), *cols.end());
             self.set_color_at(row, col, color);
         }
     }

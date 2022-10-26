@@ -276,7 +276,7 @@ impl fmt::Display for RomType {
                 if memory == 0x3 {
                     coprocessor.to_string()
                 } else {
-                    format!("{} + {}", coprocessor, match memory {
+                    format!("{coprocessor} + {}", match memory {
                         0x4 => "RAM",
                         0x5 => "RAM + SRAM",
                         0x6 => "SRAM",

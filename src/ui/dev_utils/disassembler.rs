@@ -102,7 +102,7 @@ impl UiDisassembler {
             str_buf.clear();
             let mut num_bytes = 0usize;
             for byte in bytes {
-                write!(str_buf, "{:02X} ", byte).unwrap();
+                write!(str_buf, "{byte:02X} ").unwrap();
                 num_bytes += 1;
             }
             (str_buf, num_bytes)
@@ -182,7 +182,7 @@ impl UiDisassembler {
                                     let mut s = String::with_capacity(40);
                                     write!(s, ".db ").unwrap();
                                     for byte in bytes_str.split(' ').filter(|s| !s.is_empty()) {
-                                        write!(s, "${},", byte).unwrap();
+                                        write!(s, "${byte},").unwrap();
                                     }
                                     s.pop().unwrap();
                                     s

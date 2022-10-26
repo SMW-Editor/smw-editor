@@ -52,7 +52,7 @@ impl UiTool for UiTiles16x16 {
                         .selected_text(format!("Tileset {}", self.selected_tileset))
                         .show_ui(ui, |ui| {
                             for i in 1..=5 {
-                                let res = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {}", i));
+                                let res = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
                                 if res.clicked() {
                                     self.load_images(ctx);
                                 }
@@ -77,7 +77,7 @@ impl UiTool for UiTiles16x16 {
                         tb.rows(block_size + tweak!(17.0), self.tile_images.len() / 16, |row, mut tr| {
                             for tile in (row * 16)..((row * 16) + 16).min(0x200) {
                                 tr.col(|ui| {
-                                    ui.label(format!("{:X}", tile));
+                                    ui.label(format!("{tile:X}"));
                                     ui.image(&self.tile_images[tile], Vec2::splat(block_size));
                                 });
                             }
@@ -133,7 +133,7 @@ impl UiTiles16x16 {
             }
 
             self.tile_images.push(ctx.egui_ctx.load_texture(
-                format!("map16 {}", map16_id),
+                format!("map16 {map16_id}"),
                 image,
                 TextureFilter::Nearest,
             ));

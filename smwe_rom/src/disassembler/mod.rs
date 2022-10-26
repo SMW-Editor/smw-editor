@@ -308,17 +308,17 @@ impl RomDisassembly {
 impl Debug for RomDisassembly {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for ((address, block), (next_address, _)) in self.chunks.iter().tuple_windows::<(_, _)>() {
-            writeln!(f, " #### CHUNK {} .. {}", address, next_address)?;
+            writeln!(f, " #### CHUNK {address} .. {next_address}")?;
             match block {
                 BinaryBlock::Code(code) => {
                     for exit in code.exits.iter() {
-                        writeln!(f, "# Exit: {}", exit)?;
+                        writeln!(f, "# Exit: {exit}")?;
                     }
                     for i in code.instructions.iter() {
                         let ibytes = &self.rom.0[i.offset.0..][..i.opcode.instruction_size()];
                         write!(f, "${:6}   {:<20} # ", i.offset, i.display())?;
                         for &byte in ibytes {
-                            write!(f, "{:02x} ", byte)?;
+                            write!(f, "{byte:02x} ")?;
                         }
                         f.write_char('\n')?;
                     }
