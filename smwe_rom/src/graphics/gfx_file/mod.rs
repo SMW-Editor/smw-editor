@@ -68,7 +68,7 @@ impl Tile {
             let bit1 = (bytes[2 * row] >> col) & 1;
             let bit2 = (bytes[2 * row + 1] >> col) & 1;
             let bit3 = (bytes[16 + row] >> col) & 1;
-            tile.color_indices[i] = (bit1 << 2) | (bit2 << 1) | bit3;
+            tile.color_indices[i] = (bit3 << 2) | (bit2 << 1) | bit1;
         }
 
         Ok((input, tile))
