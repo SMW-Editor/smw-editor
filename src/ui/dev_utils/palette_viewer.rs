@@ -187,14 +187,14 @@ impl UiPaletteViewer {
             ui.painter().text(
                 cpos,
                 Align2::LEFT_TOP,
-                format!("{:X}", col),
+                format!("{col:X}"),
                 FontId::proportional(label_size),
                 ui.visuals().text_color(),
             );
             ui.painter().text(
                 rpos,
                 Align2::LEFT_TOP,
-                format!("{:X}", col),
+                format!("{col:X}"),
                 FontId::proportional(label_size),
                 ui.visuals().text_color(),
             );

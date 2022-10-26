@@ -90,7 +90,7 @@ impl UiMainWindow {
                         use nfd2::Response;
                         if let Response::Okay(path) =
                             nfd2::open_save_dialog(Some("txt"), None) //
-                                .unwrap_or_else(|e| panic!("Cannot open file selector: {}", e))
+                                .unwrap_or_else(|e| panic!("Cannot open file selector: {e}"))
                         {
                             use std::fmt::Write;
                             let mut dump = String::with_capacity(4096);
