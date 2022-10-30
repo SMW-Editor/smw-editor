@@ -6,6 +6,7 @@ use eframe::egui::{
     ColorImage,
     ComboBox,
     DragValue,
+    Id,
     Rgba,
     ScrollArea,
     SidePanel,
@@ -20,6 +21,7 @@ use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_project::Project;
 use smwe_rom::graphics::palette::ColorPalette;
+use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
 
@@ -27,11 +29,13 @@ pub struct UiTiles16x16 {
     tile_images:      Vec<TextureHandle>,
     selected_tileset: u32,
     level_number:     u32,
+
+    test_anim: Option<AnimationState>,
 }
 
 impl Default for UiTiles16x16 {
     fn default() -> Self {
-        Self { tile_images: Vec::new(), selected_tileset: 1, level_number: 0 }
+        Self { tile_images: Vec::new(), selected_tileset: 1, level_number: 0, test_anim: None }
     }
 }
 
@@ -69,6 +73,9 @@ impl UiTool for UiTiles16x16 {
                             self.load_images(ctx);
                         }
                     });
+
+                    // TODO: delete, this is a proof of concept
+                    ui.add(Flipbook::new(self.test_anim.as_mut().unwrap(), [32.0, 32.0]).fps(15.0).looped(true));
                 });
 
                 let block_size = tweak!(32.0);
@@ -119,8 +126,8 @@ impl UiTiles16x16 {
             assert_eq!(map16_gfx.len(), 4);
 
             let mut image = ColorImage::new([16, 16], Color32::TRANSPARENT);
-            for y in 0..16 {
-                for x in 0..16 {
+            for y in 0..image.size[1] {
+                for x in 0..image.size[0] {
                     let ti = (y / 8) + (2 * (x / 8));
                     let tile_8x8 = tiles_8x8[ti];
                     let tile_gfx: &[Rgba] = map16_gfx[ti].borrow();
@@ -138,5 +145,8 @@ impl UiTiles16x16 {
                 TextureFilter::Nearest,
             ));
         }
+
+        self.test_anim =
+            Some(AnimationState::from_texture_handles(self.tile_images.clone(), Id::from("test anim")).unwrap());
     }
 }

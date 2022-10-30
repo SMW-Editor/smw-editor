@@ -3,6 +3,7 @@
 members = [
     "smwe_project",
     "smwe_rom",
+    "smwe_widgets",
 ]
 
 [package]
@@ -16,7 +17,9 @@ readme = "README.md"
 [dependencies]
 smwe_project = { path = "smwe_project" }
 smwe_rom = { path = "smwe_rom" }
+smwe_widgets = { path = "smwe_widgets" }
 
+anyhow = "1.0"
 eframe = { git = "https://github.com/emilk/egui" }
 egui_extras = { git = "https://github.com/emilk/egui" }
 inline_tweak = "1.0"
@@ -26,3 +29,4 @@ log4rs = "1.0"
 nfd2 = "0.3"
 num = "0.4"
 num_enum = "0.5"
+thiserror = "1.0"
