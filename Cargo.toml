@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-    "smwe_project",
-    "smwe_rom",
-    "smwe_widgets",
+    "smwe-project",
+    "smwe-rom",
+    "smwe-widgets",
 ]
 
 [package]
@@ -15,9 +15,9 @@ edition = "2021"
 readme = "README.md"
 
 [dependencies]
-smwe_project = { path = "smwe_project" }
-smwe_rom = { path = "smwe_rom" }
-smwe_widgets = { path = "smwe_widgets" }
+smwe-project = { path = "smwe-project" }
+smwe-rom = { path = "smwe-rom" }
+smwe-widgets = { path = "smwe-widgets" }
 
 anyhow = "1.0"
 eframe = { git = "https://github.com/emilk/egui" }

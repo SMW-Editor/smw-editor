@@ -1,5 +1,5 @@
 [package]
-name = "smwe_rom"
+name = "smwe-rom"
 version = "0.1.0"
 authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)"]
 edition = "2021"
