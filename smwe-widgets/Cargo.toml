@@ -1,5 +1,5 @@
 [package]
-name = "smwe_widgets"
+name = "smwe-widgets"
 version = "0.1.0"
 authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)"]
 license = "MIT"

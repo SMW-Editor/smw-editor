@@ -1663,21 +1663,21 @@ dependencies = [
  "nfd2",
  "num",
  "num_enum",
- "smwe_project",
- "smwe_rom",
- "smwe_widgets",
+ "smwe-project",
+ "smwe-rom",
+ "smwe-widgets",
  "thiserror",
 ]
 
 [[package]]
-name = "smwe_project"
+name = "smwe-project"
 version = "0.1.0"
 dependencies = [
- "smwe_rom",
+ "smwe-rom",
 ]
 
 [[package]]
-name = "smwe_rom"
+name = "smwe-rom"
 version = "0.1.0"
 dependencies = [
  "epaint",
@@ -1691,7 +1691,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "smwe_widgets"
+name = "smwe-widgets"
 version = "0.1.0"
 dependencies = [
  "anyhow",
