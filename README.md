@@ -4,15 +4,10 @@ SMW Editor aims to become an open-source, multi-platform, modern alternative to
 Lunar Magic, providing all the necessary tools for SMW romhacking.
 
 This project is still in very early in development, currently far from anything
-usable. None of the planned features are completed or worked on yet since I'm
+usable. None of the planned features are completed or worked on yet since we are
 currently focusing on reverse-engineering the vanilla Super Mario World ROM.
 
-## Currently in progress
-
-Constructing objects (e.g. blocks) from Map16 and tileset data and displaying them in a list.
-You can track the progress in the `map16` branch.
-
-The to-do list is [here](https://github.com/SMW-Editor/smw-editor/projects/1).
+For more information on what's currently being worked on, take a look at the pull requests.
 
 ## Planned features:
 
@@ -57,4 +52,4 @@ a better product. If you want to join us and are experienced in at least one of 
 - SMW romhacking
 - UI design
 
-then please contact me via Discord (`Ąhoš#8981`) or email (a.gasior@newcastle.ac.uk).
+Then please contact me via Discord (`Ąhoš#8981`) or email (a.gasior@newcastle.ac.uk).
