@@ -28,6 +28,8 @@ const LONG_LENGTH: u8 = 0b111;
 
 pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
+
+    let mut byte_index = 0;
     let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
     while let Some(chunk_header) = in_it.first().copied() {
@@ -35,15 +37,27 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
             break;
         }
         in_it = &in_it[1..];
+        byte_index += 1;
 
-        let (command, length) = if chunk_header & 0xE0 == 0xE0 {
-            // long command
-            let next_byte = *in_it.first().ok_or(LcLz2Error::LongLength)?;
-            in_it = &in_it[1..];
-            ((chunk_header >> 2) & 7, u16::from_le_bytes([next_byte, chunk_header & 3]))
-        } else {
-            // normal command
-            (chunk_header >> 5, u16::from(chunk_header & 0x1F))
+        let mut command = chunk_header >> 5;
+        let length = match command {
+            LONG_LENGTH => {
+                command = (chunk_header >> 2) & 0b111;
+
+                if !matches!(command, DIRECT_COPY..=REPEAT | LONG_LENGTH) {
+                    return Err(LcLz2Error::LongLengthCommand(command).into())
+                }
+
+                let next_byte = *in_it.first().ok_or(LcLz2Error::LongLength)?;
+                in_it = &in_it[1..];
+                byte_index += 1;
+
+                u16::from_le_bytes([next_byte, chunk_header & 3])
+            }
+            DIRECT_COPY..=REPEAT => {
+                u16::from(chunk_header & 0x1F)
+            },
+            _ => return Err(LcLz2Error::Command(command).into()),
         };
 
         let length = usize::from(length) + 1;
@@ -54,6 +68,7 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                     let (bytes, rest) = in_it.split_at(length);
                     output.extend_from_slice(bytes);
                     in_it = rest;
+                    byte_index += length;
                 } else {
                     return Err(LcLz2Error::DirectCopy(length).into());
                 }
@@ -62,12 +77,14 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                 let byte = *in_it.first().ok_or(LcLz2Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
+                byte_index += 1;
             }
             WORD_FILL => {
                 if in_it.len() >= 2 {
                     let (bytes, rest) = in_it.split_at(2);
                     output.extend(bytes.iter().cycle().take(length));
                     in_it = rest;
+                    byte_index += 2;
                 } else {
                     return Err(LcLz2Error::WordFill.into());
                 }
@@ -83,27 +100,25 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                     .take(length),
                 );
                 in_it = &in_it[1..];
+                byte_index += 1;
             }
-            REPEAT..=LONG_LENGTH => {
+            REPEAT => {
                 if in_it.len() >= 2 {
-                    let bytes;
-                    (bytes, in_it) = in_it.split_at(2);
+                    let (bytes, rest) = in_it.split_at(2);
                     let from_bytes = if little_endian_in_repeat { u16::from_le_bytes } else { u16::from_be_bytes };
                     let read_start = usize::from(from_bytes([bytes[0], bytes[1]]));
+                    let read_range = read_start..read_start + length;
                     if read_start >= output.len() {
                         return Err(
-                            LcLz2Error::RepeatRangeOutOfBounds(read_start..read_start + length, output.len()).into()
+                            LcLz2Error::RepeatRangeOutOfBounds(read_range, output.len()).into()
                         );
                     } else {
                         output.reserve(length);
-                        // `n` is the count of bytes, that is to be written
-                        let mut n = length;
-                        while n > 0 {
-                            let range = read_start..(read_start + n).min(output.len());
-                            n -= range.len();
-                            output.extend_from_within(range);
+                        for i in read_range {
+                            output.push(output[i]);
                         }
                     }
+                    in_it = rest;
                 } else {
                     return Err(LcLz2Error::RepeatIncomplete.into());
                 }

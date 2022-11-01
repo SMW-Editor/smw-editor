@@ -19,18 +19,18 @@ use crate::{
     RomDisassembly,
 };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TileFormat {
     Tile2bpp,
     Tile3bpp,
     Tile4bpp,
     Tile8bpp,
-    TileMode7,
+    Tile3bppMode7,
 }
 
 #[derive(Clone)]
 pub struct Tile {
-    color_indices: Box<[u8]>,
+    pub color_indices: Box<[u8]>,
 }
 
 #[derive(Clone)]
@@ -49,7 +49,7 @@ impl Display for TileFormat {
             Tile3bpp => "3BPP",
             Tile4bpp => "4BPP",
             Tile8bpp => "8BPP",
-            TileMode7 => "Mode7",
+            Tile3bppMode7 => "3BPP Mode 7",
         })
     }
 }
@@ -101,9 +101,21 @@ impl Tile {
         Ok((input, tile))
     }
 
-    pub fn from_mode7(input: &[u8]) -> IResult<&[u8], Self> {
-        let (input, bytes) = take(64usize)(input)?;
-        let tile = Tile { color_indices: bytes.try_into().unwrap() };
+    pub fn from_3bpp_mode7(input: &[u8]) -> IResult<&[u8], Self> {
+        let (input, bytes) = take(24usize)(input)?;
+        let mut color_indices = [0u8; 64];
+        for row in 0..8 {
+            let raw_row =
+                ((bytes[(3 * row) + 0] as u32) << 16) |
+                ((bytes[(3 * row) + 1] as u32) <<  8) |
+                ((bytes[(3 * row) + 2] as u32) <<  0);
+            for row_pixel in 0..8 {
+                let tile_pixel = (8 * row) + row_pixel;
+                let index = (raw_row >> (3 * (7 - row_pixel))) & 0b111;
+                color_indices[tile_pixel] = index as u8;
+            }
+        }
+        let tile = Tile { color_indices: Box::new(color_indices) };
         Ok((input, tile))
     }
 
@@ -133,12 +145,12 @@ impl GfxFile {
         type ParserFn = fn(&[u8]) -> IResult<&[u8], Tile>;
 
         let (tile_format, slice) = GFX_FILES_META[file_num];
-        let (parser, tile_size_bytes): (ParserFn, usize) = match tile_format {
+        let (tile_parser, tile_size_bytes): (ParserFn, usize) = match tile_format {
             Tile2bpp => (Tile::from_2bpp, 2 * 8),
             Tile3bpp => (Tile::from_3bpp, 3 * 8),
             Tile4bpp => (Tile::from_4bpp, 4 * 8),
             Tile8bpp => (Tile::from_8bpp, 8 * 8),
-            TileMode7 => (Tile::from_mode7, 8 * 8),
+            Tile3bppMode7 => (Tile::from_3bpp_mode7, 3 * 8),
         };
 
         let tiles = disasm
@@ -150,7 +162,7 @@ impl GfxFile {
             })?
             .decompress(move |slice| lc_lz2::decompress(slice, revised_gfx))?
             .view()
-            .parse(many1(map_parser(take(tile_size_bytes), parser)))?;
+            .parse(many1(map_parser(take(tile_size_bytes), tile_parser)))?;
 
         Ok(Self { tile_format, tiles })
     }
