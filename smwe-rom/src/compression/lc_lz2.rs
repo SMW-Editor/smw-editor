@@ -29,7 +29,6 @@ const LONG_LENGTH: u8 = 0b111;
 pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
 
-    let mut byte_index = 0;
     let mut output = Vec::with_capacity(input.len() * 2);
     let mut in_it = input;
     while let Some(chunk_header) = in_it.first().copied() {
@@ -37,7 +36,6 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
             break;
         }
         in_it = &in_it[1..];
-        byte_index += 1;
 
         let mut command = chunk_header >> 5;
         let length = match command {
@@ -45,18 +43,15 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                 command = (chunk_header >> 2) & 0b111;
 
                 if !matches!(command, DIRECT_COPY..=REPEAT | LONG_LENGTH) {
-                    return Err(LcLz2Error::LongLengthCommand(command).into())
+                    return Err(LcLz2Error::LongLengthCommand(command).into());
                 }
 
                 let next_byte = *in_it.first().ok_or(LcLz2Error::LongLength)?;
                 in_it = &in_it[1..];
-                byte_index += 1;
 
                 u16::from_le_bytes([next_byte, chunk_header & 3])
             }
-            DIRECT_COPY..=REPEAT => {
-                u16::from(chunk_header & 0x1F)
-            },
+            DIRECT_COPY..=REPEAT => u16::from(chunk_header & 0x1F),
             _ => return Err(LcLz2Error::Command(command).into()),
         };
 
@@ -68,7 +63,6 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                     let (bytes, rest) = in_it.split_at(length);
                     output.extend_from_slice(bytes);
                     in_it = rest;
-                    byte_index += length;
                 } else {
                     return Err(LcLz2Error::DirectCopy(length).into());
                 }
@@ -77,14 +71,12 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                 let byte = *in_it.first().ok_or(LcLz2Error::ByteFill)?;
                 output.resize(output.len() + length, byte);
                 in_it = &in_it[1..];
-                byte_index += 1;
             }
             WORD_FILL => {
                 if in_it.len() >= 2 {
                     let (bytes, rest) = in_it.split_at(2);
                     output.extend(bytes.iter().cycle().take(length));
                     in_it = rest;
-                    byte_index += 2;
                 } else {
                     return Err(LcLz2Error::WordFill.into());
                 }
@@ -100,7 +92,6 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                     .take(length),
                 );
                 in_it = &in_it[1..];
-                byte_index += 1;
             }
             REPEAT => {
                 if in_it.len() >= 2 {
@@ -109,9 +100,7 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
                     let read_start = usize::from(from_bytes([bytes[0], bytes[1]]));
                     let read_range = read_start..read_start + length;
                     if read_start >= output.len() {
-                        return Err(
-                            LcLz2Error::RepeatRangeOutOfBounds(read_range, output.len()).into()
-                        );
+                        return Err(LcLz2Error::RepeatRangeOutOfBounds(read_range, output.len()).into());
                     } else {
                         output.reserve(length);
                         for i in read_range {
