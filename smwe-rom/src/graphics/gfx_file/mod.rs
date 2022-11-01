@@ -1,10 +1,6 @@
 mod data;
 
-use std::{
-    convert::TryInto,
-    fmt,
-    fmt::{Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 
 pub(crate) use data::GFX_FILES_META;
 use epaint::Rgba;
@@ -105,10 +101,9 @@ impl Tile {
         let (input, bytes) = take(24usize)(input)?;
         let mut color_indices = [0u8; 64];
         for row in 0..8 {
-            let raw_row =
-                ((bytes[(3 * row) + 0] as u32) << 16) |
-                ((bytes[(3 * row) + 1] as u32) <<  8) |
-                ((bytes[(3 * row) + 2] as u32) <<  0);
+            let raw_row = ((bytes[(3 * row) + 0] as u32) << 16)
+                | ((bytes[(3 * row) + 1] as u32) << 8)
+                | ((bytes[(3 * row) + 2] as u32) << 0);
             for row_pixel in 0..8 {
                 let tile_pixel = (8 * row) + row_pixel;
                 let index = (raw_row >> (3 * (7 - row_pixel))) & 0b111;
