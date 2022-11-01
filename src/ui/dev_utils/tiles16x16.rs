@@ -20,10 +20,7 @@ use egui_extras::{Size, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_project::Project;
-use smwe_rom::{
-    graphics::palette::ColorPalette,
-    objects::map16::Tile8x8,
-};
+use smwe_rom::{graphics::palette::ColorPalette, objects::map16::Tile8x8};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
