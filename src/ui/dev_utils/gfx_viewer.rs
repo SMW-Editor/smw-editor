@@ -1,5 +1,6 @@
 use constants::*;
 use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureFilter, TextureHandle, Ui, Window};
+use itertools::Itertools;
 use smwe_rom::graphics::{gfx_file::TileFormat, palette::ColorPalette};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
@@ -115,7 +116,7 @@ impl UiGfxViewer {
                     TileFormat::Tile3bpp => "3BPP",
                     TileFormat::Tile4bpp => "4BPP",
                     TileFormat::Tile8bpp => "8BPP",
-                    TileFormat::TileMode7 => "Mode7",
+                    TileFormat::Tile3bppMode7 => "Mode7",
                 });
             });
         }
@@ -138,6 +139,12 @@ impl UiGfxViewer {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
         let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];
+
+        let img_w = (gfx_file.tiles.len() * 8).clamp(8, N_TILES_IN_ROW * 8);
+        let img_h = ((1 + (gfx_file.tiles.len() / N_TILES_IN_ROW)) * 8).max(8);
+        self.curr_image_size = (img_w, img_h);
+        self.curr_image_format = gfx_file.tile_format;
+
         let palette = &rom
             .color_palettes
             .lv_specific_set
@@ -148,22 +155,17 @@ impl UiGfxViewer {
                 self.curr_sp_palette_num as usize,
                 &rom.color_palettes,
             )
-            .unwrap()
-            .get_row(self.curr_palette_row_idx as usize);
-
-        let img_w = (gfx_file.tiles.len() * 8).clamp(8, N_TILES_IN_ROW * 8);
-        let img_h = ((1 + (gfx_file.tiles.len() / N_TILES_IN_ROW)) * 8).max(8);
-        self.curr_image_size = (img_w, img_h);
-        self.curr_image_format = gfx_file.tile_format;
+            .unwrap();
 
         let mut new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-        for (idx, tile) in gfx_file.tiles.iter().enumerate() {
-            let (row, col) = (idx / N_TILES_IN_ROW, idx % N_TILES_IN_ROW);
-            let (tx, ty) = (col * 8, row * 8);
-            let rgba_tile = tile.to_rgba(palette);
-            for (i, &color) in rgba_tile.iter().enumerate() {
-                let (x, y) = (tx + (i % 8), ty + (i / 8));
-                new_image[(x, y)] = Color32::from(color);
+        let palette = palette.get_row(self.curr_palette_row_idx as usize);
+        for (tile_idx, tile) in gfx_file.tiles.iter().enumerate() {
+            let (row, column) = (tile_idx / N_TILES_IN_ROW, tile_idx % N_TILES_IN_ROW);
+            let (tile_x, tile_y) = (column * 8, row * 8);
+            let rgba_tile = tile.to_rgba(&palette);
+            for (pixel_idx, &color) in rgba_tile.iter().enumerate() {
+                let (pixel_x, pixel_y) = (tile_x + (pixel_idx % 8), tile_y + (pixel_idx / 8));
+                new_image[(pixel_x, pixel_y)] = Color32::from(color);
             }
         }
         self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image, TextureFilter::Nearest));
