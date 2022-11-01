@@ -130,6 +130,29 @@ impl Tile {
     pub fn to_rgba(&self, palette: &[Abgr1555]) -> Box<[Rgba]> {
         self.to_bgr555(palette).iter().copied().map(Rgba::from).collect()
     }
+
+    pub fn to_bgr555_with_substitute_at(
+        &self, palette: &[Abgr1555], sub_color: Abgr1555, sub_idx: u8,
+    ) -> Box<[Abgr1555]> {
+        self.color_indices
+            .iter()
+            .copied()
+            .map(|color_index| {
+                if color_index == sub_idx {
+                    sub_color
+                } else {
+                    palette.get(color_index as usize).copied().unwrap_or_else(|| {
+                        eprintln!("Tile::to_bgr555: i={color_index}, pl={}", palette.len());
+                        Abgr1555::MAGENTA
+                    })
+                }
+            })
+            .collect()
+    }
+
+    pub fn to_rgba_with_substitute_at(&self, palette: &[Abgr1555], sub_color: Abgr1555, sub_idx: u8) -> Box<[Rgba]> {
+        self.to_bgr555_with_substitute_at(palette, sub_color, sub_idx).iter().copied().map(Rgba::from).collect()
+    }
 }
 
 impl GfxFile {
