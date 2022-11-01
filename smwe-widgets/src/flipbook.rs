@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use egui::{ColorImage, Context, Id, Response, TextureFilter, TextureHandle, Ui, Widget};
+use egui::{ColorImage, Context, Id, Response, TextureFilter, TextureHandle, Ui, Vec2, Widget};
 use itertools::Itertools;
 use thiserror::Error;
 
@@ -25,7 +25,7 @@ pub struct EmptyAnimationError;
 
 pub struct Flipbook<'a> {
     animation: &'a mut AnimationState,
-    size:      [f32; 2],
+    size:      Vec2,
     duration:  f32,
     looped:    bool,
     reverse:   bool,
@@ -83,8 +83,8 @@ impl<'a> Widget for Flipbook<'a> {
 }
 
 impl<'a> Flipbook<'a> {
-    pub fn new(frames: &'a mut AnimationState, size: [f32; 2]) -> Self {
-        Self { animation: frames, size, duration: 1.0, looped: false, reverse: false }
+    pub fn new(animation: &'a mut AnimationState, size: impl Into<Vec2>) -> Self {
+        Self { animation, size: size.into(), duration: 1.0, looped: false, reverse: false }
     }
 
     pub fn duration(mut self, duration: f32) -> Self {
