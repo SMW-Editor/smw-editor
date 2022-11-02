@@ -7,6 +7,7 @@ use eframe::egui::{
     ColorImage,
     ComboBox,
     DragValue,
+    Id,
     Rgba,
     ScrollArea,
     SidePanel,
@@ -87,11 +88,13 @@ impl UiTool for UiTiles16x16 {
                                 tr.col(|ui| {
                                     ui.label(format!("{tile:X}"));
                                     match &mut self.tile_images[tile] {
-                                        TileImage::Static(texture_id) => ui.image(texture_id, block_size),
-                                        TileImage::Animated(animation) => {
-                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(20.0)))
+                                        TileImage::Static(texture_id) => {
+                                            ui.image(texture_id, block_size);
                                         }
-                                    };
+                                        TileImage::Animated(animation) => {
+                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
+                                        }
+                                    }
                                 });
                             }
                         });
@@ -148,7 +151,7 @@ impl UiTiles16x16 {
                     let frame_image = Self::make_image(&tiles_8x8, &map16_gfx);
                     frames.push(frame_image);
                 }
-                let animation = AnimationState::from_images(frames, ctx.egui_ctx)
+                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx.egui_ctx)
                     .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
                 self.tile_images.push(TileImage::Animated(animation));
             } else {
