@@ -16,8 +16,10 @@ use eframe::egui::{
     Window,
 };
 use inline_tweak::tweak;
+use itertools::Itertools;
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
+use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
 
@@ -28,25 +30,30 @@ pub enum PaletteContext {
     Overworld = 1,
 }
 
+enum PaletteImage {
+    Static(TextureHandle),
+    Animated(AnimationState),
+}
+
 pub struct UiPaletteViewer {
-    palette_context:      PaletteContext,
-    palette_image_handle: Option<TextureHandle>,
+    palette_context:   PaletteContext,
+    palette_image:     Option<PaletteImage>,
     // Level viewer
-    level_num:            i32,
+    level_num:         i32,
     // Overworld viewer
-    submap_num:           i32,
-    special_completed:    bool,
+    submap_num:        i32,
+    special_completed: bool,
 }
 
 impl Default for UiPaletteViewer {
     fn default() -> Self {
         log::info!("Opened Palette Viewer");
         UiPaletteViewer {
-            palette_context:      PaletteContext::Level,
-            palette_image_handle: None,
-            level_num:            0,
-            submap_num:           0,
-            special_completed:    false,
+            palette_context:   PaletteContext::Level,
+            palette_image:     None,
+            level_num:         0,
+            submap_num:        0,
+            special_completed: false,
         }
     }
 }
@@ -55,7 +62,7 @@ impl UiTool for UiPaletteViewer {
     fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
         let mut running = true;
 
-        if self.palette_image_handle.is_none() {
+        if self.palette_image.is_none() {
             self.update_palette_image(ui, ctx);
         }
 
@@ -144,36 +151,54 @@ impl UiPaletteViewer {
     }
 
     fn update_palette_image(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
-        let mut update_image = |palette: &dyn ColorPalette| {
-            let mut image = ColorImage::new([16, 16], Color32::BLACK);
-            for y in 0..=0xF {
-                for x in 0..=0xF {
-                    let color = palette.get_color_at(y, x).unwrap();
-                    image[(x, y)] = Color32::from(color);
-                }
-            }
-
-            self.palette_image_handle = Some(ui.ctx().load_texture("palette-image", image, TextureFilter::Nearest));
-        };
-
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
-        match self.palette_context {
+        self.palette_image = Some(match self.palette_context {
             PaletteContext::Level => {
                 let header = &rom.levels[self.level_num as usize].primary_header;
-                update_image(&rom.color_palettes.get_level_palette(header).unwrap());
+                let palette = &rom.color_palettes.get_level_palette(header).unwrap();
+                let frames = palette
+                    .animated
+                    .iter()
+                    .map(|&animated_color| {
+                        let mut image = ColorImage::new([16, 16], Color32::BLACK);
+                        for y in 0..=0xF {
+                            for x in 0..=0xF {
+                                if y == 6 && x == 4 {
+                                    image[(x, y)] = Color32::from(animated_color);
+                                } else {
+                                    let color = palette.get_color_at(y, x).unwrap();
+                                    image[(x, y)] = Color32::from(color);
+                                }
+                            }
+                        }
+                        image
+                    })
+                    .collect_vec();
+                PaletteImage::Animated(
+                    AnimationState::from_frames(frames, "palette-image", ui.ctx())
+                        .expect("Cannot assemble animation for palette image"),
+                )
             }
             PaletteContext::Overworld => {
                 let ow_state =
                     if self.special_completed { OverworldState::PostSpecial } else { OverworldState::PreSpecial };
-                update_image(&rom.color_palettes.get_submap_palette(self.submap_num as usize, ow_state).unwrap());
+                let palette = &rom.color_palettes.get_submap_palette(self.submap_num as usize, ow_state).unwrap();
+                let mut image = ColorImage::new([16, 16], Color32::BLACK);
+                for y in 0..=0xF {
+                    for x in 0..=0xF {
+                        let color = palette.get_color_at(y, x).unwrap();
+                        image[(x, y)] = Color32::from(color);
+                    }
+                }
+
+                PaletteImage::Static(ui.ctx().load_texture("palette-image", image, TextureFilter::Nearest))
             }
-        }
+        });
     }
 
     fn display_palette(&mut self, ui: &mut Ui) {
         const CELL_SIZE: f32 = 20.0;
-        let image_handle: &TextureHandle = self.palette_image_handle.as_ref().unwrap();
         let label_size = tweak!(18.0);
         let (mut rect, _) =
             ui.allocate_exact_size(Vec2::splat(16.0 * CELL_SIZE + label_size), Sense::focusable_noninteractive());
@@ -202,7 +227,14 @@ impl UiPaletteViewer {
 
         // Palette image
         rect.min += Vec2::splat(label_size);
-        let image = Shape::image(image_handle.id(), rect, Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), Color32::WHITE);
+        let image = match self.palette_image.as_mut().unwrap() {
+            PaletteImage::Static(handle) => {
+                Shape::image(handle.id(), rect, Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), Color32::WHITE)
+            }
+            PaletteImage::Animated(animation) => {
+                Flipbook::new(animation, rect.size()).fps(tweak!(15.0)).looped(true).to_shape(ui, rect)
+            }
+        };
         ui.painter().add(image);
     }
 }

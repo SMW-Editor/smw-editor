@@ -7,6 +7,7 @@ use egui::{
     Rect,
     Response,
     Sense,
+    Shape,
     TextureFilter,
     TextureHandle,
     Ui,
@@ -79,7 +80,17 @@ impl AnimationState {
 
 impl<'a> Widget for Flipbook<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let Self { animation, duration, size, looped, reverse } = self;
+        let (rect, response) = ui.allocate_exact_size(self.size, Sense::focusable_noninteractive());
+        let shape = self.to_shape(ui, rect);
+        ui.painter().add(shape);
+        response
+    }
+}
+
+// UI
+impl<'a> Flipbook<'a> {
+    pub fn to_shape(self, ui: &mut Ui, rect: Rect) -> Shape {
+        let Self { animation, duration, size: _, looped, reverse } = self;
         let reset_anim = || ui.ctx().animate_value_with_time(animation.id, if reverse { 1.0 } else { 0.0 }, 0.0);
 
         if !animation.started {
@@ -109,12 +120,11 @@ impl<'a> Widget for Flipbook<'a> {
             ),
         );
 
-        let (rect, response) = ui.allocate_exact_size(size, Sense::focusable_noninteractive());
-        ui.painter().image(animation.atlas.id(), rect, uv, Color32::WHITE);
-        response
+        Shape::image(animation.atlas.id(), rect, uv, Color32::WHITE)
     }
 }
 
+// Builder
 impl<'a> Flipbook<'a> {
     pub fn new(animation: &'a mut AnimationState, size: impl Into<Vec2>) -> Self {
         Self { animation, size: size.into(), duration: 1.0, looped: false, reverse: false }
