@@ -94,7 +94,8 @@ impl<'a> Widget for Flipbook<'a> {
             animation.loop_progress = reset_anim();
         }
 
-        let frame_idx = ((animation.loop_progress * (animation.frame_count) as f32) as usize).min(animation.frame_count - 1);
+        let frame_idx =
+            ((animation.loop_progress * animation.frame_count as f32) as usize).min(animation.frame_count - 1);
         let atlas_size = animation.atlas.size_vec2();
         let frames_in_row = atlas_size.x as usize / animation.frame_size[0];
         let uv = Rect::from_min_max(
