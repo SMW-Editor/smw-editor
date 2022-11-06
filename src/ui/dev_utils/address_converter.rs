@@ -118,31 +118,20 @@ impl UiAddressConverter {
         };
 
         let addr_dst = match direction {
-            ConvDir::PcToSnes => {
-                let res = match self.conversion_mode {
-                    ConversionMode::LoRom => AddrSnes::try_from_lorom(AddrPc(addr_src)),
-                    ConversionMode::HiRom => AddrSnes::try_from_hirom(AddrPc(addr_src)),
-                };
-                match res {
-                    Ok(addr) => Ok(addr.0),
-                    Err(err) => Err(err),
-                }
+            ConvDir::PcToSnes => match self.conversion_mode {
+                ConversionMode::LoRom => AddrSnes::try_from_lorom(AddrPc(addr_src)),
+                ConversionMode::HiRom => AddrSnes::try_from_hirom(AddrPc(addr_src)),
             }
-            ConvDir::SnesToPc => {
-                let res = match self.conversion_mode {
-                    ConversionMode::LoRom => AddrPc::try_from_lorom(AddrSnes(addr_src)),
-                    ConversionMode::HiRom => AddrPc::try_from_hirom(AddrSnes(addr_src)),
-                };
-                match res {
-                    Ok(addr) => Ok(addr.0),
-                    Err(err) => Err(err),
-                }
+            .map(|addr| addr.0),
+            ConvDir::SnesToPc => match self.conversion_mode {
+                ConversionMode::LoRom => AddrPc::try_from_lorom(AddrSnes(addr_src)),
+                ConversionMode::HiRom => AddrPc::try_from_hirom(AddrSnes(addr_src)),
             }
+            .map(|addr| addr.0),
         };
 
         match addr_dst {
-            Ok(_) => {
-                let addr_dst = addr_dst.unwrap();
+            Ok(addr_dst) => {
                 buf_dst.clear();
                 write!(buf_dst, "{addr_dst:x}").unwrap();
                 self.text_error.clear();
