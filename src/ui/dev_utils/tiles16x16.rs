@@ -60,20 +60,21 @@ impl UiTool for UiTiles16x16 {
                         .selected_text(format!("Tileset {}", self.selected_tileset))
                         .show_ui(ui, |ui| {
                             for i in 1..=5 {
-                                let res = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
-                                if res.clicked() {
+                                let response =
+                                    ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
+                                if response.clicked() {
                                     self.load_images(ctx);
                                 }
                             }
                         });
 
                     ui.horizontal(|ui| {
-                        let res = ui.add({
+                        let response = ui.add({
                             DragValue::new(&mut self.level_number).clamp_range(0..=0x1FF).hexadecimal(3, false, true)
                         });
                         ui.label("Level number");
 
-                        if res.changed() {
+                        if response.changed() {
                             self.load_images(ctx);
                         }
                     });
