@@ -1,5 +1,5 @@
 use constants::*;
-use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureFilter, TextureHandle, Ui, Window};
+use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, TextureOptions, Ui, Window};
 use smwe_rom::graphics::{gfx_file::TileFormat, palette::ColorPalette};
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
@@ -167,7 +167,7 @@ impl UiGfxViewer {
                 new_image[(pixel_x, pixel_y)] = Color32::from(color);
             }
         }
-        self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image, TextureFilter::Nearest));
+        self.image_handle = Some(ctx.egui_ctx.load_texture("gfx-file-image", new_image, TextureOptions::NEAREST));
 
         log::info!("Successfully created a GFX file image (w = {img_w}, h = {img_h}).");
     }

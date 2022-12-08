@@ -11,13 +11,13 @@ use eframe::egui::{
     Rgba,
     ScrollArea,
     SidePanel,
-    TextureFilter,
     TextureHandle,
+    TextureOptions,
     Ui,
     Vec2,
     Window,
 };
-use egui_extras::{Size, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_project::Project;
@@ -83,7 +83,7 @@ impl UiTool for UiTiles16x16 {
                 let block_size = Vec2::splat(tweak!(32.0));
                 let cell_padding = vec2(tweak!(5.0), tweak!(19.0));
                 ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
-                    TableBuilder::new(ui).columns(Size::exact(block_size.x + cell_padding.x), 16).body(|tb| {
+                    TableBuilder::new(ui).columns(Column::exact(block_size.x + cell_padding.x), 16).body(|tb| {
                         tb.rows(block_size.y + cell_padding.y, self.tile_images.len() / 16, |row, mut tr| {
                             for tile in (row * 16)..((row * 16) + 16).min(0x200) {
                                 tr.col(|ui| {
@@ -166,7 +166,7 @@ impl UiTiles16x16 {
                 let image = ctx.egui_ctx.load_texture(
                     format!("map16 {map16_id}"),
                     Self::make_image(&tiles_8x8, &map16_gfx),
-                    TextureFilter::Nearest,
+                    TextureOptions::NEAREST,
                 );
                 self.tile_images.push(TileImage::Static(image));
             }

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::BTreeMap, fmt::Write, ops::Deref};
 
 use eframe::egui::{Align, Color32, DragValue, Layout, Pos2, Rect, RichText, SidePanel, Stroke, Ui, Window};
-use egui_extras::{Size, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_rom::{
@@ -122,11 +122,11 @@ impl UiDisassembler {
         TableBuilder::new(ui)
             .striped(true)
             .cell_layout(Layout::left_to_right(Align::Min))
-            .column(Size::exact(tweak!(90.0)))
-            .column(Size::exact(tweak!(170.0)))
-            .column(Size::exact(tweak!(250.0)))
-            .column(Size::exact(tweak!(50.0)))
-            .column(Size::exact(tweak!(70.0)))
+            .column(Column::exact(tweak!(90.0)))
+            .column(Column::exact(tweak!(170.0)))
+            .column(Column::exact(tweak!(250.0)))
+            .column(Column::exact(tweak!(50.0)))
+            .column(Column::exact(tweak!(70.0)))
             .header(header_height, |mut th| {
                 th.col(|ui| {
                     ui.heading("Label");
