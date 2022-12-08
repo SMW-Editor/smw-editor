@@ -8,8 +8,8 @@ use eframe::egui::{
     Rect,
     Sense,
     Shape,
-    TextureFilter,
     TextureHandle,
+    TextureOptions,
     TopBottomPanel,
     Ui,
     Vec2,
@@ -192,7 +192,7 @@ impl UiPaletteViewer {
                     }
                 }
 
-                PaletteImage::Static(ui.ctx().load_texture("palette-image", image, TextureFilter::Nearest))
+                PaletteImage::Static(ui.ctx().load_texture("palette-image", image, TextureOptions::NEAREST))
             }
         });
     }

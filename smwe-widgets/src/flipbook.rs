@@ -8,8 +8,8 @@ use egui::{
     Response,
     Sense,
     Shape,
-    TextureFilter,
     TextureHandle,
+    TextureOptions,
     Ui,
     Vec2,
     Widget,
@@ -72,7 +72,7 @@ impl AnimationState {
             Err(AtlasSizeIndivisibleByFrameSizeError { atlas_size: atlas.size, frame_size }.into())
         } else {
             let id: Id = id.into();
-            let atlas = ctx.load_texture(format!("anim_atlas_{id:?}"), atlas, TextureFilter::Nearest);
+            let atlas = ctx.load_texture(format!("anim_atlas_{id:?}"), atlas, TextureOptions::NEAREST);
             Ok(Self { atlas, frame_count, frame_size, loop_progress: 0.0, id, started: false })
         }
     }

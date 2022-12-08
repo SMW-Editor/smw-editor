@@ -1,5 +1,5 @@
 use eframe::egui::{RichText, Ui, Window};
-use egui_extras::{Size, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 use smwe_rom::RomInternalHeader;
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
@@ -18,7 +18,7 @@ impl UiTool for UiRomInfo {
             .show(ui.ctx(), |ui| {
                 TableBuilder::new(ui) //
                     .striped(true)
-                    .columns(Size::exact(130.0), 2)
+                    .columns(Column::exact(130.0), 2)
                     .body(|body| {
                         body.rows(15.0, self.display_data.len(), |i, mut row| {
                             let (name, data) = &self.display_data[i];
