@@ -10,6 +10,6 @@ rust-version = "1.65"
 
 [dependencies]
 anyhow = "1.0"
-egui = "0.20"
+egui = "0.21"
 itertools = "0.10"
 thiserror = "1.0"

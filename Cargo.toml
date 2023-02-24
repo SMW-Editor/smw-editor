@@ -21,8 +21,8 @@ smwe-rom = { path = "smwe-rom" }
 smwe-widgets = { path = "smwe-widgets" }
 
 anyhow = "1.0"
-eframe = "0.20"
-egui_extras = "0.20"
+eframe = "0.21"
+egui_extras = "0.21"
 inline_tweak = "1.0"
 itertools = "0.10"
 log = "0.4"
