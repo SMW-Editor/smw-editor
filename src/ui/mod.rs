@@ -9,6 +9,7 @@ use eframe::{
     egui::{self, Context, Style, Ui},
     Frame,
 };
+use rfd::FileDialog;
 use smwe_project::ProjectRef;
 
 use crate::{
@@ -87,15 +88,19 @@ impl UiMainWindow {
                     if ui.add_enabled(is_project_loaded, Button::new("Save ROM dump")).clicked() {
                         ui.close_menu();
 
-                        use nfd2::Response;
-                        if let Response::Okay(path) =
-                            nfd2::open_save_dialog(Some("txt"), None) //
-                                .unwrap_or_else(|e| panic!("Cannot open file selector: {e}"))
+                        match FileDialog::new()
+                            .add_filter("Text File (*.txt)", &["txt"])
+                            .add_filter("All (*.*)", &["*"])
+                            .save_file()
                         {
-                            use std::fmt::Write;
-                            let mut dump = String::with_capacity(4096);
-                            write!(&mut dump, "{:?}", self.project.as_ref().unwrap().borrow().rom_data.disassembly).unwrap();
-                            std::fs::write(path, dump).unwrap();
+                            Some(path) => {
+                                use std::fmt::Write;
+                                let mut dump = String::with_capacity(4096);
+                                write!(&mut dump, "{:?}", self.project.as_ref().unwrap().borrow().rom_data.disassembly)
+                                    .unwrap();
+                                std::fs::write(path, dump).unwrap();
+                            }
+                            None => log::error!("Cannot save ROM dump."),
                         }
                     }
                     if ui.button("Exit").clicked() {
@@ -109,7 +114,8 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("Internal ROM Header")).clicked() {
-                        let rom_info = UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
+                        let rom_info =
+                            UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
                         self.open_tool(rom_info);
                         ui.close_menu();
                     }
