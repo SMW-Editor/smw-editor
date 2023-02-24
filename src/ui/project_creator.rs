@@ -1,6 +1,7 @@
 use std::{cell::RefCell, path::Path, sync::Arc};
 
 use eframe::egui::{Button, Ui, Window};
+use rfd::FileDialog;
 use smwe_project::Project;
 use smwe_rom::SmwRom;
 
@@ -103,12 +104,12 @@ impl UiProjectCreator {
 
     fn open_file_selector(&mut self) {
         log::info!("Opened File Selector");
-        use nfd2::Response;
-        if let Response::Okay(path) = nfd2::open_file_dialog(Some("smc,sfc"), None) //
-            .unwrap_or_else(|e| panic!("Cannot open file selector: {e}"))
-        {
-            self.base_rom_path = String::from(path.to_str().unwrap());
-            self.handle_rom_file_path();
+        match FileDialog::new().add_filter("SNES ROM File (*.smc, *.sfc)", &["smc", "sfc"]).pick_file() {
+            Some(path) => {
+                self.base_rom_path = String::from(path.to_str().unwrap());
+                self.handle_rom_file_path();
+            }
+            None => log::error!("Cannot open SMW ROM"),
         }
     }
 

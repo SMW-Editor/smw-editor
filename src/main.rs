@@ -13,7 +13,8 @@ fn main() {
 
     let project = dev_open_rom();
     let options = eframe::NativeOptions::default();
-    if let Err(e) = eframe::run_native("SMW Editor v0.1.0", options, Box::new(|_| Box::new(UiMainWindow::new(project)))) {
+    if let Err(e) = eframe::run_native("SMW Editor v0.1.0", options, Box::new(|_| Box::new(UiMainWindow::new(project))))
+    {
         log::error!("Application error: {e}");
     };
 }
