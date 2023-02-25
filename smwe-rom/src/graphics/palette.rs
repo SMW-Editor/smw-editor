@@ -123,13 +123,11 @@ macro_rules! impl_color_palette {
                 if row > 0xF || col > 0xF {
                     None
                 } else {
-                    $(
-                        if $rows.contains(&row) && $cols.contains(&col) {
-                            let ri = row - *$rows.start();
-                            let ci = col - *$cols.start();
-                            return Some(self.$field_name[(ri * $cols.count()) + ci]);
-                        }
-                    )+
+                    $(if $rows.contains(&row) && $cols.contains(&col) {
+                        let ri = row - *$rows.start();
+                        let ci = col - *$cols.start();
+                        return Some(self.$field_name[(ri * $cols.count()) + ci]);
+                    })+
                     $(if col == 0 {
                         Some(Abgr1555::TRANSPARENT)
                     } else if col == 1 {

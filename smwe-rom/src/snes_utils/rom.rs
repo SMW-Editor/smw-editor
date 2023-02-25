@@ -239,9 +239,9 @@ impl<'r> RomView<'r> for PcSliced<'r> {
     fn as_bytes(&self) -> Result<&'r [u8], RomError> {
         let PcSliced { rom, slice } = self;
         if slice.is_infinite() {
-            rom.0.get(slice.begin.0..)
+            rom.0.get(slice.begin.as_index()..)
         } else {
-            rom.0.get(slice.begin.0..slice.begin.0 + slice.size)
+            rom.0.get(slice.begin.as_index()..slice.begin.as_index() + slice.size)
         }
         .ok_or(RomError::SlicePc(*slice))
     }

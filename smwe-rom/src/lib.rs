@@ -136,7 +136,7 @@ impl SmwRom {
     fn parse_levels(disasm: &mut RomDisassembly) -> Result<Vec<Level>, RomParseError> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
         for level_num in 0..LEVEL_COUNT {
-            let level = Level::parse(disasm, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
+            let level = Level::parse(disasm, level_num as u32).map_err(|e| RomParseError::Level(level_num, e))?;
             levels.push(level);
         }
         Ok(levels)
