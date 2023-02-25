@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use smallvec::{smallvec, SmallVec};
+use thiserror::Error;
 
 use crate::{
     disassembler::{
@@ -8,9 +9,18 @@ use crate::{
         opcodes::{AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
         registers::PRegister,
     },
-    error::InstructionParseError,
     snes_utils::addr::*,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum InstructionParseError {
+    #[error("No bytes provided to parse instruction from")]
+    InputEmpty,
+    #[error("Not enough bytes to read operands for instruction {0:08x}")]
+    InputTooShort(u8),
+}
 
 // -------------------------------------------------------------------------------------------------
 

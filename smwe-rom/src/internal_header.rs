@@ -7,15 +7,53 @@ use nom::{
     sequence::pair,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use thiserror::Error;
 
 use crate::{
-    error::InternalHeaderParseError,
     snes_utils::{
         addr::{AddrPc, AddrSnes},
         rom::Rom,
         rom_slice::PcSlice,
     },
+    RomError,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum InternalHeaderParseError {
+    #[error("Couldn't find internal ROM header")]
+    NotFound,
+    #[error("Isolating Internal ROM Header:\n- {0}")]
+    IsolatingData(RomError),
+
+    #[error("Reading checksum and complement at LoROM location:\n- {0}")]
+    ReadLoRomChecksum(RomError),
+    #[error("Reading checksum and complement at HiROM location:\n- {0}")]
+    ReadHiRomChecksum(RomError),
+    #[error("Reading Internal ROM Name:\n- {0}")]
+    ReadRomName(RomError),
+    #[error("Reading Map Mode:\n- {0}")]
+    ReadMapMode(RomError),
+    #[error("Reading ROM Type:\n- {0}")]
+    ReadRomType(RomError),
+    #[error("Reading ROM Size:\n- {0}")]
+    ReadRomSize(RomError),
+    #[error("Reading SRAM Size:\n- {0}")]
+    ReadSramSize(RomError),
+    #[error("Reading Region Code:\n- {0}")]
+    ReadRegionCode(RomError),
+    #[error("Reading Developer ID:\n- {0}")]
+    ReadDeveloperId(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadVersionNumber(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadNativeModeInterruptVectors(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadEmulationModeInterruptVectors(RomError),
+}
+
+// -------------------------------------------------------------------------------------------------
 
 #[rustfmt::skip]
 pub mod offsets {

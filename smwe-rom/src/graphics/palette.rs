@@ -1,9 +1,9 @@
 use std::{convert::TryInto, ops::RangeInclusive};
 
 use nom::{combinator::map, multi::many1, number::complete::le_u16};
+use thiserror::Error;
 
 use crate::{
-    error::{ColorPaletteError, ColorPaletteParseError},
     graphics::color::{Abgr1555, ABGR1555_SIZE},
     level::{headers::PrimaryHeader, Level},
     snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
@@ -11,6 +11,59 @@ use crate::{
     DataKind,
     RomDisassembly,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum ColorPaletteError {
+    #[error("Failed to construct a level's back area color.")]
+    LvBackAreaColor,
+    #[error("Failed to construct a level's background palette.")]
+    LvBackground,
+    #[error("Failed to construct a level's foreground palette.")]
+    LvForeground,
+    #[error("Failed to construct a level's sprite palette.")]
+    LvSprite,
+    #[error("Failed to construct an overworld submap's layer 2 palette.")]
+    OwLayer2,
+}
+
+#[derive(Copy, Clone, Debug, Error)]
+pub enum ColorPaletteParseError {
+    #[error("Player Color Palette")]
+    PlayerPalette,
+    #[error("Overworld Layer1 Color Palette")]
+    OverworldLayer1Palette,
+    #[error("Overworld Layer2 Color Palette")]
+    OverworldLayer3Palette,
+    #[error("Overworld Sprite Color Palette")]
+    OverworldSpritePalette,
+    #[error("Overworld Submap {0}'s Normal Layer2 Color Palette")]
+    OverworldLayer2NormalPalette(usize),
+    #[error("Overworld Submap {0}'s Special Layer2 Color Palette")]
+    OverworldLayer2SpecialPalette(usize),
+    #[error("Overworld Layer2's Indirect Indices Table (${0})")]
+    OverworldLayer2IndicesIndirect1Read(SnesSlice),
+    #[error("Overworld Layer2's Index (${0})")]
+    OverworldLayer2IndexRead(usize),
+
+    #[error("Level Misc. Color Palette")]
+    LevelMiscPalette,
+    #[error("Level Layer3 Color Palette")]
+    LevelLayer3Palette,
+    #[error("Level Berry Color Palette")]
+    LevelBerryPalette,
+    #[error("Level Animated Color")]
+    LevelAnimatedColor,
+    #[error("Level {0:X}'s Back Area Color")]
+    LevelBackAreaColor(usize),
+    #[error("Level {0:X}'s Background Color Palette")]
+    LevelBackgroundPalette(usize),
+    #[error("Level {0:X}'s Foreground Color Palette")]
+    LevelForegroundPalette(usize),
+    #[error("Level {0:X}'s Sprite Color Palette")]
+    LevelSpritePalette(usize),
+}
 
 // -------------------------------------------------------------------------------------------------
 

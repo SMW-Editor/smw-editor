@@ -8,13 +8,17 @@ use nom::{
 };
 
 use crate::{
-    error::RomError,
     snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
     Rom,
+    RomError,
 };
+
+// -------------------------------------------------------------------------------------------------
 
 pub const EXECUTE_PTR_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086DF);
 pub const EXECUTE_PTR_LONG_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086FA);
+
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTableView {
@@ -23,6 +27,8 @@ pub struct JumpTableView {
     pub length:    usize,
     pub long_ptrs: bool,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl JumpTableView {
     pub const fn new(begin: AddrSnes, length: usize, long_ptrs: bool) -> Self {

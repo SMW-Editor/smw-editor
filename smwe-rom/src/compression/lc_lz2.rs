@@ -1,4 +1,36 @@
-use crate::error::{DecompressionError, LcLz2Error};
+use std::ops::Range;
+
+use thiserror::Error;
+
+use crate::compression::DecompressionError;
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum LcLz2Error {
+    #[error("Wrong command: {0:03b}")]
+    Command(u8),
+    #[error("Long Length - Wrong command: {0:03b}")]
+    LongLengthCommand(u8),
+    #[error("Long Length - Cannot read second byte of header")]
+    LongLength,
+    #[error("Direct Copy - Cannot read {0} bytes")]
+    DirectCopy(usize),
+    #[error("Byte Fill - Cannot read byte")]
+    ByteFill,
+    #[error("Word Fill - Cannot read word")]
+    WordFill,
+    #[error("Increasing Fill - Cannot read byte")]
+    IncreasingFill,
+    #[error("Repeat - Cannot read offset")]
+    RepeatIncomplete,
+    #[error("Repeat - Range ({}..{}) out of bounds (out buffer size: {1})", .0.start, .0.end)]
+    RepeatRangeOutOfBounds(Range<usize>, usize),
+    #[error("Double Long Length")]
+    DoubleLongLength,
+}
+
+// -------------------------------------------------------------------------------------------------
 
 /// Followed by (L+1) bytes of data
 const DIRECT_COPY: u8 = 0b000;
@@ -25,6 +57,8 @@ const REPEAT: u8 = 0b100;
 /// LLLLLLLLLL: Length
 /// ```
 const LONG_LENGTH: u8 = 0b111;
+
+// -------------------------------------------------------------------------------------------------
 
 pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>, DecompressionError> {
     assert!(!input.is_empty());
@@ -119,6 +153,8 @@ pub fn decompress(input: &[u8], little_endian_in_repeat: bool) -> Result<Vec<u8>
     output.shrink_to_fit();
     Ok(output)
 }
+
+// -------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

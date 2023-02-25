@@ -1,4 +1,22 @@
+use thiserror::Error;
+
 pub use self::{masks::*, types::*};
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum AddressError {
+    #[error("Invalid PC LoROM address {0:#x}")]
+    InvalidPcLoRom(AddrPc),
+    #[error("Invalid PC LoROM address {0:#x}")]
+    InvalidPcHiRom(AddrPc),
+    #[error("Invalid SNES LoROM address {0:#x}")]
+    InvalidSnesLoRom(AddrSnes),
+    #[error("Invalid SNES LoROM address {0:#x}")]
+    InvalidSnesHiRom(AddrSnes),
+}
+
+// -------------------------------------------------------------------------------------------------
 
 #[rustfmt::skip]
 pub mod masks {
@@ -21,36 +39,13 @@ pub mod types {
         cmp::{PartialEq, PartialOrd},
         convert::TryFrom,
         fmt,
-        ops::{
-            Add,
-            AddAssign,
-            BitAnd,
-            BitAndAssign,
-            BitOr,
-            BitOrAssign,
-            BitXor,
-            BitXorAssign,
-            Div,
-            DivAssign,
-            Mul,
-            MulAssign,
-            Rem,
-            RemAssign,
-            Shl,
-            ShlAssign,
-            Shr,
-            ShrAssign,
-            Sub,
-            SubAssign,
-        },
+        ops::*,
     };
 
     use paste::*;
 
-    use crate::{
-        error::AddressError,
-        snes_utils::addr::{DD, HH, HHDD},
-    };
+    use super::AddressError;
+    use crate::snes_utils::addr::{DD, HH, HHDD};
 
     pub trait Addr:
         Sized

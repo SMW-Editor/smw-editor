@@ -1,14 +1,43 @@
 use std::sync::Arc;
 
+use thiserror::Error;
+
 use crate::{
-    error::{DecompressionError, ParseErr, RomError},
+    compression::DecompressionError,
+    disassembler::binary_block::DataBlock,
     snes_utils::{
         addr::{Addr, AddrPc},
         rom_slice::*,
     },
 };
 
+// -------------------------------------------------------------------------------------------------
+
+type ParseErr<'a> = nom::Err<nom::error::Error<&'a [u8]>>;
+
+#[derive(Debug, Error)]
+pub enum RomError {
+    #[error("Empty ROM file")]
+    Empty,
+    #[error("Invalid ROM size (not a multiple of 512 bytes): {0} ({0:#x})")]
+    Size(usize),
+    #[error("Could not PC slice ROM: {0}")]
+    SlicePc(PcSlice),
+    #[error("Could not SNES slice ROM: {0}")]
+    SliceSnes(SnesSlice),
+    #[error("Could not decompress ROM slice:\n- {0}")]
+    Decompress(DecompressionError),
+    #[error("Could not parse ROM slice")]
+    Parse,
+    #[error("Data block not found: {0:?}")]
+    DataBlockNotFound(DataBlock),
+}
+
+// -------------------------------------------------------------------------------------------------
+
 pub const SMC_HEADER_SIZE: usize = 0x200;
+
+// -------------------------------------------------------------------------------------------------
 
 pub trait RomView<'r> {
     fn with_error_mapper<EM, ET>(self, error_mapper: EM) -> RomViewWithErrorMapper<'r, EM, ET, Self>
@@ -47,8 +76,6 @@ pub trait RomView<'r> {
 pub trait IsDecompressed {
     fn as_decompressed(&self) -> &Decompressed;
 }
-
-// -------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
 pub struct Rom(pub Arc<[u8]>);
@@ -94,8 +121,6 @@ pub struct DecompressedView<'r> {
 pub fn noop_error_mapper<ET>(e: ET) -> ET {
     e
 }
-
-// -------------------------------------------------------------------------------------------------
 
 impl Rom {
     pub fn new(mut data: Vec<u8>) -> Result<Self, RomError> {

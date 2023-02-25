@@ -3,6 +3,7 @@ use nom::{
     multi::count,
     number::complete::{le_u16, le_u24},
 };
+use thiserror::Error;
 
 pub use self::{
     background::{BackgroundData, BackgroundTileID},
@@ -11,10 +12,11 @@ pub use self::{
     sprite_layer::SpriteLayer,
 };
 use crate::{
+    compression::DecompressionError,
     disassembler::binary_block::{DataBlock, DataKind},
-    error::LevelParseError,
     snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
     RomDisassembly,
+    RomError,
 };
 
 pub mod background;
@@ -23,7 +25,42 @@ pub mod object_layer;
 pub mod secondary_entrance;
 pub mod sprite_layer;
 
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum LevelParseError {
+    #[error("Reading address of Layer1:\n- {0}")]
+    Layer1AddressRead(RomError),
+    #[error("Reading address of Layer2:\n- {0}")]
+    Layer2AddressRead(RomError),
+    #[error("Reading address of Sprite data:\n- {0}")]
+    SpriteAddressRead(RomError),
+
+    #[error("Isolating Layer2 data:\n- {0}")]
+    Layer2Isolate(RomError),
+
+    #[error("Reading Primary Header:\n- {0}")]
+    PrimaryHeaderRead(RomError),
+    #[error("Reading Secondary Header:\n- {0}")]
+    SecondaryHeaderRead(RomError),
+    #[error("Reading Sprite Header:\n- {0}")]
+    SpriteHeaderRead(RomError),
+
+    #[error("Reading Layer1 object data:\n- {0}")]
+    Layer1Read(RomError),
+    #[error("Parsing Layer2 object data:\n- {0}")]
+    Layer2Read(RomError),
+    #[error("Reading Layer2 background:\n- {0}")]
+    Layer2BackgroundRead(DecompressionError),
+    #[error("Reading Sprite data:\n- {0}")]
+    SpriteRead(RomError),
+}
+
+// -------------------------------------------------------------------------------------------------
+
 pub const LEVEL_COUNT: usize = 0x200;
+
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
 pub enum Layer2Data {
@@ -40,6 +77,8 @@ pub struct Level {
     pub layer2:           Layer2Data,
     pub sprite_layer:     SpriteLayer,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl Level {
     pub fn parse(disasm: &mut RomDisassembly, level_num: usize) -> Result<Self, LevelParseError> {

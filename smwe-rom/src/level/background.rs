@@ -1,4 +1,6 @@
-use crate::{compression::lc_rle1, error::DecompressionError};
+use crate::compression::{lc_rle1, DecompressionError};
+
+// -------------------------------------------------------------------------------------------------
 
 pub type BackgroundTileID = u8;
 
@@ -6,6 +8,8 @@ pub type BackgroundTileID = u8;
 pub struct BackgroundData {
     _tile_ids: Vec<BackgroundTileID>,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl BackgroundData {
     /// Returns self and the number of bytes consumed by parsing.

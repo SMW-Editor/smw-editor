@@ -4,9 +4,9 @@ use nom::{bytes::complete::take, IResult};
 
 use crate::{
     disassembler::binary_block::{DataBlock, DataKind},
-    error::RomError,
     snes_utils::{addr::AddrSnes, rom::noop_error_mapper, rom_slice::SnesSlice},
     RomDisassembly,
+    RomError,
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;

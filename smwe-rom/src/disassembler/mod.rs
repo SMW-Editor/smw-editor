@@ -18,10 +18,12 @@ use std::{
 };
 
 use itertools::Itertools;
+use thiserror::Error;
 
 use crate::{
     disassembler::{
         binary_block::{BinaryBlock, CodeBlock, DataBlock, DataKind},
+        instruction::Instruction,
         jump_tables::{
             get_jump_table_from_rom,
             EXECUTE_PTR_LONG_TRAMPOLINE_ADDR,
@@ -31,15 +33,25 @@ use crate::{
         },
         processor::Processor,
     },
-    error::{DisassemblyError, RomError},
     snes_utils::{
         addr::{Addr, AddrPc, AddrSnes},
         rom::{RomViewWithErrorMapper, SnesSliced},
         rom_slice::SnesSlice,
     },
     Rom,
+    RomError,
     RomInternalHeader,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Copy, Clone, Debug, Error)]
+pub enum DisassemblyError {
+    #[error("Cannot find a block that returns from subroutine starting at ${0:?}")]
+    SubroutineWithoutReturn(AddrSnes),
+    #[error("Invalid next PC encountered when parsing basic code block starting at {0:?}, at final instruction {1:?}")]
+    InvalidAddrInCodeBlock(AddrPc, Instruction),
+}
 
 // -------------------------------------------------------------------------------------------------
 

@@ -1,7 +1,25 @@
-use crate::error::{DecompressionError, LcRle1Error};
+use thiserror::Error;
+
+use crate::compression::DecompressionError;
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum LcRle1Error {
+    #[error("Wrong command: {0:03b}")]
+    Command(u8),
+    #[error("Direct Copy - Cannot read {0} bytes")]
+    DirectCopy(usize),
+    #[error("Byte Fill - Cannot read byte")]
+    ByteFill,
+}
+
+// -------------------------------------------------------------------------------------------------
 
 const COMMAND_DIRECT_COPY: u8 = 0;
 const COMMAND_BYTE_FILL: u8 = 1;
+
+// -------------------------------------------------------------------------------------------------
 
 /// Returns decompressed data and the size of compressed data.
 pub fn decompress(input: &[u8]) -> Result<(Vec<u8>, usize), DecompressionError> {
