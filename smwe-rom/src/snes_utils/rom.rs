@@ -125,14 +125,13 @@ pub fn noop_error_mapper<ET>(e: ET) -> ET {
 impl Rom {
     pub fn new(mut data: Vec<u8>) -> Result<Self, RomError> {
         if !data.is_empty() {
-            let modulo_1k = data.len() % 0x400;
-            if modulo_1k == 0 {
-                Ok(Self(Arc::from(data)))
-            } else if modulo_1k == SMC_HEADER_SIZE {
-                data.drain(..SMC_HEADER_SIZE);
-                Ok(Self(Arc::from(data)))
-            } else {
-                Err(RomError::Size(data.len()))
+            match data.len() % 0x400 {
+                SMC_HEADER_SIZE => {
+                    data.drain(..SMC_HEADER_SIZE);
+                    Ok(Self(Arc::from(data)))
+                }
+                0 => Ok(Self(Arc::from(data))),
+                _ => Err(RomError::Size(data.len())),
             }
         } else {
             Err(RomError::Empty)

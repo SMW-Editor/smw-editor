@@ -175,35 +175,39 @@ impl RomDisassembly {
         EM: Fn(RomError) -> ET,
     {
         if !self.cached_data_blocks.contains(&data_block) {
-            if let Some(&old_data_block) =
-                self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin)
-            {
-                assert_eq!(old_data_block.kind, data_block.kind);
-                // `data_block` and `old_block` differ in size, which means one of the following:
-                // 1. `old_block` is infinite - the block at this address was previously requested when its size was not
-                // known, but now is and `data_block` is used to update that information.
-                // 2. `data_block` is infinite - the block at this address has known size but the caller doesn't know it
-                // yet. That means we can use `old_block` to slice the ROM instead.
-                if !data_block.slice.is_infinite() {
-                    if old_data_block.slice.is_infinite() {
-                        self.cached_data_blocks.remove(&old_data_block);
-                        self.split_unknown_block_with(data_block, &error_mapper)?;
-                    } else if data_block.slice.size > old_data_block.slice.size {
-                        self.cached_data_blocks.remove(&old_data_block);
-                        let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
-                        self.chunks.retain(|(addr, _)| *addr != block_addr_pc);
-                        self.split_unknown_block_with(data_block, &error_mapper)?;
+            match self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin) {
+                None => {
+                    // Requested block hasn't been established yet.
+                    self.split_unknown_block_with(data_block, &error_mapper)?;
+                }
+                Some(&old_data_block) => {
+                    assert_eq!(old_data_block.kind, data_block.kind);
+                    // `data_block` and `old_block` differ in size, which means that either:
+                    // 1. `old_block` is infinite - the block at this address was previously
+                    // requested when its size was not known, but now is and `data_block` is used to
+                    // update that information.
+                    // 2. `data_block` is infinite - the block at this address has known size but
+                    // the caller doesn't know it yet. That means we can use `old_block` to slice
+                    // the ROM instead.
+                    if !data_block.slice.is_infinite() {
+                        if old_data_block.slice.is_infinite() {
+                            self.cached_data_blocks.remove(&old_data_block);
+                            self.split_unknown_block_with(data_block, &error_mapper)?;
+                        } else if data_block.slice.size > old_data_block.slice.size {
+                            self.cached_data_blocks.remove(&old_data_block);
+                            let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
+                            self.chunks.retain(|(addr, _)| *addr != block_addr_pc);
+                            self.split_unknown_block_with(data_block, &error_mapper)?;
+                        } else {
+                            data_block = old_data_block;
+                        }
                     } else {
+                        // `data_block` is infinite and `old_block` is not: that means a block of
+                        // unspecified size is being requested, but since the size has been
+                        // previously established, we can return it.
                         data_block = old_data_block;
                     }
-                } else {
-                    // `data_block` is infinite and `old_block` is not: that means a block of unspecified size is being
-                    // requested, but since the size has been previously established, we can return it.
-                    data_block = old_data_block;
                 }
-            } else {
-                // Requested block hasn't been established yet.
-                self.split_unknown_block_with(data_block, &error_mapper)?;
             }
 
             self.cached_data_blocks.insert(data_block);
@@ -592,18 +596,21 @@ impl RomAssemblyWalker {
                     entrance:   code_start.try_into().unwrap(),
                 };
 
-                if let Ok(sub_start) = AddrPc::try_from(next_instructions[0]) {
-                    self.subroutine_returns.entry(sub_start).or_default().push(addr_after_block);
-                    if let Some(sub) = self.analysed_subroutines.get(&sub_start) {
-                        if sub.deref().borrow().is_complete() {
-                            step_following_block.processor = sub.deref().borrow().final_processor_state.clone();
-                            self.enqueue_basic_block(step_following_block);
+                match AddrPc::try_from(next_instructions[0]) {
+                    Ok(sub_start) => {
+                        self.subroutine_returns.entry(sub_start).or_default().push(addr_after_block);
+                        if let Some(sub) = self.analysed_subroutines.get(&sub_start) {
+                            if sub.deref().borrow().is_complete() {
+                                step_following_block.processor = sub.deref().borrow().final_processor_state.clone();
+                                self.enqueue_basic_block(step_following_block);
+                            }
                         }
                     }
-                } else {
-                    // The subroutine being called might be located in RAM and in such case we can assume the
-                    // state of the processor to be unchanged.
-                    self.enqueue_basic_block(step_following_block);
+                    Err(_) => {
+                        // The subroutine being called might be located in RAM and in such case we can assume the
+                        // state of the processor to be unchanged.
+                        self.enqueue_basic_block(step_following_block);
+                    }
                 }
             }
 

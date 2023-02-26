@@ -50,7 +50,7 @@ pub enum RomParseError {
     #[error("File IO Error")]
     IoError,
     #[error("Failed to parse level {0:#X}:\n- {1}")]
-    Level(usize, LevelParseError),
+    Level(u32, LevelParseError),
     #[error("Failed to read secondary entrance {0:#X}:\n- {1}")]
     SecondaryEntrance(usize, RomError),
     #[error("Could not parse color palettes:\n- {0}")]
@@ -135,8 +135,8 @@ impl SmwRom {
 
     fn parse_levels(disasm: &mut RomDisassembly) -> Result<Vec<Level>, RomParseError> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
-        for level_num in 0..LEVEL_COUNT {
-            let level = Level::parse(disasm, level_num as u32).map_err(|e| RomParseError::Level(level_num, e))?;
+        for level_num in 0..LEVEL_COUNT as u32 {
+            let level = Level::parse(disasm, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
             levels.push(level);
         }
         Ok(levels)

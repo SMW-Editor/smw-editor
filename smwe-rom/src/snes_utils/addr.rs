@@ -74,6 +74,7 @@ macro_rules! gen_address_type {
                 Self::MIN
             }
 
+            #[inline]
             fn set_zero(&mut self) {
                 self.0 = Self::zero().0
             }
@@ -121,6 +122,7 @@ macro_rules! gen_address_type {
             fn to_i64(&self) -> Option<i64> {
                 cast::<AddrInner, i64>(self.0)
             }
+
             #[inline]
             fn to_u64(&self) -> Option<u64> {
                 cast::<AddrInner, u64>(self.0)
@@ -358,22 +360,18 @@ impl fmt::UpperHex for AddrPc {
 
 impl fmt::Display for AddrPc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let snes = AddrSnes::try_from(*self);
-        if let Ok(snes) = snes {
-            write!(f, "0x{:06x} (SNES: {snes})", self.0)
-        } else {
-            write!(f, "0x{:06x}", self.0)
+        match AddrSnes::try_from(*self) {
+            Ok(snes) => write!(f, "0x{:06x} (SNES: {snes})", self.0),
+            Err(_) => write!(f, "0x{:06x}", self.0),
         }
     }
 }
 
 impl fmt::Debug for AddrPc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let snes = AddrSnes::try_from(*self);
-        if let Ok(snes) = snes {
-            write!(f, "AddrPc(0x{:06x} (SNES: {snes}))", self.0)
-        } else {
-            write!(f, "AddrPc(0x{:06x})", self.0)
+        match AddrSnes::try_from(*self) {
+            Ok(snes) => write!(f, "AddrPc(0x{:06x} (SNES: {snes}))", self.0),
+            Err(_) => write!(f, "AddrPc(0x{:06x})", self.0),
         }
     }
 }

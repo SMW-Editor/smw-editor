@@ -298,8 +298,9 @@ impl fmt::Display for RomType {
             Rom => String::from("ROM"),
             RomRam => String::from("ROM + RAM"),
             RomRamSram => String::from("ROM + RAM + SRAM"),
-            _ => format!("ROM + {}", {
-                let coprocessor = match self_as_byte & 0xF0 {
+            _ => format!(
+                "ROM + {}{}",
+                match self_as_byte & 0xF0 {
                     0x00 => "DSP",
                     0x10 => "SuperFX",
                     0x20 => "OBC-1",
@@ -309,19 +310,15 @@ impl fmt::Display for RomType {
                     0xE0 => "Other expansion chip",
                     0xF0 => "Custom expansion chip",
                     _ => "Unknown expansion chip",
-                };
-                let memory = self_as_byte & 0xF;
-                if memory == 0x3 {
-                    coprocessor.to_string()
-                } else {
-                    format!("{coprocessor} + {}", match memory {
-                        0x4 => "RAM",
-                        0x5 => "RAM + SRAM",
-                        0x6 => "SRAM",
-                        _ => "Unknown memory chip",
-                    })
+                },
+                match self_as_byte & 0x0F {
+                    0x3 => "",
+                    0x4 => " + RAM",
+                    0x5 => " + RAM + SRAM",
+                    0x6 => " + SRAM",
+                    _ => " + Unknown memory chip",
                 }
-            }),
+            ),
         })
     }
 }
