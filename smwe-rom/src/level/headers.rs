@@ -4,9 +4,9 @@ use nom::{bytes::complete::take, IResult};
 
 use crate::{
     disassembler::binary_block::{DataBlock, DataKind},
-    error::RomError,
     snes_utils::{addr::AddrSnes, rom::noop_error_mapper, rom_slice::SnesSlice},
     RomDisassembly,
+    RomError,
 };
 
 pub const PRIMARY_HEADER_SIZE: usize = 5;
@@ -107,7 +107,7 @@ impl PrimaryHeader {
 }
 
 impl SecondaryHeader {
-    pub fn read_from_rom(disasm: &mut RomDisassembly, level_num: usize) -> Result<Self, RomError> {
+    pub fn read_from_rom(disasm: &mut RomDisassembly, level_num: u32) -> Result<Self, RomError> {
         let mut bytes = [0; 4];
         let byte_table_addrs = [0x05F000, 0x05F200, 0x05F400, 0x05F600];
         for (byte, addr) in bytes.iter_mut().zip(byte_table_addrs.into_iter()) {
@@ -116,7 +116,7 @@ impl SecondaryHeader {
                 kind:  DataKind::LevelHeaderSecondaryByteTable,
             };
             let byte_table = disasm.rom_slice_at_block(data_block, noop_error_mapper)?.as_bytes()?;
-            *byte = byte_table[level_num];
+            *byte = byte_table[level_num as usize];
         }
         Ok(Self(bytes))
     }

@@ -94,10 +94,9 @@ impl<A: Addr> RomSlice<A> {
     }
 
     pub fn contains(&self, addr: A) -> bool {
-        if let Some(end) = self.end() {
-            (self.begin..end).contains(&addr)
-        } else {
-            false
+        match self.end() {
+            Some(end) => (self.begin..end).contains(&addr),
+            None => false,
         }
     }
 }

@@ -5,15 +5,34 @@ use std::fmt::{self, Display, Formatter};
 pub(crate) use data::GFX_FILES_META;
 use epaint::Rgba;
 use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
+use thiserror::Error;
 
 use crate::{
-    compression::lc_lz2,
-    error::{DecompressionError, GfxFileParseError, RomError},
+    compression::{lc_lz2, DecompressionError},
     graphics::color::Abgr1555,
     DataBlock,
     DataKind,
     RomDisassembly,
+    RomError,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum GfxFileParseError {
+    #[error("Isolating GFX data:\n- {0}")]
+    IsolatingData(RomError),
+    #[error("Decompressing GFX data:\n- {0}")]
+    DecompressingData(DecompressionError),
+    #[error("Parsing GFX tile")]
+    ParsingTile,
+}
+
+// -------------------------------------------------------------------------------------------------
+
+pub const N_PIXELS_IN_TILE: usize = 8 * 8;
+
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TileFormat {
@@ -174,7 +193,7 @@ impl GfxFile {
         let tiles = disasm
             .rom_slice_at_block(DataBlock { slice, kind: DataKind::GfxFile }, |e| match e {
                 RomError::SliceSnes(_) | RomError::SlicePc(_) => GfxFileParseError::IsolatingData(e),
-                RomError::Decompress(DecompressionError::LcLz2(l)) => GfxFileParseError::DecompressingData(l),
+                RomError::Decompress(DecompressionError::LcLz2(l)) => GfxFileParseError::DecompressingData(l.into()),
                 RomError::Parse => GfxFileParseError::ParsingTile,
                 _ => unreachable!(),
             })?
@@ -189,7 +208,3 @@ impl GfxFile {
         self.tiles.len() * N_PIXELS_IN_TILE
     }
 }
-
-// -------------------------------------------------------------------------------------------------
-
-pub const N_PIXELS_IN_TILE: usize = 8 * 8;

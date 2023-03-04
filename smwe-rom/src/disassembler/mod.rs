@@ -18,10 +18,12 @@ use std::{
 };
 
 use itertools::Itertools;
+use thiserror::Error;
 
 use crate::{
     disassembler::{
         binary_block::{BinaryBlock, CodeBlock, DataBlock, DataKind},
+        instruction::Instruction,
         jump_tables::{
             get_jump_table_from_rom,
             EXECUTE_PTR_LONG_TRAMPOLINE_ADDR,
@@ -31,15 +33,25 @@ use crate::{
         },
         processor::Processor,
     },
-    error::{DisassemblyError, RomError},
     snes_utils::{
-        addr::{Addr, AddrPc, AddrSnes},
+        addr::{Addr, AddrInner, AddrPc, AddrSnes},
         rom::{RomViewWithErrorMapper, SnesSliced},
         rom_slice::SnesSlice,
     },
     Rom,
+    RomError,
     RomInternalHeader,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Copy, Clone, Debug, Error)]
+pub enum DisassemblyError {
+    #[error("Cannot find a block that returns from subroutine starting at ${0:?}")]
+    SubroutineWithoutReturn(AddrSnes),
+    #[error("Invalid next PC encountered when parsing basic code block starting at {0:?}, at final instruction {1:?}")]
+    InvalidAddrInCodeBlock(AddrPc, Instruction),
+}
 
 // -------------------------------------------------------------------------------------------------
 
@@ -163,35 +175,39 @@ impl RomDisassembly {
         EM: Fn(RomError) -> ET,
     {
         if !self.cached_data_blocks.contains(&data_block) {
-            if let Some(&old_data_block) =
-                self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin)
-            {
-                assert_eq!(old_data_block.kind, data_block.kind);
-                // `data_block` and `old_block` differ in size, which means one of the following:
-                // 1. `old_block` is infinite - the block at this address was previously requested when its size was not
-                // known, but now is and `data_block` is used to update that information.
-                // 2. `data_block` is infinite - the block at this address has known size but the caller doesn't know it
-                // yet. That means we can use `old_block` to slice the ROM instead.
-                if !data_block.slice.is_infinite() {
-                    if old_data_block.slice.is_infinite() {
-                        self.cached_data_blocks.remove(&old_data_block);
-                        self.split_unknown_block_with(data_block, &error_mapper)?;
-                    } else if data_block.slice.size > old_data_block.slice.size {
-                        self.cached_data_blocks.remove(&old_data_block);
-                        let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
-                        self.chunks.retain(|(addr, _)| *addr != block_addr_pc);
-                        self.split_unknown_block_with(data_block, &error_mapper)?;
+            match self.cached_data_blocks.iter().find(|b| b.slice.begin == data_block.slice.begin) {
+                None => {
+                    // Requested block hasn't been established yet.
+                    self.split_unknown_block_with(data_block, &error_mapper)?;
+                }
+                Some(&old_data_block) => {
+                    assert_eq!(old_data_block.kind, data_block.kind);
+                    // `data_block` and `old_block` differ in size, which means that either:
+                    // 1. `old_block` is infinite - the block at this address was previously
+                    // requested when its size was not known, but now is and `data_block` is used to
+                    // update that information.
+                    // 2. `data_block` is infinite - the block at this address has known size but
+                    // the caller doesn't know it yet. That means we can use `old_block` to slice
+                    // the ROM instead.
+                    if !data_block.slice.is_infinite() {
+                        if old_data_block.slice.is_infinite() {
+                            self.cached_data_blocks.remove(&old_data_block);
+                            self.split_unknown_block_with(data_block, &error_mapper)?;
+                        } else if data_block.slice.size > old_data_block.slice.size {
+                            self.cached_data_blocks.remove(&old_data_block);
+                            let block_addr_pc = AddrPc::try_from_lorom(old_data_block.slice.begin).unwrap();
+                            self.chunks.retain(|(addr, _)| *addr != block_addr_pc);
+                            self.split_unknown_block_with(data_block, &error_mapper)?;
+                        } else {
+                            data_block = old_data_block;
+                        }
                     } else {
+                        // `data_block` is infinite and `old_block` is not: that means a block of
+                        // unspecified size is being requested, but since the size has been
+                        // previously established, we can return it.
                         data_block = old_data_block;
                     }
-                } else {
-                    // `data_block` is infinite and `old_block` is not: that means a block of unspecified size is being
-                    // requested, but since the size has been previously established, we can return it.
-                    data_block = old_data_block;
                 }
-            } else {
-                // Requested block hasn't been established yet.
-                self.split_unknown_block_with(data_block, &error_mapper)?;
             }
 
             self.cached_data_blocks.insert(data_block);
@@ -284,11 +300,11 @@ impl RomDisassembly {
         let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
         match split_type {
             SplitType::Start(index) => {
-                self.chunks[index].0 += data_block.slice.size;
+                self.chunks[index].0 += data_block.slice.size as AddrInner;
                 self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
             }
             SplitType::Middle(index) => {
-                let data_end = begin_pc + data_block.slice.size;
+                let data_end = begin_pc + data_block.slice.size as AddrInner;
                 let next_begin = self.chunks[index + 1].0;
                 assert!(data_end <= next_begin, "data_end = {data_end}, next_begin = {next_begin}, index = {index}");
                 self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
@@ -315,7 +331,7 @@ impl Debug for RomDisassembly {
                         writeln!(f, "# Exit: {exit}")?;
                     }
                     for i in code.instructions.iter() {
-                        let ibytes = &self.rom.0[i.offset.0..][..i.opcode.instruction_size()];
+                        let ibytes = &self.rom.0[i.offset.as_index()..][..i.opcode.instruction_size()];
                         write!(f, "${:6}   {:<20} # ", i.offset, i.display())?;
                         for &byte in ibytes {
                             write!(f, "{byte:02x} ")?;
@@ -369,7 +385,7 @@ impl RomAssemblyWalker {
     }
 
     fn cleanup(&mut self) {
-        self.chunks.push((AddrPc(self.rom.0.len()), BinaryBlock::EndOfRom));
+        self.chunks.push((AddrPc(self.rom.0.len() as AddrInner), BinaryBlock::EndOfRom));
         self.chunks.sort_by_key(|(address, _)| address.0);
         let mut dedup_chunks = Vec::with_capacity(self.chunks.len());
         for (_group_pc, mut chunk_group) in
@@ -439,7 +455,8 @@ impl RomAssemblyWalker {
                         continue;
                     }
 
-                    let addr_after_block = last_instruction.offset + last_instruction.opcode.instruction_size();
+                    let addr_after_block =
+                        last_instruction.offset + last_instruction.opcode.instruction_size() as AddrInner;
                     let exits = block.exits.iter();
 
                     // The zero exits case happens when a JSR or JSL's destination is not in ROM but e.g. in RAM.
@@ -527,7 +544,7 @@ impl RomAssemblyWalker {
                 return Ok(());
             }
             BlockFindResult::MissingWithNext { next_start } => {
-                next_known_start = next_start.0;
+                next_known_start = next_start.as_index();
             }
             BlockFindResult::Missing => {
                 // no-op
@@ -535,7 +552,7 @@ impl RomAssemblyWalker {
         }
 
         let (mut code_block, addr_after_block) =
-            CodeBlock::from_bytes(code_start, &self.rom.0[code_start.0..next_known_start], &mut processor);
+            CodeBlock::from_bytes(code_start, &self.rom.0[code_start.as_index()..next_known_start], &mut processor);
         code_block.entrances.push(entrance);
 
         let last_instruction = code_block.instructions.last().unwrap_or_else(|| {
@@ -579,25 +596,28 @@ impl RomAssemblyWalker {
                     entrance:   code_start.try_into().unwrap(),
                 };
 
-                if let Ok(sub_start) = AddrPc::try_from(next_instructions[0]) {
-                    self.subroutine_returns.entry(sub_start).or_default().push(addr_after_block);
-                    if let Some(sub) = self.analysed_subroutines.get(&sub_start) {
-                        if sub.deref().borrow().is_complete() {
-                            step_following_block.processor = sub.deref().borrow().final_processor_state.clone();
-                            self.enqueue_basic_block(step_following_block);
+                match AddrPc::try_from(next_instructions[0]) {
+                    Ok(sub_start) => {
+                        self.subroutine_returns.entry(sub_start).or_default().push(addr_after_block);
+                        if let Some(sub) = self.analysed_subroutines.get(&sub_start) {
+                            if sub.deref().borrow().is_complete() {
+                                step_following_block.processor = sub.deref().borrow().final_processor_state.clone();
+                                self.enqueue_basic_block(step_following_block);
+                            }
                         }
                     }
-                } else {
-                    // The subroutine being called might be located in RAM and in such case we can assume the
-                    // state of the processor to be unchanged.
-                    self.enqueue_basic_block(step_following_block);
+                    Err(_) => {
+                        // The subroutine being called might be located in RAM and in such case we can assume the
+                        // state of the processor to be unchanged.
+                        self.enqueue_basic_block(step_following_block);
+                    }
                 }
             }
 
             for &next_target_snes in next_instructions.iter() {
                 match AddrPc::try_from(next_target_snes) {
                     Err(_) => log::warn!("Wrong address of next target: {next_target_snes:06X}"),
-                    Ok(next_target_pc) if next_target_pc.0 >= self.rom.0.len() => {
+                    Ok(next_target_pc) if next_target_pc.as_index() >= self.rom.0.len() => {
                         let last_instruction = *last_instruction;
                         self.chunks.push((code_start, BinaryBlock::Code(code_block)));
                         self.analysed_chunks.insert(addr_after_block, (code_start, self.chunks.len() - 1));

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use smallvec::{smallvec, SmallVec};
+use thiserror::Error;
 
 use crate::{
     disassembler::{
@@ -8,9 +9,18 @@ use crate::{
         opcodes::{AddressingMode::*, Mnemonic, Opcode, SNES_OPCODES},
         registers::PRegister,
     },
-    error::InstructionParseError,
     snes_utils::addr::*,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum InstructionParseError {
+    #[error("No bytes provided to parse instruction from")]
+    InputEmpty,
+    #[error("Not enough bytes to read operands for instruction {0:08x}")]
+    InputTooShort(u8),
+}
 
 // -------------------------------------------------------------------------------------------------
 
@@ -72,7 +82,7 @@ impl Instruction {
 
         let offset_snes = AddrSnes::try_from(self.offset).expect("Invalid instruction address");
         let is_jump_address_immediate = matches!(self.opcode.mode, Address | Long | Relative8 | Relative16);
-        let next_instruction = offset_snes + self.opcode.instruction_size();
+        let next_instruction = offset_snes + self.opcode.instruction_size() as AddrInner;
         let maybe_jump_target = self.get_intermediate_address();
 
         match self.opcode.mnemonic {
@@ -114,7 +124,7 @@ impl Instruction {
 
         // Returning jumps and interrupts
         if matches!(self.opcode.mnemonic, JSR | JSL | BRK | COP) {
-            let next_instruction = offset + self.opcode.instruction_size();
+            let next_instruction = offset + self.opcode.instruction_size() as AddrInner;
             Some(next_instruction)
         } else {
             None
@@ -125,28 +135,28 @@ impl Instruction {
         let offset_snes = AddrSnes::try_from(self.offset).expect("Invalid instruction address");
         let op_bytes = self.operands();
         AddrSnes(match self.opcode.mode {
-            m if (DirectPage..=DirectPageYIndex).contains(&m) => op_bytes[0] as u32,
-            DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as u32,
+            m if (DirectPage..=DirectPageYIndex).contains(&m) => op_bytes[0] as AddrInner,
+            DirectPageSIndex | DirectPageSIndexIndirectYIndex => op_bytes[0] as AddrInner,
             Address | AddressXIndex | AddressYIndex | AddressXIndexIndirect => {
-                let bank = (offset_snes.0 >> 16) as u32;
+                let bank = offset_snes.0 >> 16;
                 let operand = u16::from_le_bytes([op_bytes[0], op_bytes[1]]);
                 (bank << 16) | (operand as u32)
             }
-            AddressIndirect | AddressLongIndirect => u16::from_le_bytes([op_bytes[0], op_bytes[1]]) as u32,
+            AddressIndirect | AddressLongIndirect => u16::from_le_bytes([op_bytes[0], op_bytes[1]]) as AddrInner,
             Long | LongXIndex => u32::from_le_bytes([op_bytes[0], op_bytes[1], op_bytes[2], 0]),
             Relative8 | Relative16 => {
                 let operand_size = self.opcode.instruction_size() - 1;
-                let program_counter = (offset_snes + 1 + operand_size).0 as i32;
+                let program_counter = (offset_snes + 1usize + operand_size).0 as i32;
                 let bank = program_counter >> 16;
                 let jump_amount = match operand_size {
                     1 => op_bytes[0] as i8 as i32, // u8->i8 for the sign, i8->i32 for the size.
                     2 => i16::from_le_bytes([op_bytes[0], op_bytes[1]]) as i32,
                     _ => unreachable!(),
                 };
-                ((bank << 16) | (program_counter.wrapping_add(jump_amount) & 0xFFFF)) as u32
+                ((bank << 16) | (program_counter.wrapping_add(jump_amount) & 0xFFFF)) as AddrInner
             }
             _ => 0,
-        } as usize)
+        })
     }
 
     pub fn can_change_program_counter(self) -> bool {

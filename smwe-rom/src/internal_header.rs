@@ -7,15 +7,53 @@ use nom::{
     sequence::pair,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use thiserror::Error;
 
 use crate::{
-    error::InternalHeaderParseError,
     snes_utils::{
-        addr::{AddrPc, AddrSnes},
+        addr::{AddrInner, AddrPc, AddrSnes},
         rom::Rom,
         rom_slice::PcSlice,
     },
+    RomError,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum InternalHeaderParseError {
+    #[error("Couldn't find internal ROM header")]
+    NotFound,
+    #[error("Isolating Internal ROM Header:\n- {0}")]
+    IsolatingData(RomError),
+
+    #[error("Reading checksum and complement at LoROM location:\n- {0}")]
+    ReadLoRomChecksum(RomError),
+    #[error("Reading checksum and complement at HiROM location:\n- {0}")]
+    ReadHiRomChecksum(RomError),
+    #[error("Reading Internal ROM Name:\n- {0}")]
+    ReadRomName(RomError),
+    #[error("Reading Map Mode:\n- {0}")]
+    ReadMapMode(RomError),
+    #[error("Reading ROM Type:\n- {0}")]
+    ReadRomType(RomError),
+    #[error("Reading ROM Size:\n- {0}")]
+    ReadRomSize(RomError),
+    #[error("Reading SRAM Size:\n- {0}")]
+    ReadSramSize(RomError),
+    #[error("Reading Region Code:\n- {0}")]
+    ReadRegionCode(RomError),
+    #[error("Reading Developer ID:\n- {0}")]
+    ReadDeveloperId(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadVersionNumber(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadNativeModeInterruptVectors(RomError),
+    #[error("Reading Version Number:\n- {0}")]
+    ReadEmulationModeInterruptVectors(RomError),
+}
+
+// -------------------------------------------------------------------------------------------------
 
 #[rustfmt::skip]
 pub mod offsets {
@@ -169,7 +207,7 @@ impl RomInternalHeader {
                 .parse(le_u8)?,
             interrupt_vectors: {
                 let vectors_slice = byte_slice.skip_forward(15).resize(2 * 6);
-                let mut parse_vectors = count(map(le_u16, |addr| AddrSnes(addr as usize)), 6);
+                let mut parse_vectors = count(map(le_u16, |addr| AddrSnes(addr as AddrInner)), 6);
                 let native = rom
                     .with_error_mapper(InternalHeaderParseError::ReadNativeModeInterruptVectors)
                     .slice_pc(vectors_slice)
@@ -260,8 +298,9 @@ impl fmt::Display for RomType {
             Rom => String::from("ROM"),
             RomRam => String::from("ROM + RAM"),
             RomRamSram => String::from("ROM + RAM + SRAM"),
-            _ => format!("ROM + {}", {
-                let coprocessor = match self_as_byte & 0xF0 {
+            _ => format!(
+                "ROM + {}{}",
+                match self_as_byte & 0xF0 {
                     0x00 => "DSP",
                     0x10 => "SuperFX",
                     0x20 => "OBC-1",
@@ -271,19 +310,15 @@ impl fmt::Display for RomType {
                     0xE0 => "Other expansion chip",
                     0xF0 => "Custom expansion chip",
                     _ => "Unknown expansion chip",
-                };
-                let memory = self_as_byte & 0xF;
-                if memory == 0x3 {
-                    coprocessor.to_string()
-                } else {
-                    format!("{coprocessor} + {}", match memory {
-                        0x4 => "RAM",
-                        0x5 => "RAM + SRAM",
-                        0x6 => "SRAM",
-                        _ => "Unknown memory chip",
-                    })
+                },
+                match self_as_byte & 0x0F {
+                    0x3 => "",
+                    0x4 => " + RAM",
+                    0x5 => " + RAM + SRAM",
+                    0x6 => " + SRAM",
+                    _ => " + Unknown memory chip",
                 }
-            }),
+            ),
         })
     }
 }

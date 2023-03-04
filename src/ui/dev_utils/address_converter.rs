@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use eframe::egui::{TextEdit, Ui, Window};
-use smwe_rom::snes_utils::addr::{Addr, AddrPc, AddrSnes};
+use smwe_rom::snes_utils::addr::{Addr, AddrInner, AddrPc, AddrSnes};
 
 use crate::{
     frame_context::FrameContext,
@@ -67,7 +67,7 @@ impl UiAddressConverter {
 
         if ui.checkbox(&mut self.include_header, "Include header").clicked() {
             log::info!("Inclusion of SMC header: {}", if self.include_header { "ON" } else { "OFF" });
-            let addr_pc = usize::from_str_radix(&self.text_pc, 16).unwrap_or(0);
+            let addr_pc = AddrInner::from_str_radix(&self.text_pc, 16).unwrap_or(0);
             let addr_pc = adjust_to_header(addr_pc, self.include_header);
             self.text_pc.clear();
             write!(&mut self.text_pc, "{addr_pc:x}").unwrap();
@@ -106,7 +106,7 @@ impl UiAddressConverter {
         };
 
         let addr_src = {
-            let addr = usize::from_str_radix(buf_src, 16).unwrap_or(0);
+            let addr = AddrInner::from_str_radix(buf_src, 16).unwrap_or(0);
             if self.include_header {
                 match direction {
                     ConvDir::PcToSnes => adjust_to_header(addr, false),
@@ -175,13 +175,13 @@ mod modes {
 }
 
 mod helpers {
-    use smwe_rom::snes_utils::rom::SMC_HEADER_SIZE;
+    use smwe_rom::snes_utils::{addr::AddrInner, rom::SMC_HEADER_SIZE};
 
-    pub fn adjust_to_header(addr: usize, include_header: bool) -> usize {
+    pub fn adjust_to_header(addr: AddrInner, include_header: bool) -> AddrInner {
         if include_header {
-            addr + SMC_HEADER_SIZE
-        } else if addr >= SMC_HEADER_SIZE {
-            addr - SMC_HEADER_SIZE
+            addr + SMC_HEADER_SIZE as AddrInner
+        } else if addr >= SMC_HEADER_SIZE as AddrInner {
+            addr - SMC_HEADER_SIZE as AddrInner
         } else {
             0
         }

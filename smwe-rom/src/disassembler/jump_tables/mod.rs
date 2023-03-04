@@ -8,13 +8,20 @@ use nom::{
 };
 
 use crate::{
-    error::RomError,
-    snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
+    snes_utils::{
+        addr::{AddrInner, AddrSnes},
+        rom_slice::SnesSlice,
+    },
     Rom,
+    RomError,
 };
+
+// -------------------------------------------------------------------------------------------------
 
 pub const EXECUTE_PTR_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086DF);
 pub const EXECUTE_PTR_LONG_TRAMPOLINE_ADDR: AddrSnes = AddrSnes(0x0086FA);
+
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct JumpTableView {
@@ -23,6 +30,8 @@ pub struct JumpTableView {
     pub length:    usize,
     pub long_ptrs: bool,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl JumpTableView {
     pub const fn new(begin: AddrSnes, length: usize, long_ptrs: bool) -> Self {
@@ -35,11 +44,11 @@ pub fn get_jump_table_from_rom(rom: &Rom, jump_table_view: JumpTableView) -> Res
     let slice = SnesSlice::new(jump_table_view.begin, jump_table_view.length * ptr_size);
 
     let jump_table = if jump_table_view.long_ptrs {
-        let parser = many1(map(le_u24, |a| AddrSnes(a as usize)));
+        let parser = many1(map(le_u24, AddrSnes));
         rom.view().slice_lorom(slice)?.parse(parser)?
     } else {
         // 16-bit address implies the same bank number as the jump table's address.
-        let parser = many1(map(le_u16, |a| AddrSnes(a as usize) | (jump_table_view.begin & 0xFF0000)));
+        let parser = many1(map(le_u16, |a| AddrSnes(a as AddrInner) | (jump_table_view.begin & 0xFF0000)));
         rom.view().slice_lorom(slice)?.parse(parser)?
     };
 

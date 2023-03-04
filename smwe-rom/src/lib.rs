@@ -2,7 +2,6 @@
 
 pub mod compression;
 pub mod disassembler;
-pub mod error;
 pub mod graphics;
 pub mod internal_header;
 pub mod level;
@@ -11,25 +10,56 @@ pub mod snes_utils;
 
 use std::{fs, path::Path};
 
+use thiserror::Error;
+
 pub use crate::internal_header::{RegionCode, RomInternalHeader};
 use crate::{
     disassembler::{
         binary_block::{DataBlock, DataKind},
         RomDisassembly,
     },
-    error::{InternalHeaderParseError, RomParseError},
     graphics::{
-        gfx_file::{GfxFile, GFX_FILES_META},
-        palette::ColorPalettes,
+        gfx_file::{GfxFile, GfxFileParseError, GFX_FILES_META},
+        palette::{ColorPaletteParseError, ColorPalettes},
     },
+    internal_header::InternalHeaderParseError,
     level::{
         secondary_entrance::{SecondaryEntrance, SECONDARY_ENTRANCE_TABLE},
         Level,
+        LevelParseError,
         LEVEL_COUNT,
     },
-    objects::tilesets::Tilesets,
-    snes_utils::{addr::AddrSnes, rom::Rom, rom_slice::SnesSlice},
+    objects::tilesets::{TilesetParseError, Tilesets},
+    snes_utils::{
+        addr::AddrSnes,
+        rom::{Rom, RomError},
+        rom_slice::SnesSlice,
+    },
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+pub enum RomParseError {
+    #[error("ROM error:\n- {0}")]
+    BadRom(RomError),
+    #[error("Invalid GFX file {0:X}:\n- {1}")]
+    GfxFile(usize, GfxFileParseError),
+    #[error("Parsing internal header failed:\n- {0}")]
+    InternalHeader(InternalHeaderParseError),
+    #[error("File IO Error")]
+    IoError,
+    #[error("Failed to parse level {0:#X}:\n- {1}")]
+    Level(u32, LevelParseError),
+    #[error("Failed to read secondary entrance {0:#X}:\n- {1}")]
+    SecondaryEntrance(usize, RomError),
+    #[error("Could not parse color palettes:\n- {0}")]
+    ColorPalettes(ColorPaletteParseError),
+    #[error("Could not parse Map16 tiles:\n- {0}")]
+    Map16Tilesets(TilesetParseError),
+}
+
+// -------------------------------------------------------------------------------------------------
 
 pub struct SmwRom {
     pub disassembly:         RomDisassembly,
@@ -40,6 +70,8 @@ pub struct SmwRom {
     pub gfx_files:           Vec<GfxFile>,
     pub map16_tilesets:      Tilesets,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl SmwRom {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, RomParseError> {
@@ -103,7 +135,7 @@ impl SmwRom {
 
     fn parse_levels(disasm: &mut RomDisassembly) -> Result<Vec<Level>, RomParseError> {
         let mut levels = Vec::with_capacity(LEVEL_COUNT);
-        for level_num in 0..LEVEL_COUNT {
+        for level_num in 0..LEVEL_COUNT as u32 {
             let level = Level::parse(disasm, level_num).map_err(|e| RomParseError::Level(level_num, e))?;
             levels.push(level);
         }

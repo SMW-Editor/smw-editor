@@ -1,18 +1,24 @@
-use crate::{
-    error::GfxListParseError,
-    objects::map16::Tile8x8,
-    AddrSnes,
-    DataBlock,
-    DataKind,
-    RomDisassembly,
-    SnesSlice,
-};
+use thiserror::Error;
+
+use crate::{objects::map16::Tile8x8, AddrSnes, DataBlock, DataKind, RomDisassembly, SnesSlice};
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+#[error("Could not GFX list at:\n- {0}")]
+pub struct GfxListParseError(pub SnesSlice);
+
+// -------------------------------------------------------------------------------------------------
 
 const OBJECT_GFX_LIST: SnesSlice = SnesSlice::new(AddrSnes(0x00A92B), 26 * 4);
+
+// -------------------------------------------------------------------------------------------------
 
 pub struct ObjectGfxList {
     gfx_file_nums: Vec<u8>,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl ObjectGfxList {
     pub fn parse(disasm: &mut RomDisassembly) -> Result<Self, GfxListParseError> {

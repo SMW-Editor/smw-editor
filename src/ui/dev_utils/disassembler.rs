@@ -6,7 +6,7 @@ use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_rom::{
     disassembler::{binary_block::BinaryBlock, instruction::Instruction},
-    snes_utils::addr::{Addr, AddrPc, AddrSnes},
+    snes_utils::addr::{Addr, AddrInner, AddrPc, AddrSnes},
 };
 
 use crate::{frame_context::FrameContext, ui::tool::UiTool};
@@ -28,7 +28,7 @@ impl Default for UiDisassembler {
     fn default() -> Self {
         log::info!("Opened disassembler");
         Self {
-            current_address_scroll: AddrSnes::MIN.0 as u32,
+            current_address_scroll: AddrSnes::MIN.0,
             address_y_map:          BTreeMap::new(),
             // opt_draw_debug_info:    false,
             branch_arrows:          Vec::with_capacity(30),
@@ -70,7 +70,7 @@ impl UiDisassembler {
                 DragValue::new(&mut self.current_address_scroll)
                     .clamp_range({
                         let min = AddrSnes::MIN;
-                        let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len())).unwrap();
+                        let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len() as AddrInner)).unwrap();
                         min.0..=max.0 - 1
                     })
                     .prefix("$")
@@ -100,7 +100,7 @@ impl UiDisassembler {
         let write_hex = |bytes: &mut dyn Iterator<Item = u8>| {
             let mut str_buf = str_buf.borrow_mut();
             str_buf.clear();
-            let mut num_bytes = 0usize;
+            let mut num_bytes = 0;
             for byte in bytes {
                 write!(str_buf, "{byte:02X} ").unwrap();
                 num_bytes += 1;
@@ -108,7 +108,7 @@ impl UiDisassembler {
             (str_buf, num_bytes)
         };
 
-        let curr_pc_addr_scroll = AddrPc::try_from_lorom(AddrSnes(self.current_address_scroll as usize)).unwrap().0;
+        let curr_pc_addr_scroll = AddrPc::try_from_lorom(AddrSnes(self.current_address_scroll)).unwrap().0;
         let first_block_idx = disasm.chunks.partition_point(|(a, _)| a.0 < curr_pc_addr_scroll).max(1) - 1;
         let mut current_address = curr_pc_addr_scroll;
 
@@ -158,18 +158,19 @@ impl UiDisassembler {
                         .chunks
                         .get(chunk_idx + 1)
                         .map(|c| c.0)
-                        .unwrap_or_else(|| AddrPc::from(disasm.rom_bytes().len()));
-                    let chunk_bytes = &disasm.rom_bytes()[chunk_pc.0..next_chunk_pc.0];
+                        .unwrap_or_else(|| AddrPc(disasm.rom_bytes().len() as AddrInner));
+                    let chunk_bytes = &disasm.rom_bytes()[chunk_pc.as_index()..next_chunk_pc.as_index()];
 
                     match chunk {
                         BinaryBlock::EndOfRom => break 'draw_lines,
                         BinaryBlock::Unknown | BinaryBlock::Data(_) => {
                             let stride = 8;
                             let skip_lines = (current_address - chunk_pc.0) / stride;
-                            let chunks = chunk_bytes.iter().copied().chunks(stride);
-                            for (line_number, mut byte_line) in chunks.into_iter().enumerate().skip(skip_lines) {
+                            let chunks = chunk_bytes.iter().copied().chunks(stride as usize);
+                            for (line_number, mut byte_line) in chunks.into_iter().enumerate().skip(skip_lines as usize)
+                            {
                                 let line_addr_str = {
-                                    let pc = AddrPc(chunk_pc.0 + line_number * stride);
+                                    let pc = AddrPc(chunk_pc.0 + line_number as AddrInner * stride);
                                     let snes = AddrSnes::try_from_lorom(pc).unwrap();
                                     self.address_y_map.insert(snes, curr_y);
                                     format!("DATA_{:06X}:", snes.0)
@@ -226,7 +227,7 @@ impl UiDisassembler {
                                         .rom_bytes()
                                         .iter()
                                         .copied()
-                                        .skip(addr.0)
+                                        .skip(addr.as_index())
                                         .take(ins.opcode.instruction_size());
                                     write_hex(&mut b_it)
                                 };

@@ -3,11 +3,11 @@ mod data;
 pub use data::*;
 use itertools::Itertools;
 use nom::{combinator::map, multi::many0, number::complete::le_u16};
+use thiserror::Error;
 
 use crate::{
-    error::TilesetParseError,
     objects::{
-        gfx_list::ObjectGfxList,
+        gfx_list::{GfxListParseError, ObjectGfxList},
         map16::{Map16Tile, Tile8x8},
     },
     snes_utils::rom_slice::SnesSlice,
@@ -15,6 +15,15 @@ use crate::{
     DataKind,
     RomDisassembly,
 };
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Error)]
+#[error("Could not parse Map16 tiles at:\n- {0}")]
+pub enum TilesetParseError {
+    Slice(SnesSlice),
+    GfxList(GfxListParseError),
+}
 
 // -------------------------------------------------------------------------------------------------
 
