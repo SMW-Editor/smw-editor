@@ -54,7 +54,7 @@ duplicate! {
     [
         addr_type       opposite_type   fmt_lower_hex       fmt_upper_hex;
         [ AddrPc ]      [ AddrSnes ]    [ "PC {:#x}" ]      [ "PC {:#X}" ];
-        [ AddrSnes ]    [ AddrPc ]      [ "SNES ${:x}" ]    [ "SNES ${:x}" ];
+        [ AddrSnes ]    [ AddrPc ]      [ "SNES ${:x}" ]    [ "SNES ${:X}" ];
     ]
 
     #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
