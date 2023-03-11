@@ -1,5 +1,6 @@
 use std::{convert::TryFrom, fmt, num::ParseIntError, ops::*};
 
+use duplicate::*;
 use num_traits::{cast::cast, *};
 use paste::*;
 use thiserror::Error;
@@ -49,264 +50,307 @@ pub trait Addr: Clone + NumOps<usize, Self> + PrimInt + fmt::LowerHex + fmt::Upp
 
 // -------------------------------------------------------------------------------------------------
 
-macro_rules! gen_address_type {
-    ($T:ident) => {
-        #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
-        pub struct $T(pub AddrInner);
+duplicate! {
+    [
+        addr_type       opposite_type   fmt_lower_hex       fmt_upper_hex;
+        [ AddrPc ]      [ AddrSnes ]    [ "PC {:#x}" ]      [ "PC {:#X}" ];
+        [ AddrSnes ]    [ AddrPc ]      [ "SNES ${:x}" ]    [ "SNES ${:x}" ];
+    ]
 
-        impl $T {
-            #[inline]
-            pub fn as_index(self) -> usize {
-                self.0 as usize
+    #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+    pub struct addr_type(pub AddrInner);
+
+    impl addr_type {
+        #[inline]
+        pub fn as_index(self) -> usize {
+            self.0 as usize
+        }
+    }
+
+    impl Default for addr_type {
+        #[inline]
+        fn default() -> Self {
+            Self::MIN
+        }
+    }
+
+    impl fmt::Debug for addr_type {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match opposite_type::try_from(*self) {
+                Ok(opposite) => write!(f, "{}({:#06x}) [-> {opposite:X}]", stringify!(addr_type), self.0),
+                Err(_) => write!(f, "{}({:#06x})", stringify!(addr_type), self.0),
             }
         }
+    }
 
-        impl Default for $T {
-            #[inline]
-            fn default() -> Self {
-                Self::MIN
+    impl fmt::Display for addr_type {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match opposite_type::try_from(*self) {
+                Ok(opposite) => write!(f, "{:#06x} [-> {opposite:X}]", self.0),
+                Err(_) => write!(f, "{:#06x}", self.0),
             }
         }
+    }
 
-        impl Zero for $T {
-            #[inline]
-            fn zero() -> Self {
-                Self::MIN
-            }
+    impl fmt::LowerHex for addr_type {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, fmt_lower_hex, self.0)
+        }
+    }
 
-            #[inline]
-            fn set_zero(&mut self) {
-                self.0 = Self::zero().0
-            }
+    impl fmt::UpperHex for addr_type {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, fmt_upper_hex, self.0)
+        }
+    }
 
-            #[inline]
-            fn is_zero(&self) -> bool {
-                *self == Self::zero()
-            }
+    impl TryFrom<opposite_type> for addr_type {
+        type Error = AddressError;
+
+        fn try_from(value: opposite_type) -> Result<Self, Self::Error> {
+            Self::try_from_lorom(value)
+        }
+    }
+
+    impl Zero for addr_type {
+        #[inline]
+        fn zero() -> Self {
+            Self::MIN
         }
 
-        impl One for $T {
-            #[inline]
-            fn one() -> Self {
-                Self::MIN + 1
-            }
-
-            fn set_one(&mut self) {
-                self.0 = Self::one().0
-            }
-
-            #[inline]
-            fn is_one(&self) -> bool {
-                *self == Self::one()
-            }
+        #[inline]
+        fn set_zero(&mut self) {
+            self.0 = Self::zero().0
         }
 
-        impl Num for $T {
-            type FromStrRadixErr = ParseIntError;
+        #[inline]
+        fn is_zero(&self) -> bool {
+            *self == Self::zero()
+        }
+    }
 
-            #[inline]
-            fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-                Ok(Self(AddrInner::from_str_radix(str, radix)?))
-            }
+    impl One for addr_type {
+        #[inline]
+        fn one() -> Self {
+            Self::MIN + 1
         }
 
-        impl NumCast for $T {
-            #[inline]
-            fn from<T: ToPrimitive>(n: T) -> Option<Self> {
-                Some(Self(n.to_u32()? as AddrInner))
-            }
+        fn set_one(&mut self) {
+            self.0 = Self::one().0
         }
 
-        impl ToPrimitive for $T {
-            #[inline]
-            fn to_i64(&self) -> Option<i64> {
-                cast::<AddrInner, i64>(self.0)
-            }
+        #[inline]
+        fn is_one(&self) -> bool {
+            *self == Self::one()
+        }
+    }
 
-            #[inline]
-            fn to_u64(&self) -> Option<u64> {
-                cast::<AddrInner, u64>(self.0)
-            }
+    impl Num for addr_type {
+        type FromStrRadixErr = ParseIntError;
+
+        #[inline]
+        fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+            Ok(Self(AddrInner::from_str_radix(str, radix)?))
+        }
+    }
+
+    impl NumCast for addr_type {
+        #[inline]
+        fn from<T: ToPrimitive>(n: T) -> Option<Self> {
+            Some(Self(n.to_u32()? as AddrInner))
+        }
+    }
+
+    impl ToPrimitive for addr_type {
+        #[inline]
+        fn to_i64(&self) -> Option<i64> {
+            cast::<AddrInner, i64>(self.0)
         }
 
-        impl PrimInt for $T {
-            #[inline]
-            fn count_ones(self) -> u32 {
-                self.0.count_ones()
-            }
+        #[inline]
+        fn to_u64(&self) -> Option<u64> {
+            cast::<AddrInner, u64>(self.0)
+        }
+    }
 
-            #[inline]
-            fn count_zeros(self) -> u32 {
-                self.0.count_zeros()
-            }
-
-            #[cfg(has_leading_trailing_ones)]
-            #[inline]
-            fn leading_ones(self) -> u32 {
-                self.0.leading_ones()
-            }
-
-            #[inline]
-            fn leading_zeros(self) -> u32 {
-                self.0.leading_zeros()
-            }
-
-            #[cfg(has_leading_trailing_ones)]
-            #[inline]
-            fn trailing_ones(self) -> u32 {
-                self.0.trailing_ones()
-            }
-
-            #[inline]
-            fn trailing_zeros(self) -> u32 {
-                self.0.trailing_zeros()
-            }
-
-            #[inline]
-            fn rotate_left(self, n: u32) -> Self {
-                Self(self.0.rotate_left(n))
-            }
-
-            #[inline]
-            fn rotate_right(self, n: u32) -> Self {
-                Self(self.0.rotate_right(n))
-            }
-
-            #[inline]
-            fn signed_shl(self, n: u32) -> Self {
-                Self(self.0 << n)
-            }
-
-            #[inline]
-            fn signed_shr(self, n: u32) -> Self {
-                Self(self.0 >> n)
-            }
-
-            #[inline]
-            fn unsigned_shl(self, n: u32) -> Self {
-                Self(self.0 << n)
-            }
-
-            #[inline]
-            fn unsigned_shr(self, n: u32) -> Self {
-                Self(self.0 >> n)
-            }
-
-            #[inline]
-            fn swap_bytes(self) -> Self {
-                Self(self.0.swap_bytes())
-            }
-
-            #[cfg(has_reverse_bits)]
-            #[inline]
-            fn reverse_bits(self) -> Self {
-                Self(self.0.reverse_bits())
-            }
-
-            #[inline]
-            fn from_be(x: Self) -> Self {
-                Self(AddrInner::from_be(x.0))
-            }
-
-            #[inline]
-            fn from_le(x: Self) -> Self {
-                Self(AddrInner::from_le(x.0))
-            }
-
-            #[inline]
-            fn to_be(self) -> Self {
-                Self(self.0.to_be())
-            }
-
-            #[inline]
-            fn to_le(self) -> Self {
-                Self(self.0.to_le())
-            }
-
-            #[inline]
-            fn pow(self, exp: u32) -> Self {
-                Self(self.0.pow(exp))
-            }
+    impl PrimInt for addr_type {
+        #[inline]
+        fn count_ones(self) -> u32 {
+            self.0.count_ones()
         }
 
-        impl Bounded for $T {
-            #[inline]
-            fn min_value() -> Self {
-                Self::MIN
-            }
-
-            #[inline]
-            fn max_value() -> Self {
-                Self(AddrInner::MAX)
-            }
+        #[inline]
+        fn count_zeros(self) -> u32 {
+            self.0.count_zeros()
         }
 
-        impl Saturating for $T {
-            #[inline]
-            fn saturating_add(self, v: Self) -> Self {
-                Self(self.0.saturating_add(v.0))
-            }
-
-            #[inline]
-            fn saturating_sub(self, v: Self) -> Self {
-                Self(self.0.saturating_sub(v.0))
-            }
+        #[cfg(has_leading_trailing_ones)]
+        #[inline]
+        fn leading_ones(self) -> u32 {
+            self.0.leading_ones()
         }
 
-        impl Not for $T {
+        #[inline]
+        fn leading_zeros(self) -> u32 {
+            self.0.leading_zeros()
+        }
+
+        #[cfg(has_leading_trailing_ones)]
+        #[inline]
+        fn trailing_ones(self) -> u32 {
+            self.0.trailing_ones()
+        }
+
+        #[inline]
+        fn trailing_zeros(self) -> u32 {
+            self.0.trailing_zeros()
+        }
+
+        #[inline]
+        fn rotate_left(self, n: u32) -> Self {
+            Self(self.0.rotate_left(n))
+        }
+
+        #[inline]
+        fn rotate_right(self, n: u32) -> Self {
+            Self(self.0.rotate_right(n))
+        }
+
+        #[inline]
+        fn signed_shl(self, n: u32) -> Self {
+            Self(self.0 << n)
+        }
+
+        #[inline]
+        fn signed_shr(self, n: u32) -> Self {
+            Self(self.0 >> n)
+        }
+
+        #[inline]
+        fn unsigned_shl(self, n: u32) -> Self {
+            Self(self.0 << n)
+        }
+
+        #[inline]
+        fn unsigned_shr(self, n: u32) -> Self {
+            Self(self.0 >> n)
+        }
+
+        #[inline]
+        fn swap_bytes(self) -> Self {
+            Self(self.0.swap_bytes())
+        }
+
+        #[cfg(has_reverse_bits)]
+        #[inline]
+        fn reverse_bits(self) -> Self {
+            Self(self.0.reverse_bits())
+        }
+
+        #[inline]
+        fn from_be(x: Self) -> Self {
+            Self(AddrInner::from_be(x.0))
+        }
+
+        #[inline]
+        fn from_le(x: Self) -> Self {
+            Self(AddrInner::from_le(x.0))
+        }
+
+        #[inline]
+        fn to_be(self) -> Self {
+            Self(self.0.to_be())
+        }
+
+        #[inline]
+        fn to_le(self) -> Self {
+            Self(self.0.to_le())
+        }
+
+        #[inline]
+        fn pow(self, exp: u32) -> Self {
+            Self(self.0.pow(exp))
+        }
+    }
+
+    impl Bounded for addr_type {
+        #[inline]
+        fn min_value() -> Self {
+            Self::MIN
+        }
+
+        #[inline]
+        fn max_value() -> Self {
+            Self(AddrInner::MAX)
+        }
+    }
+
+    impl Saturating for addr_type {
+        #[inline]
+        fn saturating_add(self, v: Self) -> Self {
+            Self(self.0.saturating_add(v.0))
+        }
+
+        #[inline]
+        fn saturating_sub(self, v: Self) -> Self {
+            Self(self.0.saturating_sub(v.0))
+        }
+    }
+
+    impl Not for addr_type {
+        type Output = Self;
+
+        #[inline]
+        fn not(self) -> Self::Output {
+            Self(!self.0)
+        }
+    }
+
+    #[duplicate_item(
+        op_name     op;
+        [ Add ]     [ + ];
+        [ Sub ]     [ - ];
+        [ Mul ]     [ * ];
+        [ Div ]     [ / ];
+        [ Rem ]     [ % ];
+        [ BitAnd ]  [ & ];
+        [ BitOr ]   [ | ];
+        [ BitXor ]  [ ^ ];
+        [ Shl ]     [ << ];
+        [ Shr ]     [ >> ];
+    )]
+    paste! {
+        impl<I: PrimInt> op_name<I> for addr_type {
             type Output = Self;
-
-            #[inline]
-            fn not(self) -> Self::Output {
-                Self(!self.0)
+            fn [<op_name:lower>](self, rhs: I) -> Self::Output {
+                Self(self.0 op cast::<I, AddrInner>(rhs).unwrap())
             }
         }
-
-        macro_rules! gen_address_bin_op {
-            ($op_name: ident, $op: tt) => {
-                paste! {
-                    impl<I: PrimInt> $op_name<I> for $T {
-                        type Output = Self;
-                        fn [<$op_name:lower>](self, rhs: I) -> Self::Output {
-                            Self(self.0 $op cast::<I, AddrInner>(rhs).unwrap())
-                        }
-                    }
-                    impl<I: PrimInt> [<$op_name Assign>]<I> for $T {
-                        fn [<$op_name:lower _assign>](&mut self, rhs: I) {
-                            self.0 = self.0 $op cast::<I, AddrInner>(rhs).unwrap();
-                        }
-                    }
-                }
-            };
-            ($op_name: ident, $op: tt, checked) => {
-                gen_address_bin_op!($op_name, $op);
-                paste! {
-                    impl [<Checked $op_name>] for $T {
-                        fn [<checked_ $op_name:lower>](&self, v: &Self) -> Option<Self> {
-                            Some(Self(self.0.[<checked_ $op_name:lower>](v.0)?))
-                        }
-                    }
-                }
-            };
+        impl<I: PrimInt> [<op_name Assign>]<I> for addr_type {
+            fn [<op_name:lower _assign>](&mut self, rhs: I) {
+                self.0 = self.0 op cast::<I, AddrInner>(rhs).unwrap();
+            }
         }
+    }
 
-        gen_address_bin_op!(Add,    +, checked);
-        gen_address_bin_op!(Sub,    -, checked);
-        gen_address_bin_op!(Mul,    *, checked);
-        gen_address_bin_op!(Div,    /, checked);
-        gen_address_bin_op!(Rem,    %, checked);
-        gen_address_bin_op!(BitAnd, &);
-        gen_address_bin_op!(BitOr,  |);
-        gen_address_bin_op!(BitXor, ^);
-        gen_address_bin_op!(Shl,    <<);
-        gen_address_bin_op!(Shr,    >>);
+    #[duplicate_item(
+        op_name            op;
+        [ CheckedAdd ]     [ + ];
+        [ CheckedSub ]     [ - ];
+        [ CheckedMul ]     [ * ];
+        [ CheckedDiv ]     [ / ];
+        [ CheckedRem ]     [ % ];
+    )]
+    impl op_name for addr_type {
+        paste! {
+            fn [<op_name:snake>](&self, v: &Self) -> Option<Self> {
+                Some(Self(self.0.[<op_name:snake>](v.0)?))
+            }
+        }
     }
 }
 
 // -------------------------------------------------------------------------------------------------
-
-gen_address_type!(AddrPc);
-gen_address_type!(AddrSnes);
 
 impl Addr for AddrPc {
     type OppositeAddr = AddrSnes;
@@ -338,41 +382,38 @@ impl Addr for AddrPc {
     }
 }
 
-impl TryFrom<AddrSnes> for AddrPc {
-    type Error = AddressError;
+impl Addr for AddrSnes {
+    type OppositeAddr = AddrPc;
 
-    fn try_from(value: AddrSnes) -> Result<Self, Self::Error> {
-        Self::try_from_lorom(value)
-    }
-}
+    const MIN: Self = AddrSnes(0x8000);
 
-impl fmt::LowerHex for AddrPc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PC {:#x}", self.0)
-    }
-}
-
-impl fmt::UpperHex for AddrPc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PC {:#X}", self.0)
-    }
-}
-
-impl fmt::Display for AddrPc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match AddrSnes::try_from(*self) {
-            Ok(snes) => write!(f, "0x{:06x} (SNES: {snes})", self.0),
-            Err(_) => write!(f, "0x{:06x}", self.0),
+    fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressError> {
+        if addr.is_valid_lorom() {
+            Ok(Self(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
+        } else {
+            Err(AddressError::InvalidPcLoRom(addr))
         }
     }
-}
 
-impl fmt::Debug for AddrPc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match AddrSnes::try_from(*self) {
-            Ok(snes) => write!(f, "AddrPc(0x{:06x} (SNES: {snes}))", self.0),
-            Err(_) => write!(f, "AddrPc(0x{:06x})", self.0),
+    fn try_from_hirom(addr: AddrPc) -> Result<Self, AddressError> {
+        if addr.is_valid_hirom() {
+            Ok(Self(addr.0 | 0xC00000))
+        } else {
+            Err(AddressError::InvalidPcHiRom(addr))
         }
+    }
+
+    fn is_valid_lorom(&self) -> bool {
+        let wram = (self.0 & 0xFE0000) == 0x7E0000;
+        let junk = (self.0 & 0x408000) == 0x000000;
+        let sram = (self.0 & 0x708000) == 0x700000;
+        !wram && !junk && !sram
+    }
+
+    fn is_valid_hirom(&self) -> bool {
+        let wram = (self.0 & 0xFE0000) == 0x7E0000;
+        let junk = (self.0 & 0x408000) == 0x000000;
+        !wram && !junk
     }
 }
 
@@ -415,72 +456,5 @@ impl AddrSnes {
     #[must_use]
     pub fn with_absolute(self, absolute: u16) -> Self {
         Self((self.0 & 0xFF0000) | (absolute as AddrInner))
-    }
-}
-
-impl Addr for AddrSnes {
-    type OppositeAddr = AddrPc;
-
-    const MIN: Self = AddrSnes(0x8000);
-
-    fn try_from_lorom(addr: AddrPc) -> Result<Self, AddressError> {
-        if addr.is_valid_lorom() {
-            Ok(Self(((addr.0 << 1) & 0x7F0000) | (addr.0 & 0x7FFF) | 0x8000))
-        } else {
-            Err(AddressError::InvalidPcLoRom(addr))
-        }
-    }
-
-    fn try_from_hirom(addr: AddrPc) -> Result<Self, AddressError> {
-        if addr.is_valid_hirom() {
-            Ok(Self(addr.0 | 0xC00000))
-        } else {
-            Err(AddressError::InvalidPcHiRom(addr))
-        }
-    }
-
-    fn is_valid_lorom(&self) -> bool {
-        let wram = (self.0 & 0xFE0000) == 0x7E0000;
-        let junk = (self.0 & 0x408000) == 0x000000;
-        let sram = (self.0 & 0x708000) == 0x700000;
-        !wram && !junk && !sram
-    }
-
-    fn is_valid_hirom(&self) -> bool {
-        let wram = (self.0 & 0xFE0000) == 0x7E0000;
-        let junk = (self.0 & 0x408000) == 0x000000;
-        !wram && !junk
-    }
-}
-
-impl TryFrom<AddrPc> for AddrSnes {
-    type Error = AddressError;
-
-    fn try_from(value: AddrPc) -> Result<Self, Self::Error> {
-        Self::try_from_lorom(value)
-    }
-}
-
-impl fmt::LowerHex for AddrSnes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SNES ${:x}", self.0)
-    }
-}
-
-impl fmt::UpperHex for AddrSnes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SNES ${:X}", self.0)
-    }
-}
-
-impl fmt::Display for AddrSnes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "0x{:06x}", self.0)
-    }
-}
-
-impl fmt::Debug for AddrSnes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AddrSnes(0x{:06x})", self.0)
     }
 }
