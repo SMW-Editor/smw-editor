@@ -53,8 +53,8 @@ pub trait Addr: Clone + NumOps<usize, Self> + PrimInt + fmt::LowerHex + fmt::Upp
 duplicate! {
     [
         addr_type       opposite_type   fmt_lower_hex       fmt_upper_hex;
-        [ AddrPc ]      [ AddrSnes ]    [ "PC {:#x}" ]      [ "PC {:#X}" ];
-        [ AddrSnes ]    [ AddrPc ]      [ "SNES ${:x}" ]    [ "SNES ${:X}" ];
+        [AddrPc]        [AddrSnes]      ["PC {:#x}"]        ["PC {:#X}"];
+        [AddrSnes]      [AddrPc]        ["SNES ${:x}"]      ["SNES ${:X}"];
     ]
 
     #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -308,16 +308,16 @@ duplicate! {
 
     #[duplicate_item(
         op_name     op;
-        [ Add ]     [ + ];
-        [ Sub ]     [ - ];
-        [ Mul ]     [ * ];
-        [ Div ]     [ / ];
-        [ Rem ]     [ % ];
-        [ BitAnd ]  [ & ];
-        [ BitOr ]   [ | ];
-        [ BitXor ]  [ ^ ];
-        [ Shl ]     [ << ];
-        [ Shr ]     [ >> ];
+        [Add]       [+];
+        [Sub]       [-];
+        [Mul]       [*];
+        [Div]       [/];
+        [Rem]       [%];
+        [BitAnd]    [&];
+        [BitOr]     [|];
+        [BitXor]    [^];
+        [Shl]       [<<];
+        [Shr]       [>>];
     )]
     paste! {
         impl<I: PrimInt> op_name<I> for addr_type {
@@ -335,11 +335,11 @@ duplicate! {
 
     #[duplicate_item(
         op_name            op;
-        [ CheckedAdd ]     [ + ];
-        [ CheckedSub ]     [ - ];
-        [ CheckedMul ]     [ * ];
-        [ CheckedDiv ]     [ / ];
-        [ CheckedRem ]     [ % ];
+        [CheckedAdd]       [+];
+        [CheckedSub]       [-];
+        [CheckedMul]       [*];
+        [CheckedDiv]       [/];
+        [CheckedRem]       [%];
     )]
     impl op_name for addr_type {
         paste! {
