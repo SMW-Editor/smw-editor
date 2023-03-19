@@ -1,6 +1,8 @@
 pub mod lc_lz2;
 pub mod lc_rle1;
 
+use duplicate::duplicate_item;
+use paste::paste;
 use thiserror::Error;
 
 pub use self::{lc_lz2::LcLz2Error, lc_rle1::LcRle1Error};
@@ -17,14 +19,9 @@ pub enum DecompressionError {
 
 // -------------------------------------------------------------------------------------------------
 
-impl From<LcLz2Error> for DecompressionError {
-    fn from(e: LcLz2Error) -> Self {
-        DecompressionError::LcLz2(e)
-    }
-}
-
-impl From<LcRle1Error> for DecompressionError {
-    fn from(e: LcRle1Error) -> Self {
-        DecompressionError::LcRle1(e)
+#[duplicate_item(algorithm; [LcLz2]; [LcRle1];)]
+impl From<paste! { [<algorithm Error>] }> for DecompressionError {
+    fn from(e: paste! { [<algorithm Error>] }) -> Self {
+        DecompressionError::algorithm(e)
     }
 }
