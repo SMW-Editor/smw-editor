@@ -1,5 +1,6 @@
 mod color;
 mod dev_utils;
+mod editor_prototypes;
 mod project_creator;
 mod tool;
 
@@ -23,6 +24,7 @@ use crate::{
             rom_info::UiRomInfo,
             tiles16x16::UiTiles16x16,
         },
+        editor_prototypes::block_editor::UiBlockEditor,
         project_creator::UiProjectCreator,
         tool::UiTool,
     },
@@ -133,6 +135,13 @@ impl UiMainWindow {
                     }
                     if ui.add_enabled(is_project_loaded, Button::new("16x16 tiles")).clicked() {
                         self.open_tool(UiTiles16x16::default());
+                        ui.close_menu();
+                    }
+                });
+
+                ui.menu_button("Prototypes", |ui| {
+                    if ui.button("Block editor").clicked() {
+                        self.open_tool(UiBlockEditor::default());
                         ui.close_menu();
                     }
                 });

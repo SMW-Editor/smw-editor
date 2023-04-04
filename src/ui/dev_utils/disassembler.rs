@@ -43,7 +43,6 @@ impl UiTool for UiDisassembler {
         Window::new("Disassembler") //
             .min_width(512.0)
             .min_height(128.0)
-            .vscroll(true)
             .open(&mut running)
             .resizable(true)
             .show(ui.ctx(), |ui| {
