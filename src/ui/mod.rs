@@ -24,7 +24,7 @@ use crate::{
             rom_info::UiRomInfo,
             tiles16x16::UiTiles16x16,
         },
-        editor_prototypes::block_editor::UiBlockEditor,
+        editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
         project_creator::UiProjectCreator,
         tool::UiTool,
     },
@@ -142,6 +142,10 @@ impl UiMainWindow {
                 ui.menu_button("Prototypes", |ui| {
                     if ui.button("Block editor").clicked() {
                         self.open_tool(UiBlockEditor::default());
+                        ui.close_menu();
+                    }
+                    if ui.button("Code editor").clicked() {
+                        self.open_tool(UiCodeEditor::default());
                         ui.close_menu();
                     }
                 });
