@@ -1,24 +1,19 @@
-use eframe::egui::{TextEdit, Ui, Window};
+use egui::{TextEdit, Ui, WidgetText};
 use egui_extras::{Column, TableBuilder};
 use smwe_rom::disassembler::serialization::LineKind;
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
+#[derive(Default)]
 pub struct UiCodeEditor {}
 
-impl Default for UiCodeEditor {
-    fn default() -> Self {
-        log::info!("Opened Code Editor");
-        Self {}
-    }
-}
-
-impl UiTool for UiCodeEditor {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
-        let mut running = true;
-
-        Window::new("Code Editor").open(&mut running).vscroll(true).show(ui.ctx(), |ui| {
-            TableBuilder::new(ui).columns(Column::auto_with_initial_suggestion(300.), 2).body(|tb| {
+impl DockableEditorTool for UiCodeEditor {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
+        let min_scroll_height = ui.available_height();
+        TableBuilder::new(ui)
+            .min_scrolled_height(min_scroll_height)
+            .columns(Column::remainder().at_least(300.), 2)
+            .body(|tb| {
                 let mut project = ctx.project_ref.as_mut().unwrap().borrow_mut();
                 tb.rows(15., project.rom_data.disassembly.code_lines.len(), |i, mut tr| {
                     match &mut project.rom_data.disassembly.code_lines[i] {
@@ -40,9 +35,11 @@ impl UiTool for UiCodeEditor {
                                 });
                             });
                         }
-                        LineKind::Op { op, arg: _, comment } => {
+                        LineKind::Op { op, comment } => {
                             tr.col(|ui| {
-                                ui.add(TextEdit::singleline(op).code_editor().clip_text(false).desired_width(0.));
+                                ui.indent("line-indent", |ui| {
+                                    ui.add(TextEdit::singleline(op).code_editor().clip_text(false).desired_width(0.));
+                                });
                             });
                             tr.col(|ui| {
                                 ui.horizontal(|ui| {
@@ -61,11 +58,9 @@ impl UiTool for UiCodeEditor {
                     }
                 })
             });
-        });
+    }
 
-        if !running {
-            log::info!("Closed Code Editor");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Code editor".into()
     }
 }

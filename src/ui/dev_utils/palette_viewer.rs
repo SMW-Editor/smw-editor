@@ -1,27 +1,11 @@
-use eframe::egui::{
-    Align2,
-    Color32,
-    ColorImage,
-    ComboBox,
-    DragValue,
-    FontId,
-    Rect,
-    Sense,
-    Shape,
-    TextureHandle,
-    TextureOptions,
-    TopBottomPanel,
-    Ui,
-    Vec2,
-    Window,
-};
+use egui::*;
 use inline_tweak::tweak;
 use itertools::Itertools;
 use num_enum::TryFromPrimitive;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
 #[repr(usize)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, TryFromPrimitive)]
@@ -47,7 +31,6 @@ pub struct UiPaletteViewer {
 
 impl Default for UiPaletteViewer {
     fn default() -> Self {
-        log::info!("Opened Palette Viewer");
         UiPaletteViewer {
             palette_context:   PaletteContext::Level,
             palette_image:     None,
@@ -58,37 +41,29 @@ impl Default for UiPaletteViewer {
     }
 }
 
-impl UiTool for UiPaletteViewer {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
-        let mut running = true;
-
+impl DockableEditorTool for UiPaletteViewer {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         if self.palette_image.is_none() {
             self.update_palette_image(ui, ctx);
         }
 
-        Window::new("Color palettes") //
-            .resizable(false)
-            .open(&mut running)
-            .show(ui.ctx(), |ui| {
-                TopBottomPanel::top("palette_selectors_panel").show_inside(ui, |ui| {
-                    self.context_selector(ui, ctx);
-                    match self.palette_context {
-                        PaletteContext::Level => self.selectors_level(ui, ctx),
-                        PaletteContext::Overworld => self.selectors_overworld(ui, ctx),
-                    }
-                });
-                ui.centered_and_justified(|ui| self.display_palette(ui));
-            });
+        TopBottomPanel::top("palette_selectors_panel").show_inside(ui, |ui| {
+            self.context_selector(ui, ctx);
+            match self.palette_context {
+                PaletteContext::Level => self.selectors_level(ui, ctx),
+                PaletteContext::Overworld => self.selectors_overworld(ui, ctx),
+            }
+        });
+        ui.centered_and_justified(|ui| self.display_palette(ui));
+    }
 
-        if !running {
-            log::info!("Closed Palette Viewer");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Color palettes".into()
     }
 }
 
 impl UiPaletteViewer {
-    fn context_selector(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn context_selector(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         let mut context_changed = false;
         let mut context_raw = self.palette_context as usize;
         let context_names = ["Level", "Overworld"];
@@ -108,7 +83,7 @@ impl UiPaletteViewer {
         }
     }
 
-    fn selectors_level(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn selectors_level(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         let level_count = {
             let project = ctx.project_ref.as_ref().unwrap().borrow();
             project.rom_data.levels.len() as i32
@@ -125,7 +100,7 @@ impl UiPaletteViewer {
         });
     }
 
-    fn selectors_overworld(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn selectors_overworld(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         if ui.checkbox(&mut self.special_completed, "Special world completed").changed() {
             log::info!(
                 "Showing color palette for {}",
@@ -150,7 +125,7 @@ impl UiPaletteViewer {
         });
     }
 
-    fn update_palette_image(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn update_palette_image(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
         self.palette_image = Some(match self.palette_context {

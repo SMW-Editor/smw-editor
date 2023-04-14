@@ -1,8 +1,8 @@
-use eframe::egui::{Align, Button, CentralPanel, ComboBox, DragValue, Layout, SidePanel, Ui, Window};
+use egui::*;
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
 pub struct UiBlockEditor {
     editing_modes:    Vec<String>,
@@ -21,7 +21,6 @@ pub struct UiBlockEditor {
 
 impl Default for UiBlockEditor {
     fn default() -> Self {
-        log::info!("Opened Block Editor");
         UiBlockEditor {
             editing_modes:         vec![String::from("Blocks"), String::from("Tiles")],
             editing_mode_idx:      0,
@@ -44,53 +43,40 @@ impl Default for UiBlockEditor {
     }
 }
 
-impl UiTool for UiBlockEditor {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
-        let mut running = true;
+impl DockableEditorTool for UiBlockEditor {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
+        ui.horizontal(|ui| {
+            for (i, mode) in self.editing_modes.iter().enumerate() {
+                if ui.add_enabled(self.editing_mode_idx != i, Button::new(mode)).clicked() {
+                    self.editing_mode_idx = i;
+                }
+            }
+        });
+        SidePanel::left(ui.id().with("block-editor-left"))
+            .resizable(false)
+            .show_inside(ui, |ui| self.mappings(ui, ctx));
+        SidePanel::right(ui.id().with("block-editor-right")).resizable(false).show_inside(ui, |ui| self.vram(ui, ctx));
+        CentralPanel::default().show_inside(ui, |ui| {
+            self.appearance(ui, ctx);
+            self.behaviour(ui, ctx);
+        });
+    }
 
-        Window::new("Block editor") //
-            .min_width(512.0)
-            .min_height(128.0)
-            .open(&mut running)
-            .resizable(true)
-            .vscroll(true)
-            .show(ui.ctx(), |ui| {
-                ui.horizontal(|ui| {
-                    for (i, mode) in self.editing_modes.iter().enumerate() {
-                        if ui.add_enabled(self.editing_mode_idx != i, Button::new(mode)).clicked() {
-                            self.editing_mode_idx = i;
-                        }
-                    }
-                });
-                SidePanel::left(ui.id().with("block-editor-left"))
-                    .resizable(false)
-                    .show_inside(ui, |ui| self.mappings(ui, ctx));
-                SidePanel::right(ui.id().with("block-editor-right"))
-                    .resizable(false)
-                    .show_inside(ui, |ui| self.vram(ui, ctx));
-                CentralPanel::default().show_inside(ui, |ui| {
-                    self.appearance(ui, ctx);
-                    self.behaviour(ui, ctx);
-                });
-            });
-
-        if !running {
-            log::info!("Closed Block Editor");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Block editor".into()
     }
 }
 
 impl UiBlockEditor {
-    fn mappings(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) {
+    fn mappings(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
         ui.heading("Mappings");
     }
 
-    fn vram(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) {
+    fn vram(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
         ui.heading("VRAM");
     }
 
-    fn appearance(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) {
+    fn appearance(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
         ui.heading("Appearance");
 
         TableBuilder::new(ui)
@@ -141,7 +127,7 @@ impl UiBlockEditor {
             });
     }
 
-    fn behaviour(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) {
+    fn behaviour(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
         ui.heading("Behaviour");
 
         ComboBox::from_label("Collision type")

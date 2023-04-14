@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, fmt::Write, ops::Deref};
 
-use eframe::egui::{Align, Color32, DragValue, Layout, Pos2, Rect, RichText, SidePanel, Stroke, Ui, Window};
+use egui::*;
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
@@ -9,8 +9,9 @@ use smwe_rom::{
     snes_utils::addr::{Addr, AddrInner, AddrPc, AddrSnes},
 };
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
+#[derive(Debug)]
 pub struct UiDisassembler {
     current_address_scroll: u32,
     address_y_map:          BTreeMap<AddrSnes, f32>,
@@ -18,7 +19,7 @@ pub struct UiDisassembler {
     branch_arrows:          Vec<BranchArrow>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 struct BranchArrow {
     source: AddrSnes,
     target: AddrSnes,
@@ -26,7 +27,6 @@ struct BranchArrow {
 
 impl Default for UiDisassembler {
     fn default() -> Self {
-        log::info!("Opened disassembler");
         Self {
             current_address_scroll: AddrSnes::MIN.0,
             address_y_map:          BTreeMap::new(),
@@ -36,31 +36,21 @@ impl Default for UiDisassembler {
     }
 }
 
-impl UiTool for UiDisassembler {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
-        let mut running = true;
+impl DockableEditorTool for UiDisassembler {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
+        SidePanel::left("disasm_switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, ctx));
+        let avail_area = ui.available_rect_before_wrap();
+        self.code(ui, ctx);
+        self.branch_arrows(ui, ctx, avail_area);
+    }
 
-        Window::new("Disassembler") //
-            .min_width(512.0)
-            .min_height(128.0)
-            .open(&mut running)
-            .resizable(true)
-            .show(ui.ctx(), |ui| {
-                SidePanel::left("disasm_switches_panel").show_inside(ui, |ui| self.switches(ui, ctx));
-                let avail_area = ui.available_rect_before_wrap();
-                self.code(ui, ctx);
-                self.branch_arrows(ui, ctx, avail_area);
-            });
-
-        if !running {
-            log::info!("Closed disassembler");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Disassembler".into()
     }
 }
 
 impl UiDisassembler {
-    fn switches(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn switches(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let disasm = &project.rom_data.disassembly;
 
@@ -81,7 +71,7 @@ impl UiDisassembler {
         // ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
     }
 
-    fn code(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn code(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         const COLOR_ADDRESS: Color32 = Color32::from_rgba_premultiplied(0xaa, 0xaa, 0xaa, 0xff);
         const COLOR_DATA: Color32 = Color32::from_rgba_premultiplied(0xdd, 0xdd, 0xee, 0xff);
         const COLOR_CODE: Color32 = Color32::from_rgba_premultiplied(0xee, 0xdd, 0xdd, 0xff);
@@ -118,7 +108,9 @@ impl UiDisassembler {
 
         let mut curr_y = ui.cursor().top() + header_height + (0.5 * row_height + spacing.y);
 
+        let min_scroll_height = ui.available_height();
         TableBuilder::new(ui)
+            .min_scrolled_height(min_scroll_height)
             .striped(true)
             .cell_layout(Layout::left_to_right(Align::Min))
             .column(Column::exact(tweak!(90.0)))
@@ -276,7 +268,7 @@ impl UiDisassembler {
             });
     }
 
-    fn branch_arrows(&mut self, ui: &mut Ui, _ctx: &mut FrameContext, avail_area: Rect) {
+    fn branch_arrows(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer, avail_area: Rect) {
         const ARROW_SZ: f32 = 4.0f32;
         const ARROW_SEP: f32 = 3.0f32;
 

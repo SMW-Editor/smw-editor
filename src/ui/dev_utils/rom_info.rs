@@ -1,47 +1,42 @@
-use eframe::egui::{RichText, Ui, Window};
+use eframe::egui::{RichText, Ui};
+use egui::WidgetText;
 use egui_extras::{Column, TableBuilder};
 use smwe_rom::RomInternalHeader;
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
+#[derive(Debug)]
 pub struct UiRomInfo {
     display_data: Vec<(String, String)>,
 }
 
-impl UiTool for UiRomInfo {
-    fn update(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) -> bool {
-        let mut running = true;
-
-        Window::new("Internal ROM Header") //
-            .auto_sized()
-            .open(&mut running)
-            .show(ui.ctx(), |ui| {
-                TableBuilder::new(ui) //
-                    .striped(true)
-                    .columns(Column::exact(130.0), 2)
-                    .body(|body| {
-                        body.rows(15.0, self.display_data.len(), |i, mut row| {
-                            let (name, data) = &self.display_data[i];
-                            row.col(|ui| {
-                                ui.label(name);
-                            });
-                            row.col(|ui| {
-                                ui.label(RichText::new(data).monospace());
-                            });
-                        });
+impl DockableEditorTool for UiRomInfo {
+    fn update(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+        let min_scroll_height = ui.available_height();
+        TableBuilder::new(ui) //
+            .striped(true)
+            .min_scrolled_height(min_scroll_height)
+            .columns(Column::exact(130.0), 2)
+            .body(|body| {
+                body.rows(15.0, self.display_data.len(), |i, mut row| {
+                    let (name, data) = &self.display_data[i];
+                    row.col(|ui| {
+                        ui.label(name);
                     });
+                    row.col(|ui| {
+                        ui.label(RichText::new(data).monospace());
+                    });
+                });
             });
+    }
 
-        if !running {
-            log::info!("Closed ROM Info");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Internal ROM Header".into()
     }
 }
 
 impl UiRomInfo {
     pub fn new(header: &RomInternalHeader) -> Self {
-        log::info!("Opened ROM Info");
         Self {
             display_data: vec![
                 (String::from("Internal ROM name:"), header.internal_rom_name.clone()),

@@ -1,8 +1,8 @@
 use constants::*;
-use eframe::egui::{Color32, ColorImage, DragValue, ScrollArea, SidePanel, TextureHandle, TextureOptions, Ui, Window};
+use egui::*;
 use smwe_rom::graphics::{gfx_file::TileFormat, palette::ColorPalette};
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
 
 #[allow(dead_code)]
 #[rustfmt::skip]
@@ -41,7 +41,6 @@ pub struct UiGfxViewer {
 
 impl Default for UiGfxViewer {
     fn default() -> Self {
-        log::info!("Opened GFX Viewer");
         UiGfxViewer {
             image_handle:         None,
             curr_image_size:      (0, 0),
@@ -56,30 +55,22 @@ impl Default for UiGfxViewer {
     }
 }
 
-impl UiTool for UiGfxViewer {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
+impl DockableEditorTool for UiGfxViewer {
+    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         if self.image_handle.is_none() {
             self.update_image(ctx);
         }
+        SidePanel::left("switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, ctx));
+        self.gfx_image(ui);
+    }
 
-        let mut running = true;
-        Window::new("GFX Viewer") //
-            .default_height(600.0)
-            .open(&mut running)
-            .show(ui.ctx(), |ui| {
-                SidePanel::left("switches_panel").show_inside(ui, |ui| self.switches(ui, ctx));
-                self.gfx_image(ui);
-            });
-
-        if !running {
-            log::info!("Closed GFX Viewer");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "GFX viewer".into()
     }
 }
 
 impl UiGfxViewer {
-    fn switches(&mut self, ui: &mut Ui, ctx: &mut FrameContext) {
+    fn switches(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
         let mut changed_any = false;
         if let Some(project) = ctx.project_ref.as_ref() {
             let project = project.borrow();
@@ -134,7 +125,7 @@ impl UiGfxViewer {
         }
     }
 
-    fn update_image(&mut self, ctx: &mut FrameContext) {
+    fn update_image(&mut self, ctx: &mut EditorToolTabViewer) {
         let project = ctx.project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
         let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];

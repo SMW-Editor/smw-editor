@@ -16,9 +16,6 @@ pub enum LineKind {
         op:      String,
         #[serde(skip_serializing_if = "String::is_empty")]
         #[serde(default)]
-        arg:     String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        #[serde(default)]
         comment: String,
     },
     Empty {},

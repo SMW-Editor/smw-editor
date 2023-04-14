@@ -1,50 +1,59 @@
 mod color;
 mod dev_utils;
 mod editor_prototypes;
+mod frame_context;
 mod project_creator;
 mod tool;
 
 use std::sync::Arc;
 
-use eframe::{
-    egui::{self, Context, Style, Ui},
-    Frame,
-};
+use eframe::Frame;
+use egui::*;
+use egui_dock::{DockArea, StyleBuilder, Tree};
 use rfd::FileDialog;
 use smwe_project::ProjectRef;
 
-use crate::{
-    frame_context::FrameContext,
-    ui::{
-        dev_utils::{
-            address_converter::UiAddressConverter,
-            disassembler::UiDisassembler,
-            gfx_viewer::UiGfxViewer,
-            palette_viewer::UiPaletteViewer,
-            rom_info::UiRomInfo,
-            tiles16x16::UiTiles16x16,
-        },
-        editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
-        project_creator::UiProjectCreator,
-        tool::UiTool,
+use crate::ui::{
+    dev_utils::{
+        address_converter::UiAddressConverter,
+        disassembler::UiDisassembler,
+        gfx_viewer::UiGfxViewer,
+        palette_viewer::UiPaletteViewer,
+        rom_info::UiRomInfo,
+        tiles16x16::UiTiles16x16,
     },
+    editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
+    frame_context::EditorToolTabViewer,
+    project_creator::UiProjectCreator,
+    tool::{DockableEditorTool, DockableEditorToolEnum},
 };
 
 pub struct UiMainWindow {
     project: Option<ProjectRef>,
     style:   Arc<Style>,
 
-    tools:              Vec<Box<dyn UiTool>>,
+    project_creator:    Option<UiProjectCreator>,
+    dock_tree:          Tree<DockableEditorToolEnum>,
     last_open_tool_idx: usize,
 }
 
 impl eframe::App for UiMainWindow {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_style(self.style.clone());
-        egui::CentralPanel::default().show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             ui.style_mut().visuals.dark_mode = true;
+
             self.main_menu_bar(ctx, frame);
-            self.update_tools(ctx, frame, ui);
+
+            DockArea::new(&mut self.dock_tree)
+                .style(StyleBuilder::from_egui(&ctx.style()).with_tab_scroll_area(false).build())
+                .show(ctx, &mut EditorToolTabViewer { project_ref: &mut self.project, egui_ctx: ctx });
+
+            if let Some(project_creator) = &mut self.project_creator {
+                if !project_creator.update(ui, &mut self.project) {
+                    self.project_creator = None;
+                }
+            }
         });
     }
 }
@@ -53,41 +62,37 @@ impl UiMainWindow {
     pub fn new(project: Option<ProjectRef>) -> Self {
         let mut style = Style::default();
         style.visuals.dark_mode = true;
-        Self { project, style: Arc::new(style), tools: vec![], last_open_tool_idx: 0 }
+        Self {
+            project,
+            style: Arc::new(style),
+            project_creator: None,
+            dock_tree: Tree::default(),
+            last_open_tool_idx: 0,
+        }
     }
 
-    fn open_tool<ToolType: 'static + UiTool>(&mut self, tool: ToolType) {
+    fn open_tool<ToolType>(&mut self, tool: ToolType)
+    where
+        ToolType: 'static + DockableEditorTool + Into<DockableEditorToolEnum>,
+    {
+        log::info!("Opened {}", tool.title().text());
         if self.last_open_tool_idx < usize::MAX {
-            self.tools.push(Box::new(tool));
+            self.dock_tree.push_to_focused_leaf(tool.into());
             self.last_open_tool_idx += 1;
         }
     }
 
-    fn update_tools(&mut self, ctx: &Context, frame: &mut Frame, ui: &mut Ui) {
-        let mut frame_ctx = FrameContext { project_ref: &mut self.project, egui_ctx: ctx, frame };
-        let mut tools_to_close = vec![];
-        for (i, tool) in self.tools.iter_mut().enumerate() {
-            if !tool.update(ui, &mut frame_ctx) {
-                tools_to_close.push(i);
-            }
-        }
-        for i in tools_to_close.into_iter().rev() {
-            self.tools.swap_remove(i);
-        }
-    }
-
     fn main_menu_bar(&mut self, ctx: &Context, frame: &mut Frame) {
-        use egui::Button;
         let is_project_loaded = self.project.is_some();
 
-        egui::TopBottomPanel::top("main_top_bar").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+        TopBottomPanel::top("main_top_bar").show(ctx, |ui| {
+            menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New project").clicked() {
-                        self.open_tool(UiProjectCreator::default());
+                        self.project_creator = Some(UiProjectCreator::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("Save ROM dump")).clicked() {
+                    if ui.button("Save ROM dump").clicked() {
                         ui.close_menu();
 
                         match FileDialog::new()
@@ -115,25 +120,26 @@ impl UiMainWindow {
                         self.open_tool(UiAddressConverter::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("Internal ROM Header")).clicked() {
+                    ui.set_enabled(is_project_loaded);
+                    if ui.button("Internal ROM Header").clicked() {
                         let rom_info =
                             UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
                         self.open_tool(rom_info);
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("Disassembly")).clicked() {
+                    if ui.button("Disassembly").clicked() {
                         self.open_tool(UiDisassembler::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("Color palettes")).clicked() {
+                    if ui.button("Color palettes").clicked() {
                         self.open_tool(UiPaletteViewer::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("GFX files")).clicked() {
+                    if ui.button("GFX files").clicked() {
                         self.open_tool(UiGfxViewer::default());
                         ui.close_menu();
                     }
-                    if ui.add_enabled(is_project_loaded, Button::new("16x16 tiles")).clicked() {
+                    if ui.button("16x16 tiles").clicked() {
                         self.open_tool(UiTiles16x16::default());
                         ui.close_menu();
                     }
