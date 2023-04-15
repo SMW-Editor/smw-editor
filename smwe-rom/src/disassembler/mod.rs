@@ -7,6 +7,7 @@ pub mod jump_tables;
 pub mod opcodes;
 pub mod processor;
 pub mod registers;
+pub mod serialization;
 
 use std::{
     cell::RefCell,
@@ -32,6 +33,7 @@ use crate::{
             NON_CODE_JUMP_ADDRESSES,
         },
         processor::Processor,
+        serialization::LineKind,
     },
     snes_utils::{
         addr::{Addr, AddrInner, AddrPc, AddrSnes},
@@ -56,9 +58,10 @@ pub enum DisassemblyError {
 // -------------------------------------------------------------------------------------------------
 
 pub struct RomDisassembly {
-    pub rom:    Rom,
+    pub rom:        Rom,
     /// Start index, Block data
-    pub chunks: Vec<(AddrPc, BinaryBlock)>,
+    pub chunks:     Vec<(AddrPc, BinaryBlock)>,
+    pub code_lines: Vec<LineKind>,
 
     cached_data_blocks: HashSet<DataBlock>,
 }
@@ -122,7 +125,23 @@ impl RomDisassembly {
     pub fn new(rom: Rom, rih: &RomInternalHeader) -> Self {
         let mut walker = RomAssemblyWalker::new(rom.clone(), rih);
         walker.full_analysis().unwrap();
-        Self { rom, chunks: walker.chunks, cached_data_blocks: HashSet::new() }
+        Self {
+            rom,
+            chunks: walker.chunks,
+            cached_data_blocks: HashSet::new(),
+            code_lines: {
+                std::fs::read_to_string("ROM/out.json")
+                    .ok()
+                    .and_then(|s| match serde_json::from_str(&s) {
+                        Ok(s) => Some(s),
+                        Err(e) => {
+                            log::error!("{e}");
+                            None
+                        }
+                    })
+                    .unwrap_or(Vec::new())
+            },
+        }
     }
 
     pub fn rom_bytes(&self) -> &[u8] {

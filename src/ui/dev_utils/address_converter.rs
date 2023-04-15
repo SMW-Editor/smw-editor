@@ -1,20 +1,19 @@
 use std::fmt::Write;
 
-use eframe::egui::{TextEdit, Ui, Window};
+use egui::{TextEdit, Ui, WidgetText};
+use smwe_project::ProjectRef;
 use smwe_rom::snes_utils::addr::{Addr, AddrInner, AddrPc, AddrSnes};
 
-use crate::{
-    frame_context::FrameContext,
-    ui::{
-        color,
-        dev_utils::address_converter::{
-            helpers::adjust_to_header,
-            modes::{ConvDir, ConversionMode},
-        },
-        tool::UiTool,
+use crate::ui::{
+    color,
+    dev_utils::address_converter::{
+        helpers::adjust_to_header,
+        modes::{ConvDir, ConversionMode},
     },
+    tool::DockableEditorTool,
 };
 
+#[derive(Debug)]
 pub struct UiAddressConverter {
     conversion_mode: ConversionMode,
     include_header:  bool,
@@ -26,7 +25,6 @@ pub struct UiAddressConverter {
 
 impl Default for UiAddressConverter {
     fn default() -> Self {
-        log::info!("Opened Address Converter");
         UiAddressConverter {
             conversion_mode: ConversionMode::LoRom,
             include_header:  false,
@@ -37,22 +35,14 @@ impl Default for UiAddressConverter {
     }
 }
 
-impl UiTool for UiAddressConverter {
-    fn update(&mut self, ui: &mut Ui, _ctx: &mut FrameContext) -> bool {
-        let mut running = true;
+impl DockableEditorTool for UiAddressConverter {
+    fn update(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
+        self.mode_selection(ui);
+        self.conversions(ui);
+    }
 
-        Window::new("Address converter") //
-            .auto_sized()
-            .open(&mut running)
-            .show(ui.ctx(), |ui| {
-                self.mode_selection(ui);
-                self.conversions(ui);
-            });
-
-        if !running {
-            log::info!("Closed Address Converter");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Address converter".into()
     }
 }
 

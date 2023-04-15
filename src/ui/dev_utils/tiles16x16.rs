@@ -1,30 +1,14 @@
 use std::{borrow::Borrow, cell::RefCell};
 
-use eframe::egui::{
-    panel::Side,
-    vec2,
-    Color32,
-    ColorImage,
-    ComboBox,
-    DragValue,
-    Id,
-    Rgba,
-    ScrollArea,
-    SidePanel,
-    TextureHandle,
-    TextureOptions,
-    Ui,
-    Vec2,
-    Window,
-};
+use egui::{panel::Side, *};
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
-use smwe_project::Project;
+use smwe_project::{Project, ProjectRef};
 use smwe_rom::{graphics::palette::ColorPalette, objects::map16::Tile8x8};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
-use crate::{frame_context::FrameContext, ui::tool::UiTool};
+use crate::ui::tool::DockableEditorTool;
 
 enum TileImage {
     Static(TextureHandle),
@@ -43,78 +27,72 @@ impl Default for UiTiles16x16 {
     }
 }
 
-impl UiTool for UiTiles16x16 {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
+impl DockableEditorTool for UiTiles16x16 {
+    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         if self.tile_images.is_empty() {
-            self.load_images(ctx);
+            self.load_images(project_ref, ui.ctx());
         }
 
-        let mut running = true;
+        SidePanel::new(Side::Left, ui.id().with("sp")).resizable(false).show_inside(ui, |ui| {
+            ComboBox::new(ui.id().with("cb Tileset"), "Tileset")
+                .selected_text(format!("Tileset {}", self.selected_tileset))
+                .show_ui(ui, |ui| {
+                    for i in 1..=5 {
+                        let response = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
+                        if response.clicked() {
+                            self.load_images(project_ref, ui.ctx());
+                        }
+                    }
+                });
 
-        Window::new("16x16 Tiles") //
-            .default_height(600.0)
-            .open(&mut running)
-            .show(ui.ctx(), |ui| {
-                SidePanel::new(Side::Left, ui.id().with("sp")).show_inside(ui, |ui| {
-                    ComboBox::new(ui.id().with("cb Tileset"), "Tileset")
-                        .selected_text(format!("Tileset {}", self.selected_tileset))
-                        .show_ui(ui, |ui| {
-                            for i in 1..=5 {
-                                let response =
-                                    ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
-                                if response.clicked() {
-                                    self.load_images(ctx);
+            ui.horizontal(|ui| {
+                let response =
+                    ui.add(DragValue::new(&mut self.level_number).clamp_range(0..=0x1FF).hexadecimal(3, false, true));
+                ui.label("Level number");
+
+                if response.changed() {
+                    self.load_images(project_ref, ui.ctx());
+                }
+            });
+        });
+
+        let block_size = Vec2::splat(tweak!(32.0));
+        let cell_padding = vec2(tweak!(5.0), tweak!(19.0));
+        let min_scroll_height = ui.available_height();
+        ScrollArea::horizontal().min_scrolled_width(ui.available_width()).show(ui, |ui| {
+            TableBuilder::new(ui)
+                .min_scrolled_height(min_scroll_height)
+                .columns(Column::remainder().at_least(block_size.x + cell_padding.x), 16)
+                .body(|tb| {
+                    tb.rows(block_size.y + cell_padding.y, self.tile_images.len() / 16, |row, mut tr| {
+                        for tile in (row * 16)..((row * 16) + 16).min(0x200) {
+                            tr.col(|ui| {
+                                ui.label(format!("{tile:X}"));
+                                match &mut self.tile_images[tile] {
+                                    TileImage::Static(texture_id) => {
+                                        ui.image(texture_id, block_size);
+                                    }
+                                    TileImage::Animated(animation) => {
+                                        ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
+                                    }
                                 }
-                            }
-                        });
-
-                    ui.horizontal(|ui| {
-                        let response = ui.add({
-                            DragValue::new(&mut self.level_number).clamp_range(0..=0x1FF).hexadecimal(3, false, true)
-                        });
-                        ui.label("Level number");
-
-                        if response.changed() {
-                            self.load_images(ctx);
+                            });
                         }
                     });
                 });
+        });
+    }
 
-                let block_size = Vec2::splat(tweak!(32.0));
-                let cell_padding = vec2(tweak!(5.0), tweak!(19.0));
-                ScrollArea::vertical().min_scrolled_height(ui.available_height()).show(ui, |ui| {
-                    TableBuilder::new(ui).columns(Column::exact(block_size.x + cell_padding.x), 16).body(|tb| {
-                        tb.rows(block_size.y + cell_padding.y, self.tile_images.len() / 16, |row, mut tr| {
-                            for tile in (row * 16)..((row * 16) + 16).min(0x200) {
-                                tr.col(|ui| {
-                                    ui.label(format!("{tile:X}"));
-                                    match &mut self.tile_images[tile] {
-                                        TileImage::Static(texture_id) => {
-                                            ui.image(texture_id, block_size);
-                                        }
-                                        TileImage::Animated(animation) => {
-                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    });
-                });
-            });
-
-        if !running {
-            log::info!("Closed Tiles16x16");
-        }
-        running
+    fn title(&self) -> WidgetText {
+        "Tiles 16x16".into()
     }
 }
 
 impl UiTiles16x16 {
-    fn load_images(&mut self, ctx: &mut FrameContext) {
+    fn load_images(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
         self.tile_images.clear();
 
-        let project: &RefCell<Project> = ctx.project_ref.as_ref().unwrap();
+        let project: &RefCell<Project> = project_ref.as_ref().unwrap();
         let rom = &project.borrow().rom_data;
 
         let level = &rom.levels[self.level_number as usize];
@@ -152,7 +130,7 @@ impl UiTiles16x16 {
                     let frame_image = Self::make_image(&tiles_8x8, &map16_gfx);
                     frames.push(frame_image);
                 }
-                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx.egui_ctx)
+                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
                     .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
                 self.tile_images.push(TileImage::Animated(animation));
             } else {
@@ -163,7 +141,7 @@ impl UiTiles16x16 {
                     })
                     .collect_vec();
                 assert_eq!(map16_gfx.len(), 4);
-                let image = ctx.egui_ctx.load_texture(
+                let image = ctx.load_texture(
                     format!("map16 {map16_id}"),
                     Self::make_image(&tiles_8x8, &map16_gfx),
                     TextureOptions::NEAREST,

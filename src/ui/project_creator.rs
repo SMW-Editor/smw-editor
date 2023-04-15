@@ -2,13 +2,10 @@ use std::{cell::RefCell, path::Path, sync::Arc};
 
 use eframe::egui::{Button, Ui, Window};
 use rfd::FileDialog;
-use smwe_project::Project;
+use smwe_project::{Project, ProjectRef};
 use smwe_rom::SmwRom;
 
-use crate::{
-    frame_context::FrameContext,
-    ui::{color, tool::UiTool},
-};
+use crate::ui::color;
 
 pub struct UiProjectCreator {
     project_title: String,
@@ -35,8 +32,8 @@ impl Default for UiProjectCreator {
     }
 }
 
-impl UiTool for UiProjectCreator {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut FrameContext) -> bool {
+impl UiProjectCreator {
+    pub fn update(&mut self, ui: &mut Ui, project: &mut Option<ProjectRef>) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
@@ -45,7 +42,7 @@ impl UiTool for UiProjectCreator {
             |ui| {
                 self.input_project_title(ui);
                 self.input_rom_file_path(ui);
-                self.create_or_cancel(ctx, ui, &mut created_or_cancelled);
+                self.create_or_cancel(project, ui, &mut created_or_cancelled);
             },
         );
 
@@ -55,9 +52,7 @@ impl UiTool for UiProjectCreator {
         }
         running
     }
-}
 
-impl UiProjectCreator {
     fn input_project_title(&mut self, ui: &mut Ui) {
         ui.label("Project title");
         if ui.text_edit_singleline(&mut self.project_title).changed() {
@@ -113,11 +108,11 @@ impl UiProjectCreator {
         }
     }
 
-    fn create_or_cancel(&mut self, ctx: &mut FrameContext, ui: &mut Ui, created_or_cancelled: &mut bool) {
+    fn create_or_cancel(&mut self, project: &mut Option<ProjectRef>, ui: &mut Ui, created_or_cancelled: &mut bool) {
         ui.horizontal(|ui| {
             if ui.add_enabled(self.no_creation_errors(), Button::new("Create").small()).clicked() {
                 log::info!("Attempting to create a new project");
-                self.handle_project_creation(ctx, created_or_cancelled);
+                self.handle_project_creation(project, created_or_cancelled);
             }
             if ui.small_button("Cancel").clicked() {
                 log::info!("Cancelled project creation");
@@ -129,12 +124,12 @@ impl UiProjectCreator {
         }
     }
 
-    fn handle_project_creation(&mut self, ctx: &mut FrameContext, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, project_ref: &mut Option<ProjectRef>, created_or_cancelled: &mut bool) {
         match SmwRom::from_file(&self.base_rom_path) {
             Ok(rom_data) => {
                 log::info!("Success creating a new project");
                 let project = Project { title: self.project_title.to_string(), rom_data };
-                *ctx.project_ref = Some(Arc::new(RefCell::new(project)));
+                *project_ref = Some(Arc::new(RefCell::new(project)));
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
             }
