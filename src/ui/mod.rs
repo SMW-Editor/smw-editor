@@ -1,8 +1,8 @@
 mod color;
 mod dev_utils;
 mod editor_prototypes;
-mod frame_context;
 mod project_creator;
+mod tab_viewer;
 mod tool;
 
 use std::sync::Arc;
@@ -23,8 +23,8 @@ use crate::ui::{
         tiles16x16::UiTiles16x16,
     },
     editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
-    frame_context::EditorToolTabViewer,
     project_creator::UiProjectCreator,
+    tab_viewer::EditorToolTabViewer,
     tool::{DockableEditorTool, DockableEditorToolEnum},
 };
 
@@ -47,7 +47,7 @@ impl eframe::App for UiMainWindow {
 
             DockArea::new(&mut self.dock_tree)
                 .style(StyleBuilder::from_egui(&ctx.style()).with_tab_scroll_area(false).build())
-                .show(ctx, &mut EditorToolTabViewer { project_ref: &mut self.project, egui_ctx: ctx });
+                .show(ctx, &mut EditorToolTabViewer { project_ref: &mut self.project });
 
             if let Some(project_creator) = &mut self.project_creator {
                 if !project_creator.update(ui, &mut self.project) {

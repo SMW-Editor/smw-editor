@@ -4,11 +4,11 @@ use egui::{panel::Side, *};
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
-use smwe_project::Project;
+use smwe_project::{Project, ProjectRef};
 use smwe_rom::{graphics::palette::ColorPalette, objects::map16::Tile8x8};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
-use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
+use crate::ui::tool::DockableEditorTool;
 
 enum TileImage {
     Static(TextureHandle),
@@ -28,9 +28,9 @@ impl Default for UiTiles16x16 {
 }
 
 impl DockableEditorTool for UiTiles16x16 {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
+    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         if self.tile_images.is_empty() {
-            self.load_images(ctx);
+            self.load_images(project_ref, ui.ctx());
         }
 
         SidePanel::new(Side::Left, ui.id().with("sp")).resizable(false).show_inside(ui, |ui| {
@@ -40,7 +40,7 @@ impl DockableEditorTool for UiTiles16x16 {
                     for i in 1..=5 {
                         let response = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
                         if response.clicked() {
-                            self.load_images(ctx);
+                            self.load_images(project_ref, ui.ctx());
                         }
                     }
                 });
@@ -51,7 +51,7 @@ impl DockableEditorTool for UiTiles16x16 {
                 ui.label("Level number");
 
                 if response.changed() {
-                    self.load_images(ctx);
+                    self.load_images(project_ref, ui.ctx());
                 }
             });
         });
@@ -89,10 +89,10 @@ impl DockableEditorTool for UiTiles16x16 {
 }
 
 impl UiTiles16x16 {
-    fn load_images(&mut self, ctx: &mut EditorToolTabViewer) {
+    fn load_images(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
         self.tile_images.clear();
 
-        let project: &RefCell<Project> = ctx.project_ref.as_ref().unwrap();
+        let project: &RefCell<Project> = project_ref.as_ref().unwrap();
         let rom = &project.borrow().rom_data;
 
         let level = &rom.levels[self.level_number as usize];
@@ -130,7 +130,7 @@ impl UiTiles16x16 {
                     let frame_image = Self::make_image(&tiles_8x8, &map16_gfx);
                     frames.push(frame_image);
                 }
-                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx.egui_ctx)
+                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
                     .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
                 self.tile_images.push(TileImage::Animated(animation));
             } else {
@@ -141,7 +141,7 @@ impl UiTiles16x16 {
                     })
                     .collect_vec();
                 assert_eq!(map16_gfx.len(), 4);
-                let image = ctx.egui_ctx.load_texture(
+                let image = ctx.load_texture(
                     format!("map16 {map16_id}"),
                     Self::make_image(&tiles_8x8, &map16_gfx),
                     TextureOptions::NEAREST,

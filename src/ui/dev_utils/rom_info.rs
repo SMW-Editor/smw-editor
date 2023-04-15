@@ -1,9 +1,10 @@
 use eframe::egui::{RichText, Ui};
 use egui::WidgetText;
 use egui_extras::{Column, TableBuilder};
+use smwe_project::ProjectRef;
 use smwe_rom::RomInternalHeader;
 
-use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
+use crate::ui::tool::DockableEditorTool;
 
 #[derive(Debug)]
 pub struct UiRomInfo {
@@ -11,7 +12,7 @@ pub struct UiRomInfo {
 }
 
 impl DockableEditorTool for UiRomInfo {
-    fn update(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+    fn update(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
         let min_scroll_height = ui.available_height();
         TableBuilder::new(ui) //
             .striped(true)

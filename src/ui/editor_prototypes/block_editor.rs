@@ -1,8 +1,9 @@
 use egui::*;
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
+use smwe_project::ProjectRef;
 
-use crate::ui::{frame_context::EditorToolTabViewer, tool::DockableEditorTool};
+use crate::ui::tool::DockableEditorTool;
 
 pub struct UiBlockEditor {
     editing_modes:    Vec<String>,
@@ -44,7 +45,7 @@ impl Default for UiBlockEditor {
 }
 
 impl DockableEditorTool for UiBlockEditor {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer) {
+    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         ui.horizontal(|ui| {
             for (i, mode) in self.editing_modes.iter().enumerate() {
                 if ui.add_enabled(self.editing_mode_idx != i, Button::new(mode)).clicked() {
@@ -54,11 +55,13 @@ impl DockableEditorTool for UiBlockEditor {
         });
         SidePanel::left(ui.id().with("block-editor-left"))
             .resizable(false)
-            .show_inside(ui, |ui| self.mappings(ui, ctx));
-        SidePanel::right(ui.id().with("block-editor-right")).resizable(false).show_inside(ui, |ui| self.vram(ui, ctx));
+            .show_inside(ui, |ui| self.mappings(ui, project_ref));
+        SidePanel::right(ui.id().with("block-editor-right"))
+            .resizable(false)
+            .show_inside(ui, |ui| self.vram(ui, project_ref));
         CentralPanel::default().show_inside(ui, |ui| {
-            self.appearance(ui, ctx);
-            self.behaviour(ui, ctx);
+            self.appearance(ui, project_ref);
+            self.behaviour(ui, project_ref);
         });
     }
 
@@ -68,15 +71,15 @@ impl DockableEditorTool for UiBlockEditor {
 }
 
 impl UiBlockEditor {
-    fn mappings(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+    fn mappings(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
         ui.heading("Mappings");
     }
 
-    fn vram(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+    fn vram(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
         ui.heading("VRAM");
     }
 
-    fn appearance(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+    fn appearance(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
         ui.heading("Appearance");
 
         TableBuilder::new(ui)
@@ -127,7 +130,7 @@ impl UiBlockEditor {
             });
     }
 
-    fn behaviour(&mut self, ui: &mut Ui, _ctx: &mut EditorToolTabViewer) {
+    fn behaviour(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
         ui.heading("Behaviour");
 
         ComboBox::from_label("Collision type")

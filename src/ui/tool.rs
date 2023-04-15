@@ -1,6 +1,7 @@
 use eframe::egui::Ui;
 use egui::WidgetText;
 use enum_dispatch::enum_dispatch;
+use smwe_project::ProjectRef;
 
 use crate::ui::{
     dev_utils::{
@@ -12,7 +13,6 @@ use crate::ui::{
         tiles16x16::UiTiles16x16,
     },
     editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
-    frame_context::EditorToolTabViewer,
 };
 
 #[enum_dispatch]
@@ -29,6 +29,6 @@ pub enum DockableEditorToolEnum {
 
 #[enum_dispatch(DockableEditorToolEnum)]
 pub trait DockableEditorTool {
-    fn update(&mut self, ui: &mut Ui, ctx: &mut EditorToolTabViewer);
+    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>);
     fn title(&self) -> WidgetText;
 }
