@@ -58,28 +58,31 @@ impl DockableEditorTool for UiTiles16x16 {
 
         let block_size = Vec2::splat(tweak!(32.0));
         let cell_padding = vec2(tweak!(5.0), tweak!(19.0));
-        let min_scroll_height = ui.available_height();
-        ScrollArea::horizontal().min_scrolled_width(ui.available_width()).show(ui, |ui| {
-            TableBuilder::new(ui)
-                .min_scrolled_height(min_scroll_height)
-                .columns(Column::remainder().at_least(block_size.x + cell_padding.x), 16)
-                .body(|tb| {
-                    tb.rows(block_size.y + cell_padding.y, self.tile_images.len() / 16, |row, mut tr| {
-                        for tile in (row * 16)..((row * 16) + 16).min(0x200) {
-                            tr.col(|ui| {
-                                ui.label(format!("{tile:X}"));
-                                match &mut self.tile_images[tile] {
-                                    TileImage::Static(texture_id) => {
-                                        ui.image(texture_id, block_size);
+        // let min_scroll_height = ui.available_height();
+        ScrollArea::both().show(ui, |ui| {
+            Frame::none().show(ui, |ui| {
+                let available_rect = ui.available_rect_before_wrap();
+                ui.expand_to_include_rect(available_rect);
+                TableBuilder::new(ui).vscroll(false).columns(Column::exact(block_size.x + cell_padding.x), 16).body(
+                    |tb| {
+                        tb.rows(block_size.y + cell_padding.y, self.tile_images.len() / 16, |row, mut tr| {
+                            for tile in (row * 16)..((row * 16) + 16).min(0x200) {
+                                tr.col(|ui| {
+                                    ui.label(format!("{tile:X}"));
+                                    match &mut self.tile_images[tile] {
+                                        TileImage::Static(texture_id) => {
+                                            ui.image(texture_id, block_size);
+                                        }
+                                        TileImage::Animated(animation) => {
+                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
+                                        }
                                     }
-                                    TileImage::Animated(animation) => {
-                                        ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
+                                });
+                            }
+                        });
+                    },
+                );
+            })
         });
     }
 
