@@ -69,6 +69,19 @@ impl Display for TileFormat {
     }
 }
 
+impl TileFormat {
+    pub fn tile_size(self) -> usize {
+        use TileFormat::*;
+        match self {
+            Tile2bpp => 2 * 8,
+            Tile3bpp => 3 * 8,
+            Tile4bpp => 4 * 8,
+            Tile8bpp => 8 * 8,
+            Tile3bppMode7 => 3 * 8,
+        }
+    }
+}
+
 impl Tile {
     pub fn from_2bpp(input: &[u8]) -> IResult<&[u8], Self> {
         Self::from_xbpp(input, 2)

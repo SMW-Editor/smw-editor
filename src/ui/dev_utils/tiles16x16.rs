@@ -105,7 +105,7 @@ impl UiTiles16x16 {
 
             let make_tile_iter = || {
                 map16_tile
-                    .gfx(&rom.map16_tilesets.gfx_list, &rom.gfx_files, self.selected_tileset as usize - 1)
+                    .gfx(&rom.map16_tilesets.gfx_list, &rom.gfx, self.selected_tileset as usize - 1)
                     .into_iter()
                     .zip(tiles_8x8)
             };

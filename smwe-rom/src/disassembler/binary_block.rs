@@ -69,6 +69,7 @@ pub enum DataKind {
     GfxListSprites,
 
     // Misc.
+    AnimatedTileData,
     GfxFile,
     InternalRomHeader,
     Music,

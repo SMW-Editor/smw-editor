@@ -1,7 +1,6 @@
 use crate::{
-    graphics::gfx_file,
+    graphics::{gfx_file, Gfx},
     objects::{gfx_list::ObjectGfxList, tilesets::TILESETS_COUNT},
-    GfxFile,
 };
 
 // Format: YXPCCCTT TTTTTTTT
@@ -57,14 +56,12 @@ impl Tile8x8 {
 }
 
 impl Map16Tile {
-    pub fn gfx<'gfx>(
-        &self, gfx_list: &ObjectGfxList, gfx_files: &'gfx [GfxFile], tileset: usize,
-    ) -> [&'gfx gfx_file::Tile; 4] {
+    pub fn gfx<'gfx>(&self, gfx_list: &ObjectGfxList, gfx: &'gfx Gfx, tileset: usize) -> [&'gfx gfx_file::Tile; 4] {
         assert!(tileset < TILESETS_COUNT);
         let ref_gfx = |tile| {
             let file_num = gfx_list.gfx_file_for_object_tile(tile, tileset);
             let tile_num = tile.tile_number() as usize % 0x80;
-            &gfx_files[file_num].tiles[tile_num]
+            &gfx.files[file_num].tiles[tile_num]
         };
         [ref_gfx(self.upper_left), ref_gfx(self.lower_left), ref_gfx(self.upper_right), ref_gfx(self.lower_right)]
     }

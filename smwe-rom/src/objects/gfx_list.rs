@@ -5,7 +5,7 @@ use crate::{objects::map16::Tile8x8, AddrSnes, DataBlock, DataKind, RomDisassemb
 // -------------------------------------------------------------------------------------------------
 
 #[derive(Debug, Error)]
-#[error("Could not GFX list at:\n- {0}")]
+#[error("Could not parse GFX list at:\n- {0}")]
 pub struct GfxListParseError(pub SnesSlice);
 
 // -------------------------------------------------------------------------------------------------
