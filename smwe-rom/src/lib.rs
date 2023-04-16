@@ -18,11 +18,7 @@ use crate::{
         binary_block::{DataBlock, DataKind},
         RomDisassembly,
     },
-    graphics::{
-        gfx_file::GfxFileParseError,
-        palette::{ColorPaletteParseError, ColorPalettes},
-        Gfx,
-    },
+    graphics::{gfx_file::GfxFileParseError, palette::ColorPaletteParseError, Gfx},
     internal_header::InternalHeaderParseError,
     level::{
         secondary_entrance::{SecondaryEntrance, SECONDARY_ENTRANCE_TABLE},
@@ -30,10 +26,7 @@ use crate::{
         LevelParseError,
         LEVEL_COUNT,
     },
-    objects::{
-        animated_tile_data::{AnimatedTileData, AnimatedTileDataParseError},
-        tilesets::{TilesetParseError, Tilesets},
-    },
+    objects::tilesets::{TilesetParseError, Tilesets},
     snes_utils::{
         addr::AddrSnes,
         rom::{Rom, RomError},
@@ -61,8 +54,6 @@ pub enum RomParseError {
     ColorPalettes(ColorPaletteParseError),
     #[error("Could not parse Map16 tiles:\n- {0}")]
     Map16Tilesets(TilesetParseError),
-    #[error("Could not parse animated tile data:\n- {0}")]
-    AnimatedTileData(AnimatedTileDataParseError),
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -72,10 +63,8 @@ pub struct SmwRom {
     pub internal_header:     RomInternalHeader,
     pub levels:              Vec<Level>,
     pub secondary_entrances: Vec<SecondaryEntrance>,
-    pub color_palettes:      ColorPalettes,
     pub gfx:                 Gfx,
     pub map16_tilesets:      Tilesets,
-    pub animated_tile_data:  AnimatedTileData,
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -120,28 +109,13 @@ impl SmwRom {
         log::info!("Parsing secondary entrances");
         let secondary_entrances = Self::parse_secondary_entrances(&mut disassembly)?;
 
-        log::info!("Parsing color palettes");
-        let color_palettes = ColorPalettes::parse(&mut disassembly, &levels).map_err(RomParseError::ColorPalettes)?;
-
         log::info!("Parsing GFX files");
-        let gfx = Gfx::parse_files(&mut disassembly, &internal_header)?;
+        let gfx = Gfx::parse(&mut disassembly, &levels, &internal_header)?;
 
         log::info!("Parsing Map16 tilesets");
         let map16_tilesets = Tilesets::parse(&mut disassembly).map_err(RomParseError::Map16Tilesets)?;
 
-        log::info!("Parsing Map16 tilesets");
-        let animated_tile_data = AnimatedTileData::parse(&mut disassembly).map_err(RomParseError::AnimatedTileData)?;
-
-        Ok(Self {
-            disassembly,
-            internal_header,
-            levels,
-            secondary_entrances,
-            color_palettes,
-            gfx,
-            map16_tilesets,
-            animated_tile_data,
-        })
+        Ok(Self { disassembly, internal_header, levels, secondary_entrances, gfx, map16_tilesets })
     }
 
     fn parse_levels(disasm: &mut RomDisassembly) -> Result<Vec<Level>, RomParseError> {

@@ -2,7 +2,11 @@ use thiserror::Error;
 
 use crate::{
     disassembler::RomDisassembly,
-    graphics::gfx_file::{GfxFile, Tile, GFX_FILES_META},
+    graphics::{
+        gfx_file::{GfxFile, Tile, GFX_FILES_META},
+        palette::ColorPalettes,
+    },
+    level::Level,
     snes_utils::addr::AddrSnes,
     RegionCode,
     RomInternalHeader,
@@ -22,14 +26,15 @@ pub struct TileFromWramError(u32);
 // -------------------------------------------------------------------------------------------------
 
 pub struct Gfx {
-    pub files: Vec<GfxFile>,
+    pub files:          Vec<GfxFile>,
+    pub color_palettes: ColorPalettes,
 }
 
 // -------------------------------------------------------------------------------------------------
 
 impl Gfx {
-    pub fn parse_files(
-        disasm: &mut RomDisassembly, internal_header: &RomInternalHeader,
+    pub fn parse(
+        disasm: &mut RomDisassembly, levels: &[Level], internal_header: &RomInternalHeader,
     ) -> Result<Self, RomParseError> {
         let revised_gfx =
             matches!(internal_header.region_code, RegionCode::Japan) || internal_header.version_number > 0;
@@ -38,7 +43,8 @@ impl Gfx {
             let file = GfxFile::new(disasm, file_num, revised_gfx).map_err(|e| RomParseError::GfxFile(file_num, e))?;
             files.push(file);
         }
-        Ok(Self { files })
+
+        Ok(Self { files, color_palettes: ColorPalettes::parse(disasm, levels).map_err(RomParseError::ColorPalettes)? })
     }
 
     pub fn tile16x16_from_wram(&self, wram_addr: AddrSnes) -> Result<&[Tile], TileFromWramError> {

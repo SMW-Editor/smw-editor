@@ -7,6 +7,7 @@ use thiserror::Error;
 
 use crate::{
     objects::{
+        animated_tile_data::{AnimatedTileData, AnimatedTileDataParseError},
         gfx_list::{GfxListParseError, ObjectGfxList},
         map16::{Map16Tile, Tile8x8},
     },
@@ -23,6 +24,7 @@ use crate::{
 pub enum TilesetParseError {
     Slice(SnesSlice),
     GfxList(GfxListParseError),
+    AnimatedTileData(AnimatedTileDataParseError),
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -32,8 +34,9 @@ pub const TILESETS_COUNT: usize = 5;
 // -------------------------------------------------------------------------------------------------
 
 pub struct Tilesets {
-    pub tiles:    Vec<Tile>,
-    pub gfx_list: ObjectGfxList,
+    pub tiles:              Vec<Tile>,
+    pub gfx_list:           ObjectGfxList,
+    pub animated_tile_data: AnimatedTileData,
 }
 
 pub enum Tile {
@@ -87,7 +90,11 @@ impl Tilesets {
         tiles.extend(parse_tileset_specific(TILES_100_106)?);
         tiles.extend(parse_tileset_specific(TILES_153_16D)?);
 
-        Ok(Tilesets { tiles, gfx_list: ObjectGfxList::parse(disasm).map_err(TilesetParseError::GfxList)? })
+        Ok(Tilesets {
+            tiles,
+            gfx_list: ObjectGfxList::parse(disasm).map_err(TilesetParseError::GfxList)?,
+            animated_tile_data: AnimatedTileData::parse(disasm).map_err(TilesetParseError::AnimatedTileData)?,
+        })
     }
 
     pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Map16Tile> {

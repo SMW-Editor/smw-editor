@@ -79,10 +79,10 @@ impl UiGfxViewer {
 
             let file_count = rom.gfx.files.len() as i32;
             let palette_row_count = 16i32;
-            let bg_pals_count = rom.color_palettes.lv_specific_set.bg_palettes.len() as i32;
-            let fg_pals_count = rom.color_palettes.lv_specific_set.fg_palettes.len() as i32;
-            let sp_pals_count = rom.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
-            let pl_pals_count = rom.color_palettes.players.len() as i32 / 10;
+            let bg_pals_count = rom.gfx.color_palettes.lv_specific_set.bg_palettes.len() as i32;
+            let fg_pals_count = rom.gfx.color_palettes.lv_specific_set.fg_palettes.len() as i32;
+            let sp_pals_count = rom.gfx.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
+            let pl_pals_count = rom.gfx.color_palettes.players.len() as i32 / 10;
 
             let inputs = [
                 ("GFX file number", &mut self.curr_gfx_file_num, file_count),
@@ -137,6 +137,7 @@ impl UiGfxViewer {
         self.curr_image_format = gfx_file.tile_format;
 
         let palette = &rom
+            .gfx
             .color_palettes
             .lv_specific_set
             .palette_from_indices(
@@ -144,7 +145,7 @@ impl UiGfxViewer {
                 self.curr_bg_palette_num as usize,
                 self.curr_fg_palette_num as usize,
                 self.curr_sp_palette_num as usize,
-                &rom.color_palettes,
+                &rom.gfx.color_palettes,
             )
             .unwrap();
 

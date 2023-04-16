@@ -96,7 +96,7 @@ impl UiTiles16x16 {
         let rom = &project.borrow().rom_data;
 
         let level = &rom.levels[self.level_number as usize];
-        let palette = rom.color_palettes.get_level_palette(&level.primary_header).unwrap();
+        let palette = rom.gfx.color_palettes.get_level_palette(&level.primary_header).unwrap();
 
         for map16_id in 0..=0x1FF {
             let map16_tile = rom.map16_tilesets.get_map16_tile(map16_id, self.selected_tileset as usize - 1).unwrap();
