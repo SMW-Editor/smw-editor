@@ -8,7 +8,6 @@ use thiserror::Error;
 use crate::{
     objects::{
         animated_tile_data::{AnimatedTileData, AnimatedTileDataParseError},
-        gfx_list::{GfxListParseError, ObjectGfxList},
         map16::{Map16Tile, Tile8x8},
     },
     snes_utils::rom_slice::SnesSlice,
@@ -23,7 +22,6 @@ use crate::{
 #[error("Could not parse Map16 tiles at:\n- {0}")]
 pub enum TilesetParseError {
     Slice(SnesSlice),
-    GfxList(GfxListParseError),
     AnimatedTileData(AnimatedTileDataParseError),
 }
 
@@ -35,7 +33,6 @@ pub const TILESETS_COUNT: usize = 5;
 
 pub struct Tilesets {
     pub tiles:              Vec<Tile>,
-    pub gfx_list:           ObjectGfxList,
     pub animated_tile_data: AnimatedTileData,
 }
 
@@ -54,25 +51,20 @@ impl Tilesets {
                 .parse(many0(map(le_u16, Tile8x8)))?
                 .into_iter()
                 .tuples::<(Tile8x8, Tile8x8, Tile8x8, Tile8x8)>()
-                .map(|(upper_left, lower_left, upper_right, lower_right)| Map16Tile {
-                    upper_left,
-                    lower_left,
-                    upper_right,
-                    lower_right,
-                });
+                .map(Map16Tile::from_tuple);
             Ok(it)
         };
 
         let mut tiles: Vec<Tile> = Vec::with_capacity(0x200);
 
-        tiles.extend(parse_16x16(TILES_000_072)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_107_110)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_111_152)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_16E_1C3)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1C4_1C7)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1C8_1EB)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1EC_1EF)?.map(Tile::Shared));
-        tiles.extend(parse_16x16(TILES_1F0_1FF)?.map(Tile::Shared));
+        let tiles_000_072 = parse_16x16(TILES_000_072)?.map(Tile::Shared);
+        let tiles_107_110 = parse_16x16(TILES_107_110)?.map(Tile::Shared);
+        let tiles_111_152 = parse_16x16(TILES_111_152)?.map(Tile::Shared);
+        let tiles_16e_1c3 = parse_16x16(TILES_16E_1C3)?.map(Tile::Shared);
+        let tiles_1c4_1c7 = parse_16x16(TILES_1C4_1C7)?.map(Tile::Shared);
+        let tiles_1c8_1eb = parse_16x16(TILES_1C8_1EB)?.map(Tile::Shared);
+        let tiles_1ec_1ef = parse_16x16(TILES_1EC_1EF)?.map(Tile::Shared);
+        let tiles_1f0_1ff = parse_16x16(TILES_1F0_1FF)?.map(Tile::Shared);
 
         let mut parse_tileset_specific = |slices: [SnesSlice; 5]| {
             let it = itertools::izip!(
@@ -86,13 +78,26 @@ impl Tilesets {
             Ok(it)
         };
 
-        tiles.extend(parse_tileset_specific(TILES_073_0FF)?);
-        tiles.extend(parse_tileset_specific(TILES_100_106)?);
-        tiles.extend(parse_tileset_specific(TILES_153_16D)?);
+        let tiles_073_0ff = parse_tileset_specific(TILES_073_0FF)?;
+        let tiles_100_106 = parse_tileset_specific(TILES_100_106)?;
+        let tiles_153_16d = parse_tileset_specific(TILES_153_16D)?;
+
+        tiles.extend(
+            tiles_000_072
+                .chain(tiles_073_0ff)
+                .chain(tiles_100_106)
+                .chain(tiles_107_110)
+                .chain(tiles_111_152)
+                .chain(tiles_153_16d)
+                .chain(tiles_16e_1c3)
+                .chain(tiles_1c4_1c7)
+                .chain(tiles_1c8_1eb)
+                .chain(tiles_1ec_1ef)
+                .chain(tiles_1f0_1ff),
+        );
 
         Ok(Tilesets {
             tiles,
-            gfx_list: ObjectGfxList::parse(disasm).map_err(TilesetParseError::GfxList)?,
             animated_tile_data: AnimatedTileData::parse(disasm).map_err(TilesetParseError::AnimatedTileData)?,
         })
     }

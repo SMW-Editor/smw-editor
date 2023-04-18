@@ -14,10 +14,7 @@ pub use self::{
 use crate::{
     compression::DecompressionError,
     disassembler::binary_block::{DataBlock, DataKind},
-    snes_utils::{
-        addr::{AddrInner, AddrSnes},
-        rom_slice::SnesSlice,
-    },
+    snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
     RomDisassembly,
     RomError,
 };
@@ -159,7 +156,7 @@ impl Level {
         let sprite_ptr_block =
             DataBlock { slice: SnesSlice::new(SPRITE_DATA + (2 * level_num), 2), kind: DataKind::LevelPointersSprite };
         let sh_addr = disasm.rom_slice_at_block(sprite_ptr_block, LevelParseError::SpriteAddressRead)?.parse(le_u16)?;
-        let sh_addr = AddrSnes(sh_addr as AddrInner).with_bank(0x07);
+        let sh_addr = AddrSnes(sh_addr as _).with_bank(0x07);
 
         let sh_block =
             DataBlock { slice: SnesSlice::new(sh_addr, SPRITE_HEADER_SIZE), kind: DataKind::LevelHeaderSprites };

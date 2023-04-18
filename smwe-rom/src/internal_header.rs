@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use crate::{
     snes_utils::{
-        addr::{AddrInner, AddrPc, AddrSnes},
+        addr::{AddrPc, AddrSnes},
         rom::Rom,
         rom_slice::PcSlice,
     },
@@ -207,7 +207,7 @@ impl RomInternalHeader {
                 .parse(le_u8)?,
             interrupt_vectors: {
                 let vectors_slice = byte_slice.skip_forward(15).resize(2 * 6);
-                let mut parse_vectors = count(map(le_u16, |addr| AddrSnes(addr as AddrInner)), 6);
+                let mut parse_vectors = count(map(le_u16, |addr| AddrSnes(addr as _)), 6);
                 let native = rom
                     .with_error_mapper(InternalHeaderParseError::ReadNativeModeInterruptVectors)
                     .slice_pc(vectors_slice)

@@ -6,7 +6,7 @@ use crate::{objects::map16::Tile8x8, AddrSnes, DataBlock, DataKind, RomDisassemb
 
 #[derive(Debug, Error)]
 #[error("Could not parse GFX list at:\n- {0}")]
-pub struct GfxListParseError(pub SnesSlice);
+pub struct ObjectGfxListParseError(pub SnesSlice);
 
 // -------------------------------------------------------------------------------------------------
 
@@ -21,10 +21,10 @@ pub struct ObjectGfxList {
 // -------------------------------------------------------------------------------------------------
 
 impl ObjectGfxList {
-    pub fn parse(disasm: &mut RomDisassembly) -> Result<Self, GfxListParseError> {
+    pub fn parse(disasm: &mut RomDisassembly) -> Result<Self, ObjectGfxListParseError> {
         let block = DataBlock { slice: OBJECT_GFX_LIST, kind: DataKind::GfxListObjects };
         let gfx_file_nums =
-            disasm.rom_slice_at_block(block, |_| GfxListParseError(OBJECT_GFX_LIST))?.as_bytes()?.to_vec();
+            disasm.rom_slice_at_block(block, |_| ObjectGfxListParseError(OBJECT_GFX_LIST))?.as_bytes()?.to_vec();
         Ok(Self { gfx_file_nums })
     }
 

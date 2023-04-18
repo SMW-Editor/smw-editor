@@ -1,7 +1,7 @@
 use crate::{
     disassembler::{instruction::Instruction, processor::Processor},
     snes_utils::{
-        addr::{Addr, AddrInner, AddrPc, AddrSnes},
+        addr::{Addr, AddrPc, AddrSnes},
         rom_slice::SnesSlice,
     },
 };
@@ -130,7 +130,7 @@ impl CodeBlock {
         while let Ok((i, new_rest)) = Instruction::parse(rest, addr, processor.p_reg) {
             instructions.push(i);
             rest = new_rest;
-            addr += i.opcode.instruction_size() as AddrInner;
+            addr += i.opcode.instruction_size() as u32;
             processor.execute(i);
             if i.can_change_program_counter() {
                 break;

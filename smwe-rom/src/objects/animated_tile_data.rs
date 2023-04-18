@@ -6,7 +6,10 @@ use crate::{
         binary_block::{DataBlock, DataKind},
         RomDisassembly,
     },
-    snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
+    snes_utils::{
+        addr::{AddrSnes, AddrVram},
+        rom_slice::SnesSlice,
+    },
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -17,20 +20,30 @@ pub struct AnimatedTileDataParseError;
 
 // -------------------------------------------------------------------------------------------------
 
-const ANIMATED_TILE_DATA_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05B999), 416);
+const ANIM_SRC_ADDRESSES_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05B999), 416);
+const ANIM_DST_ADDRESSES_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05B93B), 48);
 
 // -------------------------------------------------------------------------------------------------
 
 pub struct AnimatedTileData {
-    pub addresses: Vec<AddrSnes>,
+    pub src_addresses: Vec<AddrSnes>,
+    pub dst_addresses: Vec<AddrVram>,
 }
 
 impl AnimatedTileData {
     pub fn parse(disasm: &mut RomDisassembly) -> Result<Self, AnimatedTileDataParseError> {
-        let block = DataBlock { slice: ANIMATED_TILE_DATA_TABLE, kind: DataKind::AnimatedTileData };
-        let addresses = disasm
-            .rom_slice_at_block(block, |_| AnimatedTileDataParseError)?
-            .parse(many0(map(le_u16, |a| AddrSnes(a as _).with_bank(0x7E))))?;
-        Ok(Self { addresses })
+        let src_addresses = {
+            let data_block = DataBlock { slice: ANIM_SRC_ADDRESSES_TABLE, kind: DataKind::AnimatedTileData };
+            disasm
+                .rom_slice_at_block(data_block, |_| AnimatedTileDataParseError)?
+                .parse(many0(map(le_u16, |a| AddrSnes(a as _).with_bank(0x7E))))?
+        };
+        let dst_addresses = {
+            let data_block = DataBlock { slice: ANIM_DST_ADDRESSES_TABLE, kind: DataKind::AnimatedTileData };
+            disasm
+                .rom_slice_at_block(data_block, |_| AnimatedTileDataParseError)?
+                .parse(many0(map(le_u16, AddrVram)))?
+        };
+        Ok(Self { src_addresses, dst_addresses })
     }
 }

@@ -7,7 +7,7 @@ use itertools::Itertools;
 use smwe_project::ProjectRef;
 use smwe_rom::{
     disassembler::{binary_block::BinaryBlock, instruction::Instruction},
-    snes_utils::addr::{Addr, AddrInner, AddrPc, AddrSnes},
+    snes_utils::addr::{Addr, AddrPc, AddrSnes},
 };
 
 use crate::ui::tool::DockableEditorTool;
@@ -60,7 +60,7 @@ impl UiDisassembler {
                 DragValue::new(&mut self.current_address_scroll)
                     .clamp_range({
                         let min = AddrSnes::MIN;
-                        let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len() as AddrInner)).unwrap();
+                        let max = AddrSnes::try_from_lorom(AddrPc(disasm.rom_bytes().len() as _)).unwrap();
                         min.0..=max.0 - 1
                     })
                     .prefix("$")
@@ -150,7 +150,7 @@ impl UiDisassembler {
                         .chunks
                         .get(chunk_idx + 1)
                         .map(|c| c.0)
-                        .unwrap_or_else(|| AddrPc(disasm.rom_bytes().len() as AddrInner));
+                        .unwrap_or_else(|| AddrPc(disasm.rom_bytes().len() as _));
                     let chunk_bytes = &disasm.rom_bytes()[chunk_pc.as_index()..next_chunk_pc.as_index()];
 
                     match chunk {
@@ -162,7 +162,7 @@ impl UiDisassembler {
                             for (line_number, mut byte_line) in chunks.into_iter().enumerate().skip(skip_lines as usize)
                             {
                                 let line_addr_str = {
-                                    let pc = AddrPc(chunk_pc.0 + line_number as AddrInner * stride);
+                                    let pc = AddrPc(chunk_pc.0 + line_number as u32 * stride);
                                     let snes = AddrSnes::try_from_lorom(pc).unwrap();
                                     self.address_y_map.insert(snes, curr_y);
                                     format!("DATA_{:06X}:", snes.0)

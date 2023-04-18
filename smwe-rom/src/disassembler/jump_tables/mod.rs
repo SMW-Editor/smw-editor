@@ -8,10 +8,7 @@ use nom::{
 };
 
 use crate::{
-    snes_utils::{
-        addr::{AddrInner, AddrSnes},
-        rom_slice::SnesSlice,
-    },
+    snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
     Rom,
     RomError,
 };
@@ -48,7 +45,7 @@ pub fn get_jump_table_from_rom(rom: &Rom, jump_table_view: JumpTableView) -> Res
         rom.view().slice_lorom(slice)?.parse(parser)?
     } else {
         // 16-bit address implies the same bank number as the jump table's address.
-        let parser = many1(map(le_u16, |a| AddrSnes(a as AddrInner) | (jump_table_view.begin & 0xFF0000)));
+        let parser = many1(map(le_u16, |a| AddrSnes(a as _) | (jump_table_view.begin & 0xFF0000)));
         rom.view().slice_lorom(slice)?.parse(parser)?
     };
 

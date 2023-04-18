@@ -58,7 +58,6 @@ impl DockableEditorTool for UiTiles16x16 {
 
         let block_size = Vec2::splat(tweak!(32.0));
         let cell_padding = vec2(tweak!(5.0), tweak!(19.0));
-        // let min_scroll_height = ui.available_height();
         ScrollArea::both().show(ui, |ui| {
             Frame::none().show(ui, |ui| {
                 let available_rect = ui.available_rect_before_wrap();
@@ -106,12 +105,8 @@ impl UiTiles16x16 {
             let tiles_8x8 =
                 [map16_tile.upper_left, map16_tile.lower_left, map16_tile.upper_right, map16_tile.lower_right];
 
-            let make_tile_iter = || {
-                map16_tile
-                    .gfx(&rom.map16_tilesets.gfx_list, &rom.gfx, self.selected_tileset as usize - 1)
-                    .into_iter()
-                    .zip(tiles_8x8)
-            };
+            let make_tile_iter =
+                || rom.gfx.tiles_from_block(&map16_tile, self.selected_tileset as usize - 1).into_iter().zip(tiles_8x8);
 
             let has_animated_color =
                 make_tile_iter().any(|(gfx, m16)| m16.palette() == 6 && gfx.color_indices.iter().any(|&idx| idx == 4));

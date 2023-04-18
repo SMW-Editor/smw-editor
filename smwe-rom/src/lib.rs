@@ -26,7 +26,10 @@ use crate::{
         LevelParseError,
         LEVEL_COUNT,
     },
-    objects::tilesets::{TilesetParseError, Tilesets},
+    objects::{
+        object_gfx_list::ObjectGfxListParseError,
+        tilesets::{TilesetParseError, Tilesets},
+    },
     snes_utils::{
         addr::AddrSnes,
         rom::{Rom, RomError},
@@ -54,6 +57,8 @@ pub enum RomParseError {
     ColorPalettes(ColorPaletteParseError),
     #[error("Could not parse Map16 tiles:\n- {0}")]
     Map16Tilesets(TilesetParseError),
+    #[error("Could not parse object GFX list:\n- {0}")]
+    ObjectGfxList(ObjectGfxListParseError),
 }
 
 // -------------------------------------------------------------------------------------------------

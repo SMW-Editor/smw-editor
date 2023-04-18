@@ -1,11 +1,8 @@
 use std::ops::RangeInclusive;
 
-use crate::snes_utils::{
-    addr::{AddrInner, AddrSnes},
-    rom_slice::SnesSlice,
-};
+use crate::snes_utils::{addr::AddrSnes, rom_slice::SnesSlice};
 
-const fn map16_data_slice(addr: AddrInner, range: RangeInclusive<u32>) -> SnesSlice {
+const fn map16_data_slice(addr: u32, range: RangeInclusive<u32>) -> SnesSlice {
     const MAP16_TILE_SIZE: usize = 8;
     SnesSlice::new(AddrSnes(addr), (*range.end() - *range.start() + 1) as usize * MAP16_TILE_SIZE)
 }

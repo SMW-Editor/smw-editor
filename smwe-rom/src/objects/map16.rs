@@ -1,8 +1,3 @@
-use crate::{
-    graphics::{gfx_file, Gfx},
-    objects::{gfx_list::ObjectGfxList, tilesets::TILESETS_COUNT},
-};
-
 // Format: YXPCCCTT TTTTTTTT
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile8x8(pub u16);
@@ -56,13 +51,9 @@ impl Tile8x8 {
 }
 
 impl Map16Tile {
-    pub fn gfx<'gfx>(&self, gfx_list: &ObjectGfxList, gfx: &'gfx Gfx, tileset: usize) -> [&'gfx gfx_file::Tile; 4] {
-        assert!(tileset < TILESETS_COUNT);
-        let ref_gfx = |tile| {
-            let file_num = gfx_list.gfx_file_for_object_tile(tile, tileset);
-            let tile_num = tile.tile_number() as usize % 0x80;
-            &gfx.files[file_num].tiles[tile_num]
-        };
-        [ref_gfx(self.upper_left), ref_gfx(self.lower_left), ref_gfx(self.upper_right), ref_gfx(self.lower_right)]
+    pub fn from_tuple(
+        (upper_left, lower_left, upper_right, lower_right): (Tile8x8, Tile8x8, Tile8x8, Tile8x8),
+    ) -> Self {
+        Self { upper_left, lower_left, upper_right, lower_right }
     }
 }

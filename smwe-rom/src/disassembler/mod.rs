@@ -36,7 +36,7 @@ use crate::{
         serialization::LineKind,
     },
     snes_utils::{
-        addr::{Addr, AddrInner, AddrPc, AddrSnes},
+        addr::{Addr, AddrPc, AddrSnes},
         rom::{RomViewWithErrorMapper, SnesSliced},
         rom_slice::SnesSlice,
     },
@@ -319,11 +319,11 @@ impl RomDisassembly {
         let begin_pc = AddrPc::try_from_lorom(data_block.slice.begin).unwrap();
         match split_type {
             SplitType::Start(index) => {
-                self.chunks[index].0 += data_block.slice.size as AddrInner;
+                self.chunks[index].0 += data_block.slice.size as u32;
                 self.chunks.insert(index, (begin_pc, BinaryBlock::Data(data_block)));
             }
             SplitType::Middle(index) => {
-                let data_end = begin_pc + data_block.slice.size as AddrInner;
+                let data_end = begin_pc + data_block.slice.size as u32;
                 let next_begin = self.chunks[index + 1].0;
                 assert!(data_end <= next_begin, "data_end = {data_end}, next_begin = {next_begin}, index = {index}");
                 self.chunks.insert(index + 1, (begin_pc, BinaryBlock::Data(data_block)));
@@ -404,7 +404,7 @@ impl RomAssemblyWalker {
     }
 
     fn cleanup(&mut self) {
-        self.chunks.push((AddrPc(self.rom.0.len() as AddrInner), BinaryBlock::EndOfRom));
+        self.chunks.push((AddrPc(self.rom.0.len() as _), BinaryBlock::EndOfRom));
         self.chunks.sort_by_key(|(address, _)| address.0);
         let mut dedup_chunks = Vec::with_capacity(self.chunks.len());
         for (_group_pc, mut chunk_group) in
@@ -474,8 +474,7 @@ impl RomAssemblyWalker {
                         continue;
                     }
 
-                    let addr_after_block =
-                        last_instruction.offset + last_instruction.opcode.instruction_size() as AddrInner;
+                    let addr_after_block = last_instruction.offset + last_instruction.opcode.instruction_size() as u32;
                     let exits = block.exits.iter();
 
                     // The zero exits case happens when a JSR or JSL's destination is not in ROM but e.g. in RAM.
