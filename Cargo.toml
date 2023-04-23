@@ -4,6 +4,8 @@ members = [
     "smwe-project",
     "smwe-rom",
     "smwe-widgets",
+    "smwe-emu",
+    "wdc65816"
 ]
 
 [package]

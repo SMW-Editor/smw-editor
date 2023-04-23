@@ -2434,6 +2434,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "smwe-emu"
+version = "0.1.0"
+dependencies = [
+ "wdc65816",
+]
+
+[[package]]
 name = "smwe-project"
 version = "0.1.0"
 dependencies = [
@@ -2976,6 +2983,10 @@ dependencies = [
  "log",
  "pkg-config",
 ]
+
+[[package]]
+name = "wdc65816"
+version = "0.1.0"
 
 [[package]]
 name = "web-sys"
