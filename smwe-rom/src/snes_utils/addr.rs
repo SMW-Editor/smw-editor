@@ -315,6 +315,12 @@ duplicate! {
     }
 }
 
+impl fmt::Debug for AddrVram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "AddrVram({:#06x})", self.0)
+    }
+}
+
 duplicate! {
     [
         addr_type   opposite_type;
@@ -324,8 +330,8 @@ duplicate! {
     impl fmt::Debug for addr_type {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match opposite_type::try_from(*self) {
-                Ok(opposite) => write!(f, "{}({:#06x}) [-> {opposite:X}]", stringify!(addr_type), self.0),
-                Err(_) => write!(f, "{}({:#06x})", stringify!(addr_type), self.0),
+                Ok(opposite) => write!(f, "{}({:#06X}) [-> {opposite:X}]", stringify!(addr_type), self.0),
+                Err(_) => write!(f, "{}({:#06X})", stringify!(addr_type), self.0),
             }
         }
     }
@@ -333,8 +339,8 @@ duplicate! {
     impl fmt::Display for addr_type {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match opposite_type::try_from(*self) {
-                Ok(opposite) => write!(f, "{:#06x} [-> {opposite:X}]", self.0),
-                Err(_) => write!(f, "{:#06x}", self.0),
+                Ok(opposite) => write!(f, "{:#06X} [-> {opposite:X}]", self.0),
+                Err(_) => write!(f, "{:#06X}", self.0),
             }
         }
     }

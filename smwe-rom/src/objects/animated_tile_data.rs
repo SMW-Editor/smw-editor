@@ -6,7 +6,7 @@ use crate::{
         binary_block::{DataBlock, DataKind},
         RomDisassembly,
     },
-    objects::map16::{Map16Tile, Tile8x8},
+    objects::map16::{Block, Tile8x8},
     snes_utils::{
         addr::{AddrSnes, AddrVram},
         rom_slice::SnesSlice,
@@ -57,17 +57,18 @@ impl AnimatedTileData {
         Ok(Self { src_addresses, dst_addresses, behaviours, switches, tilesets })
     }
 
-    pub fn is_tile_animated(&self, tile: &Tile8x8) -> bool {
-        self.dst_addresses.contains(&tile.tile_vram_addr())
+    pub fn is_tile_animated(&self, tile: Tile8x8, offset: u16) -> bool {
+        self.dst_addresses.contains(&tile.tile_vram_addr(offset))
     }
 
     pub fn get_animation_frames_for_block(
-        &self, block: &Map16Tile, tileset: usize, blue_pswitch: bool, silver_pswitch: bool, on_off_switch: bool,
+        &self, block: &Block, tileset: usize, blue_pswitch: bool, silver_pswitch: bool, on_off_switch: bool,
+        offset: u16,
     ) -> Option<[AddrSnes; 4]> {
-        let vram_addr = block.upper_left.tile_vram_addr();
-        let dst_index = self.dst_addresses.iter().position(|&addr| addr == vram_addr)?;
-        let src_index = {
-            let i = match self.behaviours[dst_index] {
+        self.is_tile_animated(block.upper_left, offset).then(|| {
+            let vram_addr = block.upper_left.tile_vram_addr(offset);
+            let dst_index = self.dst_addresses.iter().position(|&addr| addr == vram_addr).unwrap();
+            let gfx_tile_offset = match self.behaviours[dst_index] {
                 0 => dst_index,
                 1 => {
                     let switch_state = match self.switches[dst_index] {
@@ -85,14 +86,13 @@ impl AnimatedTileData {
                 2 => dst_index + self.tilesets[tileset] as usize,
                 _ => unreachable!(),
             };
-            ((i as u16 & 0xFF) << 3) as usize
-        };
-
-        Some([
-            self.src_addresses[src_index + 0],
-            self.src_addresses[src_index + 1],
-            self.src_addresses[src_index + 2],
-            self.src_addresses[src_index + 3],
-        ])
+            let src_index = ((gfx_tile_offset & 0xFF) << 3) / 2;
+            [
+                self.src_addresses[src_index + 0],
+                self.src_addresses[src_index + 1],
+                self.src_addresses[src_index + 2],
+                self.src_addresses[src_index + 3],
+            ]
+        })
     }
 }

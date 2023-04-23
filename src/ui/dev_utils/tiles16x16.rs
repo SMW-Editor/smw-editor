@@ -15,18 +15,30 @@ use crate::ui::tool::DockableEditorTool;
 
 enum TileImage {
     Static(TextureHandle),
-    Animated(AnimationState),
+    Animated(AnimationState, f32),
 }
 
 pub struct UiTiles16x16 {
     tile_images:      Vec<TileImage>,
     selected_tileset: u32,
     level_number:     u32,
+    blue_pswitch:     bool,
+    silver_pswitch:   bool,
+    on_off_switch:    bool,
+    vram_offset:      u16,
 }
 
 impl Default for UiTiles16x16 {
     fn default() -> Self {
-        Self { tile_images: Vec::new(), selected_tileset: 1, level_number: 0 }
+        Self {
+            tile_images:      Vec::new(),
+            selected_tileset: 1,
+            level_number:     0,
+            blue_pswitch:     false,
+            silver_pswitch:   false,
+            on_off_switch:    false,
+            vram_offset:      0,
+        }
     }
 }
 
@@ -57,6 +69,36 @@ impl DockableEditorTool for UiTiles16x16 {
                     self.load_images(project_ref, ui.ctx());
                 }
             });
+
+            if ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed() {
+                self.load_images(project_ref, ui.ctx());
+            }
+
+            if ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed() {
+                self.load_images(project_ref, ui.ctx());
+            }
+
+            if ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed() {
+                self.load_images(project_ref, ui.ctx());
+            }
+
+            ui.horizontal(|ui| {
+                if ui.add_enabled(self.vram_offset > 0, Button::new("-")).clicked() {
+                    self.vram_offset = self.vram_offset.saturating_sub(0x20);
+                    self.load_images(project_ref, ui.ctx());
+                }
+                if ui
+                    .add(DragValue::new(&mut self.vram_offset).clamp_range(0..=0xFFFF).hexadecimal(4, false, true))
+                    .changed()
+                {
+                    self.load_images(project_ref, ui.ctx());
+                }
+                if ui.add_enabled(self.vram_offset < 0xFFFF, Button::new("+")).clicked() {
+                    self.vram_offset = self.vram_offset.saturating_add(0x20);
+                    self.load_images(project_ref, ui.ctx());
+                }
+                ui.label("Level number");
+            });
         });
 
         let block_size = Vec2::splat(tweak!(32.0));
@@ -75,8 +117,8 @@ impl DockableEditorTool for UiTiles16x16 {
                                         TileImage::Static(texture_id) => {
                                             ui.image(texture_id, block_size);
                                         }
-                                        TileImage::Animated(animation) => {
-                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(tweak!(16.0)));
+                                        TileImage::Animated(animation, fps) => {
+                                            ui.add(Flipbook::new(animation, block_size).looped(true).fps(*fps));
                                         }
                                     }
                                 });
@@ -108,7 +150,14 @@ impl UiTiles16x16 {
             let tiles_8x8 =
                 [map16_tile.upper_left, map16_tile.lower_left, map16_tile.upper_right, map16_tile.lower_right];
 
-            match rom.gfx.tiles_from_block(&map16_tile, self.selected_tileset as usize - 1) {
+            match rom.gfx.tiles_from_block(
+                &map16_tile,
+                self.selected_tileset as usize - 1,
+                self.blue_pswitch,
+                self.silver_pswitch,
+                self.on_off_switch,
+                self.vram_offset,
+            ) {
                 BlockGfx::Animated(frames) => {
                     let frames = frames
                         .into_iter()
@@ -126,7 +175,7 @@ impl UiTiles16x16 {
                         .collect_vec();
                     let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
                         .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
-                    self.tile_images.push(TileImage::Animated(animation));
+                    self.tile_images.push(TileImage::Animated(animation, 12.));
                 }
                 BlockGfx::Static(tiles) => {
                     let make_tile_iter = || tiles.into_iter().zip(tiles_8x8);
@@ -153,7 +202,7 @@ impl UiTiles16x16 {
                         }
                         let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
                             .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
-                        self.tile_images.push(TileImage::Animated(animation));
+                        self.tile_images.push(TileImage::Animated(animation, 16.));
                     } else {
                         let map16_gfx = make_tile_iter()
                             .map(|(gfx, m16)| {

@@ -8,7 +8,7 @@ use thiserror::Error;
 use crate::{
     objects::{
         animated_tile_data::AnimatedTileDataParseError,
-        map16::{Map16Tile, Tile8x8},
+        map16::{Block, Tile8x8},
     },
     snes_utils::rom_slice::SnesSlice,
     DataBlock,
@@ -36,8 +36,8 @@ pub struct Tilesets {
 }
 
 pub enum Tile {
-    Shared(Map16Tile),
-    TilesetSpecific([Map16Tile; TILESETS_COUNT]),
+    Shared(Block),
+    TilesetSpecific([Block; TILESETS_COUNT]),
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ impl Tilesets {
                 .parse(many0(map(le_u16, Tile8x8)))?
                 .into_iter()
                 .tuples::<(Tile8x8, Tile8x8, Tile8x8, Tile8x8)>()
-                .map(Map16Tile::from_tuple);
+                .map(Block::from_tuple);
             Ok(it)
         };
 
@@ -98,7 +98,7 @@ impl Tilesets {
         Ok(Tilesets { tiles })
     }
 
-    pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Map16Tile> {
+    pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Block> {
         if tile_num < self.tiles.len() && tileset < 5 {
             match self.tiles[tile_num] {
                 Tile::Shared(tile) => Some(tile),
