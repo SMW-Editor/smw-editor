@@ -1,15 +1,11 @@
-use crate::{
-    graphics::gfx_file,
-    objects::{gfx_list::ObjectGfxList, tilesets::TILESETS_COUNT},
-    GfxFile,
-};
+use crate::{graphics::gfx_file::TileFormat, snes_utils::addr::AddrVram};
 
 // Format: YXPCCCTT TTTTTTTT
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile8x8(pub u16);
 
 #[derive(Copy, Clone, Debug)]
-pub struct Map16Tile {
+pub struct Block {
     pub upper_left:  Tile8x8,
     pub lower_left:  Tile8x8,
     pub upper_right: Tile8x8,
@@ -54,18 +50,20 @@ impl Tile8x8 {
     pub fn layer(&self) -> TileLayer {
         (self.tile_number() / 0x80) as TileLayer
     }
+
+    pub fn tile_vram_addr(&self, offset: u16) -> AddrVram {
+        Self::vram_addr_from_tile_number(self.tile_number(), offset)
+    }
+
+    pub fn vram_addr_from_tile_number(tile_num: u16, offset: u16) -> AddrVram {
+        AddrVram(offset + (tile_num * TileFormat::Tile4bpp.tile_size() as u16 / 2))
+    }
 }
 
-impl Map16Tile {
-    pub fn gfx<'gfx>(
-        &self, gfx_list: &ObjectGfxList, gfx_files: &'gfx [GfxFile], tileset: usize,
-    ) -> [&'gfx gfx_file::Tile; 4] {
-        assert!(tileset < TILESETS_COUNT);
-        let ref_gfx = |tile| {
-            let file_num = gfx_list.gfx_file_for_object_tile(tile, tileset);
-            let tile_num = tile.tile_number() as usize % 0x80;
-            &gfx_files[file_num].tiles[tile_num]
-        };
-        [ref_gfx(self.upper_left), ref_gfx(self.lower_left), ref_gfx(self.upper_right), ref_gfx(self.lower_right)]
+impl Block {
+    pub fn from_tuple(
+        (upper_left, lower_left, upper_right, lower_right): (Tile8x8, Tile8x8, Tile8x8, Tile8x8),
+    ) -> Self {
+        Self { upper_left, lower_left, upper_right, lower_right }
     }
 }

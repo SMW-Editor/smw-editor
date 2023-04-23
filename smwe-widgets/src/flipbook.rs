@@ -1,21 +1,40 @@
-use egui::{
-    Color32,
-    ColorImage,
-    Context,
-    Id,
-    Pos2,
-    Rect,
-    Response,
-    Sense,
-    Shape,
-    TextureHandle,
-    TextureOptions,
-    Ui,
-    Vec2,
-    Widget,
-};
+use egui::*;
 use itertools::Itertools;
 use thiserror::Error;
+
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("Frame size is invalid: {0:?}")]
+pub struct AtlasInvalidSizeError([usize; 2]);
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("Frame size is invalid: {0:?}")]
+pub struct FrameInvalidSizeError([usize; 2]);
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("All animation frames must have the same size")]
+pub struct FramesUnequalSizeError;
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("Frame size {frame_size:?} extends outside atlas size {atlas_size:?}")]
+pub struct FrameBiggerThanAtlasError {
+    frame_size: [usize; 2],
+    atlas_size: [usize; 2],
+}
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("Atlas size {atlas_size:?} is not perfectly divisible by frame size {frame_size:?}")]
+pub struct AtlasSizeIndivisibleByFrameSizeError {
+    frame_size: [usize; 2],
+    atlas_size: [usize; 2],
+}
+
+#[derive(Copy, Clone, Debug, Error)]
+#[error("Each animation must have at least one frame")]
+pub struct EmptyAnimationError;
+
+// -------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
 pub struct AnimationState {
@@ -34,6 +53,8 @@ pub struct Flipbook<'a> {
     looped:    bool,
     reverse:   bool,
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl AnimationState {
     pub fn from_frames(frames: Vec<ColorImage>, id: impl Into<Id>, ctx: &Context) -> anyhow::Result<Self> {
@@ -111,12 +132,12 @@ impl<'a> Flipbook<'a> {
         let frames_in_row = atlas_size.x as usize / animation.frame_size[0];
         let uv = Rect::from_min_max(
             Pos2::new(
-                (animation.frame_size[0] * (frame_idx % frames_in_row)) as f32 / atlas_size.x,
-                (animation.frame_size[1] * (frame_idx / frames_in_row)) as f32 / atlas_size.y,
+                ((animation.frame_size[0] * (frame_idx % frames_in_row)) as f32 + 0.5) / atlas_size.x,
+                ((animation.frame_size[1] * (frame_idx / frames_in_row)) as f32 + 0.5) / atlas_size.y,
             ),
             Pos2::new(
-                (animation.frame_size[0] * ((frame_idx % frames_in_row) + 1)) as f32 / atlas_size.x,
-                (animation.frame_size[1] * ((frame_idx / frames_in_row) + 1)) as f32 / atlas_size.y,
+                ((animation.frame_size[0] * ((frame_idx % frames_in_row) + 1)) as f32 - 0.5) / atlas_size.x,
+                ((animation.frame_size[1] * ((frame_idx / frames_in_row) + 1)) as f32 - 0.5) / atlas_size.y,
             ),
         );
 
@@ -150,33 +171,3 @@ impl<'a> Flipbook<'a> {
         self
     }
 }
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("Frame size is invalid: {0:?}")]
-pub struct AtlasInvalidSizeError([usize; 2]);
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("Frame size is invalid: {0:?}")]
-pub struct FrameInvalidSizeError([usize; 2]);
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("All animation frames must have the same size")]
-pub struct FramesUnequalSizeError;
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("Frame size {frame_size:?} extends outside atlas size {atlas_size:?}")]
-pub struct FrameBiggerThanAtlasError {
-    frame_size: [usize; 2],
-    atlas_size: [usize; 2],
-}
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("Atlas size {atlas_size:?} is not perfectly divisible by frame size {frame_size:?}")]
-pub struct AtlasSizeIndivisibleByFrameSizeError {
-    frame_size: [usize; 2],
-    atlas_size: [usize; 2],
-}
-
-#[derive(Copy, Clone, Debug, Error)]
-#[error("Each animation must have at least one frame")]
-pub struct EmptyAnimationError;

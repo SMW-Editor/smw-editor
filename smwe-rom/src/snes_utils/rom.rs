@@ -5,10 +5,7 @@ use thiserror::Error;
 use crate::{
     compression::DecompressionError,
     disassembler::binary_block::DataBlock,
-    snes_utils::{
-        addr::{Addr, AddrPc},
-        rom_slice::*,
-    },
+    snes_utils::{addr::AddrPc, rom_slice::*},
 };
 
 // -------------------------------------------------------------------------------------------------

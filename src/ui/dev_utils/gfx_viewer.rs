@@ -77,15 +77,15 @@ impl UiGfxViewer {
             let project = project.borrow();
             let rom = &project.rom_data;
 
-            let level_count = rom.gfx_files.len() as i32;
+            let file_count = rom.gfx.files.len() as i32;
             let palette_row_count = 16i32;
-            let bg_pals_count = rom.color_palettes.lv_specific_set.bg_palettes.len() as i32;
-            let fg_pals_count = rom.color_palettes.lv_specific_set.fg_palettes.len() as i32;
-            let sp_pals_count = rom.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
-            let pl_pals_count = rom.color_palettes.players.len() as i32 / 10;
+            let bg_pals_count = rom.gfx.color_palettes.lv_specific_set.bg_palettes.len() as i32;
+            let fg_pals_count = rom.gfx.color_palettes.lv_specific_set.fg_palettes.len() as i32;
+            let sp_pals_count = rom.gfx.color_palettes.lv_specific_set.sprite_palettes.len() as i32;
+            let pl_pals_count = rom.gfx.color_palettes.players.len() as i32 / 10;
 
             let inputs = [
-                ("GFX file number", &mut self.curr_gfx_file_num, level_count),
+                ("GFX file number", &mut self.curr_gfx_file_num, file_count),
                 ("Palette row index", &mut self.curr_palette_row_idx, palette_row_count),
                 ("Background palette index", &mut self.curr_bg_palette_num, bg_pals_count),
                 ("Foreground palette index", &mut self.curr_fg_palette_num, fg_pals_count),
@@ -129,7 +129,7 @@ impl UiGfxViewer {
     fn update_image(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
         let project = project_ref.as_ref().unwrap().borrow();
         let rom = &project.rom_data;
-        let gfx_file = &rom.gfx_files[self.curr_gfx_file_num as usize];
+        let gfx_file = &rom.gfx.files[self.curr_gfx_file_num as usize];
 
         let img_w = (gfx_file.tiles.len() * 8).clamp(8, N_TILES_IN_ROW * 8);
         let img_h = ((1 + (gfx_file.tiles.len() / N_TILES_IN_ROW)) * 8).max(8);
@@ -137,6 +137,7 @@ impl UiGfxViewer {
         self.curr_image_format = gfx_file.tile_format;
 
         let palette = &rom
+            .gfx
             .color_palettes
             .lv_specific_set
             .palette_from_indices(
@@ -144,7 +145,7 @@ impl UiGfxViewer {
                 self.curr_bg_palette_num as usize,
                 self.curr_fg_palette_num as usize,
                 self.curr_sp_palette_num as usize,
-                &rom.color_palettes,
+                &rom.gfx.color_palettes,
             )
             .unwrap();
 

@@ -43,7 +43,7 @@ pub enum TileFormat {
     Tile3bppMode7,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Tile {
     pub color_indices: Box<[u8]>,
 }
@@ -66,6 +66,19 @@ impl Display for TileFormat {
             Tile8bpp => "8BPP",
             Tile3bppMode7 => "3BPP Mode 7",
         })
+    }
+}
+
+impl TileFormat {
+    pub fn tile_size(self) -> usize {
+        use TileFormat::*;
+        match self {
+            Tile2bpp => 2 * 8,
+            Tile3bpp => 3 * 8,
+            Tile4bpp => 4 * 8,
+            Tile8bpp => 8 * 8,
+            Tile3bppMode7 => 3 * 8,
+        }
     }
 }
 

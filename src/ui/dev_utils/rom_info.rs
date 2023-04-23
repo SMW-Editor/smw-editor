@@ -2,7 +2,7 @@ use eframe::egui::{RichText, Ui};
 use egui::WidgetText;
 use egui_extras::{Column, TableBuilder};
 use smwe_project::ProjectRef;
-use smwe_rom::RomInternalHeader;
+use smwe_rom::internal_header::RomInternalHeader;
 
 use crate::ui::tool::DockableEditorTool;
 

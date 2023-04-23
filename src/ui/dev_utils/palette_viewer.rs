@@ -112,7 +112,7 @@ impl UiPaletteViewer {
 
         let submap_count = {
             let project = project_ref.as_ref().unwrap().borrow();
-            project.rom_data.color_palettes.ow_specific_set.layer2_indices.len() as i32
+            project.rom_data.gfx.color_palettes.ow_specific_set.layer2_indices.len() as i32
         };
 
         ui.horizontal(|ui| {
@@ -132,7 +132,7 @@ impl UiPaletteViewer {
         self.palette_image = Some(match self.palette_context {
             PaletteContext::Level => {
                 let header = &rom.levels[self.level_num as usize].primary_header;
-                let palette = &rom.color_palettes.get_level_palette(header).unwrap();
+                let palette = &rom.gfx.color_palettes.get_level_palette(header).unwrap();
                 let frames = palette
                     .animated
                     .iter()
@@ -159,7 +159,7 @@ impl UiPaletteViewer {
             PaletteContext::Overworld => {
                 let ow_state =
                     if self.special_completed { OverworldState::PostSpecial } else { OverworldState::PreSpecial };
-                let palette = &rom.color_palettes.get_submap_palette(self.submap_num as usize, ow_state).unwrap();
+                let palette = &rom.gfx.color_palettes.get_submap_palette(self.submap_num as usize, ow_state).unwrap();
                 let mut image = ColorImage::new([16, 16], Color32::BLACK);
                 for y in 0..=0xF {
                     for x in 0..=0xF {
