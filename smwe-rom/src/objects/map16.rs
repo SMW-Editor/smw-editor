@@ -1,3 +1,5 @@
+use crate::{graphics::gfx_file::TileFormat, snes_utils::addr::AddrVram};
+
 // Format: YXPCCCTT TTTTTTTT
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile8x8(pub u16);
@@ -47,6 +49,14 @@ impl Tile8x8 {
 
     pub fn layer(&self) -> TileLayer {
         (self.tile_number() / 0x80) as TileLayer
+    }
+
+    pub fn tile_vram_addr(&self) -> AddrVram {
+        Self::vram_addr_from_tile_number(self.tile_number())
+    }
+
+    pub fn vram_addr_from_tile_number(tile_num: u16) -> AddrVram {
+        AddrVram(tile_num * TileFormat::Tile4bpp.tile_size() as u16)
     }
 }
 

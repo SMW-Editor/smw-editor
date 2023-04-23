@@ -80,13 +80,9 @@ impl StandardObject {
     }
 
     pub fn ext_obj_num(&self) -> Option<ExtendedObjectID> {
-        if self.is_extended() {
-            // -------- -------- NNNNNNNN
-            // ext_obj_num = NNNNNNNN
-            Some(self.0[2])
-        } else {
-            None
-        }
+        // -------- -------- NNNNNNNN
+        // ext_obj_num = NNNNNNNN
+        self.is_extended().then_some(self.0[2])
     }
 
     pub fn xy_pos(&self) -> (u8, u8) {

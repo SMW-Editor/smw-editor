@@ -43,7 +43,7 @@ pub enum TileFormat {
     Tile3bppMode7,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Tile {
     pub color_indices: Box<[u8]>,
 }

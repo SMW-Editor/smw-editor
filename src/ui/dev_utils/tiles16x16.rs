@@ -5,7 +5,10 @@ use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_project::{Project, ProjectRef};
-use smwe_rom::{graphics::palette::ColorPalette, objects::map16::Tile8x8};
+use smwe_rom::{
+    graphics::{palette::ColorPalette, BlockGfx},
+    objects::map16::Tile8x8,
+};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
 use crate::ui::tool::DockableEditorTool;
@@ -105,46 +108,68 @@ impl UiTiles16x16 {
             let tiles_8x8 =
                 [map16_tile.upper_left, map16_tile.lower_left, map16_tile.upper_right, map16_tile.lower_right];
 
-            let make_tile_iter =
-                || rom.gfx.tiles_from_block(&map16_tile, self.selected_tileset as usize - 1).into_iter().zip(tiles_8x8);
-
-            let has_animated_color =
-                make_tile_iter().any(|(gfx, m16)| m16.palette() == 6 && gfx.color_indices.iter().any(|&idx| idx == 4));
-
-            if has_animated_color {
-                let mut frames = Vec::with_capacity(palette.animated.len());
-                for &animated_color in palette.animated.iter() {
-                    let map16_gfx = make_tile_iter()
-                        .map(|(gfx, m16)| {
-                            let palette_row = palette.get_row(m16.palette() as usize);
-                            if m16.palette() == 6 {
-                                gfx.to_rgba_with_substitute_at(&palette_row, animated_color, 4)
-                            } else {
-                                gfx.to_rgba(&palette_row)
-                            }
+            match rom.gfx.tiles_from_block(&map16_tile, self.selected_tileset as usize - 1) {
+                BlockGfx::Animated(frames) => {
+                    let frames = frames
+                        .into_iter()
+                        .map(|tiles| {
+                            let make_tile_iter = || tiles.into_iter().zip(tiles_8x8);
+                            let map16_gfx = make_tile_iter()
+                                .map(|(gfx, m16)| {
+                                    let palette_row = palette.get_row(m16.palette() as usize);
+                                    gfx.to_rgba(&palette_row)
+                                })
+                                .collect_vec();
+                            assert_eq!(map16_gfx.len(), 4);
+                            Self::make_image(&tiles_8x8, &map16_gfx)
                         })
                         .collect_vec();
-                    assert_eq!(map16_gfx.len(), 4);
-                    let frame_image = Self::make_image(&tiles_8x8, &map16_gfx);
-                    frames.push(frame_image);
+                    let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
+                        .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
+                    self.tile_images.push(TileImage::Animated(animation));
                 }
-                let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
-                    .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
-                self.tile_images.push(TileImage::Animated(animation));
-            } else {
-                let map16_gfx = make_tile_iter()
-                    .map(|(gfx, m16)| {
-                        let palette_row = palette.get_row(m16.palette() as usize);
-                        gfx.to_rgba(&palette_row)
-                    })
-                    .collect_vec();
-                assert_eq!(map16_gfx.len(), 4);
-                let image = ctx.load_texture(
-                    format!("map16 {map16_id}"),
-                    Self::make_image(&tiles_8x8, &map16_gfx),
-                    TextureOptions::NEAREST,
-                );
-                self.tile_images.push(TileImage::Static(image));
+                BlockGfx::Static(tiles) => {
+                    let make_tile_iter = || tiles.into_iter().zip(tiles_8x8);
+
+                    let has_animated_color = make_tile_iter()
+                        .any(|(gfx, m16)| m16.palette() == 6 && gfx.color_indices.iter().any(|&idx| idx == 4));
+
+                    if has_animated_color {
+                        let mut frames = Vec::with_capacity(palette.animated.len());
+                        for &animated_color in palette.animated.iter() {
+                            let map16_gfx = make_tile_iter()
+                                .map(|(gfx, m16)| {
+                                    let palette_row = palette.get_row(m16.palette() as usize);
+                                    if m16.palette() == 6 {
+                                        gfx.to_rgba_with_substitute_at(&palette_row, animated_color, 4)
+                                    } else {
+                                        gfx.to_rgba(&palette_row)
+                                    }
+                                })
+                                .collect_vec();
+                            assert_eq!(map16_gfx.len(), 4);
+                            let frame_image = Self::make_image(&tiles_8x8, &map16_gfx);
+                            frames.push(frame_image);
+                        }
+                        let animation = AnimationState::from_frames(frames, Id::new(format!("map16_{map16_id}")), ctx)
+                            .unwrap_or_else(|e| panic!("Cannot assemble animation for tile {map16_id}: {e}"));
+                        self.tile_images.push(TileImage::Animated(animation));
+                    } else {
+                        let map16_gfx = make_tile_iter()
+                            .map(|(gfx, m16)| {
+                                let palette_row = palette.get_row(m16.palette() as usize);
+                                gfx.to_rgba(&palette_row)
+                            })
+                            .collect_vec();
+                        assert_eq!(map16_gfx.len(), 4);
+                        let image = ctx.load_texture(
+                            format!("map16 {map16_id}"),
+                            Self::make_image(&tiles_8x8, &map16_gfx),
+                            TextureOptions::NEAREST,
+                        );
+                        self.tile_images.push(TileImage::Static(image));
+                    }
+                }
             }
         }
     }

@@ -123,12 +123,7 @@ impl Instruction {
         use Mnemonic::*;
 
         // Returning jumps and interrupts
-        if matches!(self.opcode.mnemonic, JSR | JSL | BRK | COP) {
-            let next_instruction = offset + self.opcode.instruction_size() as u32;
-            Some(next_instruction)
-        } else {
-            None
-        }
+        matches!(self.opcode.mnemonic, JSR | JSL | BRK | COP).then_some(offset + self.opcode.instruction_size() as u32)
     }
 
     fn get_intermediate_address(self) -> AddrSnes {

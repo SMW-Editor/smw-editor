@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::{
     objects::{
-        animated_tile_data::{AnimatedTileData, AnimatedTileDataParseError},
+        animated_tile_data::AnimatedTileDataParseError,
         map16::{Map16Tile, Tile8x8},
     },
     snes_utils::rom_slice::SnesSlice,
@@ -32,8 +32,7 @@ pub const TILESETS_COUNT: usize = 5;
 // -------------------------------------------------------------------------------------------------
 
 pub struct Tilesets {
-    pub tiles:              Vec<Tile>,
-    pub animated_tile_data: AnimatedTileData,
+    pub tiles: Vec<Tile>,
 }
 
 pub enum Tile {
@@ -96,10 +95,7 @@ impl Tilesets {
                 .chain(tiles_1f0_1ff),
         );
 
-        Ok(Tilesets {
-            tiles,
-            animated_tile_data: AnimatedTileData::parse(disasm).map_err(TilesetParseError::AnimatedTileData)?,
-        })
+        Ok(Tilesets { tiles })
     }
 
     pub fn get_map16_tile(&self, tile_num: usize, tileset: usize) -> Option<Map16Tile> {
