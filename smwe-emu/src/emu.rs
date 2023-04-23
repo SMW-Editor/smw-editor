@@ -129,3 +129,31 @@ impl<'a> Mem for CheckedMem<'a> {
         self.last_store = Some(addr);
     }
 }
+
+pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
+    //let now = std::time::Instant::now();
+    cpu.mem.store(0x0E, id as _);
+    cpu.mem.store(0x0F, (id>>8) as _);
+    cpu.emulation = false;
+    cpu.s = 0x1FF;
+    cpu.pc = 0x8796;
+    cpu.pbr = 0x05;
+    cpu.dbr = 0x00;
+    cpu.trace = false;
+    let mut cy = 0;
+    loop {
+        cy += cpu.dispatch() as u64;
+        //if cy > cy_limit { break; }
+        if cpu.ill {
+            println!("ILLEGAL INSTR");
+            break;
+        }
+        if cpu.pc == 0x8416 {
+            break;
+        }
+        cpu.mem.process_dma();
+        /*if let Some(c) = cpu.mem.error.take() {
+        }*/
+    }
+    cy
+}
