@@ -17,15 +17,26 @@ pub struct CheckedMem<'a> {
 
 impl<'a> CheckedMem<'a> {
     pub fn load_u16(&mut self, addr: u32) -> u16 {
-        let l = self.load(addr) as u16;
-        let h = self.load(addr + 1) as u16;
-        l | (h << 8)
+        let l = self.load(addr);
+        let h = self.load(addr + 1);
+        u16::from_le_bytes([l,h])
     }
     pub fn load_u24(&mut self, addr: u32) -> u32 {
-        let l = self.load(addr) as u32;
-        let h = self.load(addr + 1) as u32;
-        let b = self.load(addr + 2) as u32;
-        l | (h << 8) | (b << 16)
+        let l = self.load(addr);
+        let h = self.load(addr + 1);
+        let b = self.load(addr + 2);
+        u32::from_le_bytes([l,h,b,0])
+    }
+    pub fn store_u16(&mut self, addr: u32, val: u16) {
+        let val = val.to_le_bytes();
+        self.store(addr, val[0]);
+        self.store(addr + 1, val[1]);
+    }
+    pub fn store_u24(&mut self, addr: u32, val: u32) {
+        let val = val.to_le_bytes();
+        self.store(addr, val[0]);
+        self.store(addr + 1, val[1]);
+        self.store(addr + 2, val[2]);
     }
     pub fn process_dma_ch(&mut self, ch: u32) {
         let a = self.load_u24(0x4302 + ch);
@@ -84,7 +95,7 @@ impl<'a> CheckedMem<'a> {
         } else if bank == 0x60 {
             let ptr = (addr & 0xFFFF) as usize;
             &mut self.extram[ptr]
-        } else if addr < 0x2000 {
+        } else if addr & 0xFFFF < 0x2000 {
             let ptr = (addr & 0x1FFF) as usize;
             if track_uninit {
                 if write.is_none() && !self.uninit.contains(&ptr) {
@@ -93,7 +104,7 @@ impl<'a> CheckedMem<'a> {
                 self.uninit.insert(ptr);
             }
             &mut self.wram[ptr]
-        } else if addr < 0x8000 {
+        } else if addr & 0xFFFF < 0x8000 {
             let ptr = (addr & 0x7FFF) as usize;
             if track_uninit {
                 if write.is_none() && !self.uninit.contains(&ptr) {
@@ -102,7 +113,7 @@ impl<'a> CheckedMem<'a> {
                 self.uninit.insert(ptr);
             }
             &mut self.regs[ptr-0x2000]
-        } else if addr > 0x8000 {
+        } else if addr & 0xFFFF > 0x8000 {
             if let Some(c) = self.cart.read(addr) {
                 return c;
             } else {
@@ -121,25 +132,31 @@ impl<'a> CheckedMem<'a> {
 }
 impl<'a> Mem for CheckedMem<'a> {
     fn load(&mut self, addr: u32) -> u8 {
-        self.map(addr, None)
+        let value = self.map(addr, None);
+        //println!("ld ${:06X} = {:02X}", addr, value);
+        value
     }
     fn store(&mut self, addr: u32, value: u8) {
-        //println!("store ${:02X}:{:04X} = {:02X}", bank, addr, value);
+        //println!("st ${:06X} = {:02X}", addr, value);
         self.map(addr, Some(value));
         self.last_store = Some(addr);
     }
 }
 
 pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
-    //let now = std::time::Instant::now();
-    cpu.mem.store(0x0E, id as _);
-    cpu.mem.store(0x0F, (id>>8) as _);
+    let now = std::time::Instant::now();
     cpu.emulation = false;
+    cpu.mem.store(0x1F11, (id>>8) as _);
     cpu.s = 0x1FF;
-    cpu.pc = 0x8796;
-    cpu.pbr = 0x05;
+    cpu.pc = 0x2000;
+    cpu.pbr = 0x00;
     cpu.dbr = 0x00;
     cpu.trace = false;
+    // quasi-loader bytecode
+    cpu.mem.store(0x2000, 0x22);
+    cpu.mem.store_u24(0x2001, cpu.mem.cart.resolve("CODE_05D796").unwrap());
+    cpu.mem.store(0x2004, 0x22);
+    cpu.mem.store_u24(0x2005, cpu.mem.cart.resolve("CODE_05801E").unwrap());
     let mut cy = 0;
     loop {
         cy += cpu.dispatch() as u64;
@@ -148,12 +165,13 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             println!("ILLEGAL INSTR");
             break;
         }
-        if cpu.pc == 0x8416 {
-            break;
+        if cpu.pc == 0xD89F && cpu.pbr == 0x05 {
+            cpu.a &= 0xFF00;
+            cpu.a |= id & 0xFF;
         }
+        if cpu.pc == 0x2008 { break; }
         cpu.mem.process_dma();
-        /*if let Some(c) = cpu.mem.error.take() {
-        }*/
     }
+    println!("took {}µs", now.elapsed().as_micros());
     cy
 }
