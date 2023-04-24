@@ -1,18 +1,22 @@
-use wdc65816::{Cpu, Mem};
+#![allow(clippy::identity_op)]
+
 use std::collections::HashSet;
+
+use wdc65816::{Cpu, Mem};
+
 use crate::rom::Rom;
 
 #[derive(Clone)]
 pub struct CheckedMem<'a> {
-    pub cart: &'a Rom,
-    pub wram: Vec<u8>,
-    pub regs: Vec<u8>,
-    pub vram: Vec<u8>,
-    pub cgram: Vec<u8>,
-    pub extram: Vec<u8>,
-    pub uninit: HashSet<usize>,
-    pub error: Option<u32>,
-    pub err_value: Option<u8>,
+    pub cart:       &'a Rom,
+    pub wram:       Vec<u8>,
+    pub regs:       Vec<u8>,
+    pub vram:       Vec<u8>,
+    pub cgram:      Vec<u8>,
+    pub extram:     Vec<u8>,
+    pub uninit:     HashSet<usize>,
+    pub error:      Option<u32>,
+    pub err_value:  Option<u8>,
     pub last_store: Option<u32>,
 }
 
@@ -20,25 +24,29 @@ impl<'a> CheckedMem<'a> {
     pub fn load_u16(&mut self, addr: u32) -> u16 {
         let l = self.load(addr);
         let h = self.load(addr + 1);
-        u16::from_le_bytes([l,h])
+        u16::from_le_bytes([l, h])
     }
+
     pub fn load_u24(&mut self, addr: u32) -> u32 {
         let l = self.load(addr);
         let h = self.load(addr + 1);
         let b = self.load(addr + 2);
-        u32::from_le_bytes([l,h,b,0])
+        u32::from_le_bytes([l, h, b, 0])
     }
+
     pub fn store_u16(&mut self, addr: u32, val: u16) {
         let val = val.to_le_bytes();
         self.store(addr, val[0]);
         self.store(addr + 1, val[1]);
     }
+
     pub fn store_u24(&mut self, addr: u32, val: u32) {
         let val = val.to_le_bytes();
         self.store(addr, val[0]);
         self.store(addr + 1, val[1]);
         self.store(addr + 2, val[2]);
     }
+
     pub fn process_dma_ch(&mut self, ch: u32) {
         let a = self.load_u24(0x4302 + ch);
         let size = self.load_u16(0x4305 + ch) as u32;
@@ -49,47 +57,49 @@ impl<'a> CheckedMem<'a> {
             let dest = self.load_u16(0x2116) as u32;
             //println!("DMA size {:04X}: VRAM ${:02X}:{:04X} => ${:04X}", size, a_bank, a, dest);
             if params & 0x8 != 0 { // fill transfer
-                /*let value = self.load(a_bank, a);
-                for i in dest..dest+size {
-                    self.vram[i as usize * 2] = value;
-                }*/
+                 /*let value = self.load(a_bank, a);
+                 for i in dest..dest+size {
+                     self.vram[i as usize * 2] = value;
+                 }*/
             } else {
                 for i in 0..size {
-                    self.vram[(dest*2 + i) as usize] = self.load(a + i);
+                    self.vram[(dest * 2 + i) as usize] = self.load(a + i);
                 }
             }
-            self.store_u16(0x2116, (dest+size) as u16);
+            self.store_u16(0x2116, (dest + size) as u16);
         } else if false && b == 0x19 {
             let _dest = self.load_u16(0x2116);
             //println!("DMA size {:04X}: VRAMh ${:02X}:{:04X} => ${:04X}", size, a_bank, a, dest);
             if params & 0x8 != 0 { // fill transfer
-                /*let value = self.load(a_bank, a);
-                for i in dest..dest+size {
-                    self.vram[i as usize * 2] = value;
-                }*/
+                 /*let value = self.load(a_bank, a);
+                 for i in dest..dest+size {
+                     self.vram[i as usize * 2] = value;
+                 }*/
             }
         } else if b == 0x22 {
             let dest = self.load(0x2121) as u32;
             // cgram
             for i in 0..size {
-                self.cgram[(dest*2 + i) as usize] = self.load(a + i);
+                self.cgram[(dest * 2 + i) as usize] = self.load(a + i);
             }
-            self.store_u16(0x2121, (dest+size) as u16);
+            self.store_u16(0x2121, (dest + size) as u16);
         } else {
             println!("DMA size {size:04X}: ${b:02X} ${a:06X}");
         }
     }
+
     pub fn process_dma(&mut self) {
         let dma = self.load(0x420B);
         if dma != 0 {
             for i in 0..8 {
-                if dma & (1<<i) != 0 {
+                if dma & (1 << i) != 0 {
                     self.process_dma_ch(i * 0x10);
                 }
             }
             self.store(0x420B, 0);
         }
     }
+
     pub fn map(&mut self, addr: u32, write: Option<u8>) -> u8 {
         let track_uninit = false;
         let bank = addr >> 16;
@@ -133,7 +143,7 @@ impl<'a> CheckedMem<'a> {
                     self.store_u16(0x2116, addr + 1);
                 }
             }
-            &mut self.regs[ptr-0x2000]
+            &mut self.regs[ptr - 0x2000]
         } else if addr & 0xFFFF >= 0x8000 {
             if let Some(c) = self.cart.read(addr) {
                 return c;
@@ -152,11 +162,13 @@ impl<'a> CheckedMem<'a> {
     }
 }
 impl<'a> Mem for CheckedMem<'a> {
+    #[allow(clippy::let_and_return)]
     fn load(&mut self, addr: u32) -> u8 {
         let value = self.map(addr, None);
-        //println!("ld ${:06X} = {:02X}", addr, value);
+        // println!("ld ${:06X} = {:02X}", addr, value);
         value
     }
+
     fn store(&mut self, addr: u32, value: u8) {
         //println!("st ${:06X} = {:02X}", addr, value);
         self.map(addr, Some(value));
@@ -172,13 +184,13 @@ pub fn fetch_anim_frame(cpu: &mut Cpu<CheckedMem>) -> u64 {
     cpu.trace = false;
     // quasi-loader bytecode
     let routines = [
-        "CODE_05BB39",      // set up frames
-        "CODE_00A390",      // upload them
+        "CODE_05BB39", // set up frames
+        "CODE_00A390", // upload them
     ];
     let mut addr = 0x2000;
-    for i in routines {
+    for symbol in routines {
         cpu.mem.store(addr, 0x22);
-        cpu.mem.store_u24(addr+1, cpu.mem.cart.resolve(i).expect(&format!("no symbol: {}", i)));
+        cpu.mem.store_u24(addr + 1, cpu.mem.cart.resolve(symbol).unwrap_or_else(|| panic!("no symbol: {symbol}")));
         addr += 4;
     }
     let mut cy = 0;
@@ -189,7 +201,9 @@ pub fn fetch_anim_frame(cpu: &mut Cpu<CheckedMem>) -> u64 {
             println!("ILLEGAL INSTR");
             break;
         }
-        if cpu.pc == addr as u16 { break; }
+        if cpu.pc == addr as u16 {
+            break;
+        }
         cpu.mem.process_dma();
     }
     cy
@@ -199,7 +213,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     let now = std::time::Instant::now();
     cpu.emulation = false;
     // set submap
-    cpu.mem.store(0x1F11, (id>>8) as _);
+    cpu.mem.store(0x1F11, (id >> 8) as _);
     cpu.s = 0x1FF;
     cpu.pc = 0x2000;
     cpu.pbr = 0x00;
@@ -207,18 +221,18 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     cpu.trace = false;
     // quasi-loader bytecode
     let routines = [
-        "CODE_00A993",      // init layer 3 / sp0
-        "CODE_00B888",      // init gfx32/33
-        "CODE_05D796",      // init pointers
-        "UploadSpriteGFX",  // upload graphics
-        "LoadPalette",      // init palette
-        "CODE_00922F",      // upload palette
-        "CODE_05801E",      // decompress level
+        "CODE_00A993",     // init layer 3 / sp0
+        "CODE_00B888",     // init gfx32/33
+        "CODE_05D796",     // init pointers
+        "UploadSpriteGFX", // upload graphics
+        "LoadPalette",     // init palette
+        "CODE_00922F",     // upload palette
+        "CODE_05801E",     // decompress level
     ];
     let mut addr = 0x2000;
     for i in routines {
         cpu.mem.store(addr, 0x22);
-        cpu.mem.store_u24(addr+1, cpu.mem.cart.resolve(i).expect(&format!("no symbol: {}", i)));
+        cpu.mem.store_u24(addr + 1, cpu.mem.cart.resolve(i).unwrap_or_else(|| panic!("no symbol: {}", i)));
         addr += 4;
     }
     let mut cy = 0;
@@ -233,7 +247,9 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             cpu.a &= 0xFF00;
             cpu.a |= id & 0xFF;
         }
-        if cpu.pc == addr as u16 { break; }
+        if cpu.pc == addr as u16 {
+            break;
+        }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());

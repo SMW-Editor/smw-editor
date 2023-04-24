@@ -53,7 +53,7 @@ impl DockableEditorTool for UiDisassembler {
 impl UiDisassembler {
     fn switches(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         let project = project_ref.as_ref().unwrap().borrow();
-        let disasm = &project.rom_data.disassembly;
+        let disasm = &project.old_rom_data.disassembly;
 
         ui.horizontal(|ui| {
             ui.add(
@@ -83,7 +83,7 @@ impl UiDisassembler {
         self.address_y_map.clear();
 
         let project = project_ref.as_ref().unwrap().borrow();
-        let disasm = &project.rom_data.disassembly;
+        let disasm = &project.old_rom_data.disassembly;
 
         let str_buf = RefCell::new(String::with_capacity(256));
 

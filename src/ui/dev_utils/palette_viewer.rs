@@ -87,7 +87,7 @@ impl UiPaletteViewer {
     fn selectors_level(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         let level_count = {
             let project = project_ref.as_ref().unwrap().borrow();
-            project.rom_data.levels.len() as i32
+            project.old_rom_data.levels.len() as i32
         };
 
         ui.horizontal(|ui| {
@@ -112,7 +112,7 @@ impl UiPaletteViewer {
 
         let submap_count = {
             let project = project_ref.as_ref().unwrap().borrow();
-            project.rom_data.gfx.color_palettes.ow_specific_set.layer2_indices.len() as i32
+            project.old_rom_data.gfx.color_palettes.ow_specific_set.layer2_indices.len() as i32
         };
 
         ui.horizontal(|ui| {
@@ -128,7 +128,7 @@ impl UiPaletteViewer {
 
     fn update_palette_image(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
         let project = project_ref.as_ref().unwrap().borrow();
-        let rom = &project.rom_data;
+        let rom = &project.old_rom_data;
         self.palette_image = Some(match self.palette_context {
             PaletteContext::Level => {
                 let header = &rom.levels[self.level_num as usize].primary_header;

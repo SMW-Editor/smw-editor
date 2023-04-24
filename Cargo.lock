@@ -2427,6 +2427,7 @@ dependencies = [
  "num",
  "num_enum 0.6.0",
  "rfd",
+ "smwe-emu",
  "smwe-project",
  "smwe-rom",
  "smwe-widgets",
@@ -2444,6 +2445,7 @@ dependencies = [
 name = "smwe-project"
 version = "0.1.0"
 dependencies = [
+ "smwe-emu",
  "smwe-rom",
 ]
 

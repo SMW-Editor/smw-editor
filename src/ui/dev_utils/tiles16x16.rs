@@ -140,7 +140,7 @@ impl UiTiles16x16 {
         self.tile_images.clear();
 
         let project: &RefCell<Project> = project_ref.as_ref().unwrap();
-        let rom = &project.borrow().rom_data;
+        let rom = &project.borrow().old_rom_data;
 
         let level = &rom.levels[self.level_number as usize];
         let palette = rom.gfx.color_palettes.get_level_palette(&level.primary_header).unwrap();

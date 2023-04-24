@@ -16,8 +16,8 @@ impl DockableEditorTool for UiCodeEditor {
             .columns(Column::remainder().at_least(300.), 2)
             .body(|tb| {
                 let mut project = project_ref.as_mut().unwrap().borrow_mut();
-                tb.rows(15., project.rom_data.disassembly.code_lines.len(), |i, mut tr| {
-                    match &mut project.rom_data.disassembly.code_lines[i] {
+                tb.rows(15., project.old_rom_data.disassembly.code_lines.len(), |i, mut tr| {
+                    match &mut project.old_rom_data.disassembly.code_lines[i] {
                         LineKind::Label { label, comment } => {
                             tr.col(|ui| {
                                 ui.horizontal(|ui| {

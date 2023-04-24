@@ -75,7 +75,7 @@ impl UiGfxViewer {
         let mut changed_any = false;
         if let Some(project) = project_ref.as_ref() {
             let project = project.borrow();
-            let rom = &project.rom_data;
+            let rom = &project.old_rom_data;
 
             let file_count = rom.gfx.files.len() as i32;
             let palette_row_count = 16i32;
@@ -128,7 +128,7 @@ impl UiGfxViewer {
 
     fn update_image(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
         let project = project_ref.as_ref().unwrap().borrow();
-        let rom = &project.rom_data;
+        let rom = &project.old_rom_data;
         let gfx_file = &rom.gfx.files[self.curr_gfx_file_num as usize];
 
         let img_w = (gfx_file.tiles.len() * 8).clamp(8, N_TILES_IN_ROW * 8);

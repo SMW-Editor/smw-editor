@@ -33,25 +33,25 @@ const COP_VEC16: u16 = 0xFFE4;
 
 #[derive(Clone)]
 pub struct Cpu<M: Mem> {
-    pub a: u16,
-    pub x: u16,
-    pub y: u16,
+    pub a:         u16,
+    pub x:         u16,
+    pub y:         u16,
     /// Stack pointer
-    pub s: u16,
+    pub s:         u16,
     /// Data bank register. Bank for all memory accesses.
-    pub dbr: u8,
+    pub dbr:       u8,
     /// Program bank register. Opcodes are fetched from this bank.
-    pub pbr: u8,
+    pub pbr:       u8,
     /// Direct (page) register. Address offset for all instruction using "direct addressing" mode.
-    pub d: u16,
+    pub d:         u16,
     /// Program counter. Note that PBR is not changed on pc overflow, so code can not span
     /// multiple banks (without `jml` or `jsr`).
-    pub pc: u16,
-    p: StatusReg,
+    pub pc:        u16,
+    p:             StatusReg,
     pub emulation: bool,
     /// Set to true when executing a WAI instruction. Stops the processor from dispatching further
     /// instructions until an interrupt is triggered.
-    wai: bool,
+    wai:           bool,
 
     /// CPU clock cycle counter for the current instruction.
     cy: u16,
@@ -60,7 +60,7 @@ pub struct Cpu<M: Mem> {
     pub ill: bool,
 
     pub trace: bool,
-    pub mem: M,
+    pub mem:   M,
 }
 
 impl<M: Mem> Cpu<M> {
@@ -83,7 +83,7 @@ impl<M: Mem> Cpu<M> {
             d: 0,
             pbr: 0,
             // Read from RESET vector above
-            pc: pc,
+            pc,
             // Acc and index regs start in 8-bit mode, IRQs disabled, CPU in emulation mode
             p: StatusReg::new(),
             emulation: true,
@@ -91,7 +91,7 @@ impl<M: Mem> Cpu<M> {
             cy: 0,
             trace: false,
             ill: false,
-            mem: mem,
+            mem,
         }
     }
 
@@ -100,6 +100,7 @@ impl<M: Mem> Cpu<M> {
         // FIXME Remove?
         self.mem.load((bank as u32) << 16 | addr as u32)
     }
+
     fn loadw(&mut self, bank: u8, addr: u16) -> u16 {
         assert!(addr < 0xffff, "loadw on bank boundary");
         // ^ if this should be supported, make sure to fix the potential overflow below
@@ -113,6 +114,7 @@ impl<M: Mem> Cpu<M> {
         // FIXME Remove?
         self.mem.store((bank as u32) << 16 | addr as u32, value)
     }
+
     fn storew(&mut self, bank: u8, addr: u16, value: u16) {
         self.storeb(bank, addr, value as u8);
         if addr == 0xffff {
@@ -200,25 +202,17 @@ impl<M: Mem> Cpu<M> {
     fn trace_op(&self, pc: u16, raw: u8, op: &str, am: Option<&AddressingMode>) {
         //use log::LogLevel::Trace;
         //if !log_enabled!(Trace) || !self.trace { return }
-        if !self.trace { return; }
+        if !self.trace {
+            return;
+        }
 
         let opstr = match am {
             Some(am) => format!("{} {}", op, am),
             None => op.to_string(),
         };
-        println!("${:02X}:{:04X} {:02X}  {:14} a:{:04X} x:{:04X} y:{:04X} s:{:04X} d:{:04X} dbr:{:02X} emu:{} {}",
-            self.pbr,
-            pc,
-            raw,
-            opstr,
-            self.a,
-            self.x,
-            self.y,
-            self.s,
-            self.d,
-            self.dbr,
-            self.emulation as u8,
-            self.p,
+        println!(
+            "${:02X}:{:04X} {:02X}  {:14} a:{:04X} x:{:04X} y:{:04X} s:{:04X} d:{:04X} dbr:{:02X} emu:{} {}",
+            self.pbr, pc, raw, opstr, self.a, self.x, self.y, self.s, self.d, self.dbr, self.emulation as u8, self.p,
         );
     }
 
@@ -232,26 +226,28 @@ impl<M: Mem> Cpu<M> {
         // additional wait state cycles externally.
         // (FIXME: Is the above correct? Critical for timing!)
         static CYCLE_TABLE: [u8; 256] = [
-            7,6,7,4,5,3,5,6, 3,2,2,4,6,4,6,5,   // $00 - $0f
-            2,5,5,7,5,4,6,6, 2,4,2,2,6,4,7,5,   // $10 - $1f
-            6,6,8,4,3,3,5,6, 4,2,2,5,4,4,6,5,   // $20 - $2f
-            2,5,5,7,4,4,6,6, 2,4,2,2,4,4,7,5,   // $30 - $3f
-            7,6,2,4,7,3,5,6, 3,2,2,3,3,4,6,5,   // $40 - $4f
-            2,5,5,7,7,4,6,6, 2,4,3,2,4,4,7,5,   // $50 - $5f
-            7,6,6,4,3,3,5,6, 4,2,2,6,5,4,6,5,   // $60 - $6f
-            2,5,5,7,4,4,6,6, 2,4,4,2,6,2,7,5,   // $70 - $7f
-            2,6,3,4,3,3,3,2, 2,2,2,3,4,4,4,5,   // $80 - $8f
-            2,6,5,7,4,4,4,6, 2,5,2,2,3,5,5,5,   // $90 - $9f
-            2,6,2,4,3,3,3,6, 2,2,2,4,4,4,4,5,   // $a0 - $af
-            2,5,5,7,4,4,4,6, 2,4,2,2,4,4,4,5,   // $b0 - $bf
-            2,6,3,4,3,3,5,6, 2,2,2,3,4,4,6,5,   // $c0 - $cf
-            2,5,5,7,6,4,6,6, 2,4,3,3,6,4,7,5,   // $d0 - $df
-            2,6,3,4,3,3,5,6, 2,2,2,3,4,4,6,5,   // $e0 - $ef
-            2,5,5,7,5,4,6,6, 2,4,4,2,6,4,7,5,   // $f0 - $ff
+            7, 6, 7, 4, 5, 3, 5, 6, 3, 2, 2, 4, 6, 4, 6, 5, // $00 - $0f
+            2, 5, 5, 7, 5, 4, 6, 6, 2, 4, 2, 2, 6, 4, 7, 5, // $10 - $1f
+            6, 6, 8, 4, 3, 3, 5, 6, 4, 2, 2, 5, 4, 4, 6, 5, // $20 - $2f
+            2, 5, 5, 7, 4, 4, 6, 6, 2, 4, 2, 2, 4, 4, 7, 5, // $30 - $3f
+            7, 6, 2, 4, 7, 3, 5, 6, 3, 2, 2, 3, 3, 4, 6, 5, // $40 - $4f
+            2, 5, 5, 7, 7, 4, 6, 6, 2, 4, 3, 2, 4, 4, 7, 5, // $50 - $5f
+            7, 6, 6, 4, 3, 3, 5, 6, 4, 2, 2, 6, 5, 4, 6, 5, // $60 - $6f
+            2, 5, 5, 7, 4, 4, 6, 6, 2, 4, 4, 2, 6, 2, 7, 5, // $70 - $7f
+            2, 6, 3, 4, 3, 3, 3, 2, 2, 2, 2, 3, 4, 4, 4, 5, // $80 - $8f
+            2, 6, 5, 7, 4, 4, 4, 6, 2, 5, 2, 2, 3, 5, 5, 5, // $90 - $9f
+            2, 6, 2, 4, 3, 3, 3, 6, 2, 2, 2, 4, 4, 4, 4, 5, // $a0 - $af
+            2, 5, 5, 7, 4, 4, 4, 6, 2, 4, 2, 2, 4, 4, 4, 5, // $b0 - $bf
+            2, 6, 3, 4, 3, 3, 5, 6, 2, 2, 2, 3, 4, 4, 6, 5, // $c0 - $cf
+            2, 5, 5, 7, 6, 4, 6, 6, 2, 4, 3, 3, 6, 4, 7, 5, // $d0 - $df
+            2, 6, 3, 4, 3, 3, 5, 6, 2, 2, 2, 3, 4, 4, 6, 5, // $e0 - $ef
+            2, 5, 5, 7, 5, 4, 6, 6, 2, 4, 4, 2, 6, 4, 7, 5, // $f0 - $ff
         ];
 
         // Still waiting for interrupt? Don't do any work.
-        if self.wai { return 0; }
+        if self.wai {
+            return 0;
+        }
 
         let pc = self.pc;
         self.cy = 0;
@@ -445,7 +441,7 @@ impl<M: Mem> Cpu<M> {
             0xa0 => instr!(ldy immediate_index),
             0xac => instr!(ldy absolute),
             0xbc => instr!(ldy absolute_indexed_x),
-            0x54 => instr!(mvn),    // FIXME These look bad in the trace, print src/dest banks!
+            0x54 => instr!(mvn), // FIXME These look bad in the trace, print src/dest banks!
             0x44 => instr!(mvp),
 
             // Bit operations
@@ -480,7 +476,7 @@ impl<M: Mem> Cpu<M> {
 
             // Branches
             0x80 => instr!(bra rel),
-            0x82 => instr!(bra relative_long),  // BRL
+            0x82 => instr!(bra relative_long), // BRL
             0xf0 => instr!(beq rel),
             0xd0 => instr!(bne rel),
             0x10 => instr!(bpl rel),
@@ -491,7 +487,7 @@ impl<M: Mem> Cpu<M> {
             0xb0 => instr!(bcs rel),
 
             // Jumps, calls and returns
-            0x4c => instr!(jmp absolute),   // DBR is ignored
+            0x4c => instr!(jmp absolute), // DBR is ignored
             0x5c => instr!(jml absolute_long),
             0x6c => instr!(jmp absolute_indirect),
             0x7c => instr!(jmp absolute_indexed_indirect),
@@ -588,6 +584,7 @@ impl<M: Mem> Cpu<M> {
         self.p.set_carry(a >= b);
         self.p.set_negative(a.wrapping_sub(b) & 0x8000 != 0);
     }
+
     /// Does the exact same thing as `compare`, but for 8-bit operands
     fn compare8(&mut self, a: u8, b: u8) {
         self.p.set_zero(a == b);
@@ -654,37 +651,44 @@ impl<M: Mem> Cpu<M> {
         let pbr = self.pbr;
         self.pushb(pbr);
     }
+
     /// Push Direct Page Register
     fn phd(&mut self) {
         let d = self.d;
         self.pushw(d);
     }
+
     /// Pull Direct Page Register
     fn pld(&mut self) {
         let d = self.popw();
         self.d = d;
     }
+
     /// Push Data Bank Register
     fn phb(&mut self) {
         let dbr = self.dbr;
         self.pushb(dbr);
     }
+
     /// Pop Data Bank Register
     fn plb(&mut self) {
         let dbr = self.popb();
         self.dbr = dbr;
     }
+
     /// Push Processor Status Register
     fn php(&mut self) {
         // Changes no flags
         let p = self.p.0;
         self.pushb(p);
     }
+
     /// Pull Processor Status Register
     fn plp(&mut self) {
         let p = self.popb();
         self.set_p(p);
     }
+
     /// Push A on the stack
     fn pha(&mut self) {
         // No flags modified
@@ -697,6 +701,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Pull Accumulator from stack
     fn pla(&mut self) {
         // Changes N and Z
@@ -709,6 +714,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Push Index Register X
     fn phx(&mut self) {
         if self.p.small_index() {
@@ -720,6 +726,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Pop Index Register X
     fn plx(&mut self) {
         // Changes N and Z
@@ -732,6 +739,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Push Index Register Y
     fn phy(&mut self) {
         if self.p.small_index() {
@@ -743,6 +751,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Pop Index Register Y
     fn ply(&mut self) {
         // Changes N and Z
@@ -760,12 +769,14 @@ impl<M: Mem> Cpu<M> {
         let (_, addr) = am.address(self);
         self.pushw(addr);
     }
+
     /// Push Effective Absolute Address
     fn pea(&mut self, am: AddressingMode) {
         // Pushes the address (16-bit, no bank) onto the stack. This is equivalent of pushing the
         // 2 bytes following the opcode onto the stack.
         self.push_effective(am)
     }
+
     /// Push Effective PC-Relative Address
     fn per(&mut self, am: AddressingMode) {
         self.push_effective(am)
@@ -786,6 +797,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// OR Accumulator with Memory
     fn ora(&mut self, am: AddressingMode) {
         // Sets N and Z
@@ -801,6 +813,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Exclusive Or Accumulator with Memory
     fn eor(&mut self, am: AddressingMode) {
         // Sets N and Z
@@ -827,15 +840,18 @@ impl<M: Mem> Cpu<M> {
             let val = am.loadb(self) as u16;
             let mut res = if self.p.decimal() {
                 let mut low = (a & 0xf) + (val & 0xf) + c;
-                if low > 9 { low += 6; }
+                if low > 9 {
+                    low += 6;
+                }
 
                 (a & 0xf0) + (val & 0xf0) + (low & 0x0f) + if low > 0x0f { 0x10 } else { 0 }
             } else {
                 a + val + c
             };
-            self.p.set_overflow((a as u8 ^ val as u8) & 0x80 == 0 &&
-                                (a as u8 ^ res as u8) & 0x80 == 0x80);
-            if self.p.decimal() && res > 0x9f { res += 0x60; }
+            self.p.set_overflow((a as u8 ^ val as u8) & 0x80 == 0 && (a as u8 ^ res as u8) & 0x80 == 0x80);
+            if self.p.decimal() && res > 0x9f {
+                res += 0x60;
+            }
             self.p.set_carry(res > 255);
 
             self.a = (self.a & 0xff00) | self.p.set_nz_8(res as u8) as u16;
@@ -843,24 +859,33 @@ impl<M: Mem> Cpu<M> {
             let val = am.loadw(self);
             let mut res: u32 = if self.p.decimal() {
                 let mut res0 = (self.a & 0x000f) + (val & 0x000f) + c;
-                if res0 > 0x0009 { res0 += 0x0006; }
+                if res0 > 0x0009 {
+                    res0 += 0x0006;
+                }
 
-                let mut res1 = (self.a & 0x00f0) + (val & 0x00f0) + (res0 & 0x000f) +
-                               if res0 > 0x000f { 0x0010 } else { 0x0000 };
-                if res1 > 0x009f { res1 += 0x0060; }
+                let mut res1 =
+                    (self.a & 0x00f0) + (val & 0x00f0) + (res0 & 0x000f) + if res0 > 0x000f { 0x0010 } else { 0x0000 };
+                if res1 > 0x009f {
+                    res1 += 0x0060;
+                }
 
-                let mut res2 = (self.a & 0x0f00) + (val & 0x0f00) + (res1 & 0x00ff) +
-                               if res1 > 0x00ff { 0x0100 } else { 0x0000 };
-                if res2 > 0x09ff { res2 += 0x0600; }
+                let mut res2 =
+                    (self.a & 0x0f00) + (val & 0x0f00) + (res1 & 0x00ff) + if res1 > 0x00ff { 0x0100 } else { 0x0000 };
+                if res2 > 0x09ff {
+                    res2 += 0x0600;
+                }
 
-                (self.a as u32 & 0xf000) + (val as u32 & 0xf000) + (res2 as u32 & 0x0fff) +
-                    if res2 > 0x0fff { 0x1000 } else { 0x0000 }
+                (self.a as u32 & 0xf000)
+                    + (val as u32 & 0xf000)
+                    + (res2 as u32 & 0x0fff)
+                    + if res2 > 0x0fff { 0x1000 } else { 0x0000 }
             } else {
                 self.a as u32 + val as u32 + c as u32
             };
-            self.p.set_overflow((self.a ^ val) & 0x8000 == 0 &&
-                                (self.a ^ res as u16) & 0x8000 == 0x8000);
-            if self.p.decimal() && res > 0x9fff { res += 0x6000; }
+            self.p.set_overflow((self.a ^ val) & 0x8000 == 0 && (self.a ^ res as u16) & 0x8000 == 0x8000);
+            if self.p.decimal() && res > 0x9fff {
+                res += 0x6000;
+            }
             self.p.set_carry(res > 65535);
 
             self.a = self.p.set_nz(res as u16);
@@ -878,14 +903,18 @@ impl<M: Mem> Cpu<M> {
             let v = am.loadb(self) as i16 ^ 0xff;
             let mut res: i16 = if self.p.decimal() {
                 let mut low: i16 = (a & 0x0f) + (v & 0x0f) + c;
-                if low < 0x10 { low -= 6; }
+                if low < 0x10 {
+                    low -= 6;
+                }
 
                 (a & 0xf0) + (v & 0xf0) + (low & 0x0f) + if low > 0x0f { 0x10 } else { 0x00 }
             } else {
                 a + v + c
             };
             self.p.set_overflow((a & 0x80) == (v & 0x80) && (a & 0x80) != (res & 0x80));
-            if self.p.decimal() && res < 0x100 { res -= 0x60; }
+            if self.p.decimal() && res < 0x100 {
+                res -= 0x60;
+            }
             self.p.set_carry(res > 255);
 
             self.a = (self.a & 0xff00) | self.p.set_nz_8(res as u8) as u16;
@@ -894,23 +923,29 @@ impl<M: Mem> Cpu<M> {
             let v = am.loadw(self) as i32 ^ 0xffff;
             let mut res: i32 = if self.p.decimal() {
                 let mut res0 = (a & 0x000f) + (v & 0x000f) + c as i32;
-                if res0 < 0x0010 { res0 -= 0x0006; }
+                if res0 < 0x0010 {
+                    res0 -= 0x0006;
+                }
 
-                let mut res1 = (a & 0x00f0) + (v & 0x00f0) + (res0 & 0x000f) +
-                    if res0 > 0x000f { 0x10 } else { 0x00 };
-                if res1 < 0x0100 { res1 -= 0x0060; }
+                let mut res1 = (a & 0x00f0) + (v & 0x00f0) + (res0 & 0x000f) + if res0 > 0x000f { 0x10 } else { 0x00 };
+                if res1 < 0x0100 {
+                    res1 -= 0x0060;
+                }
 
-                let mut res2 = (a & 0x0f00) + (v & 0x0f00) + (res1 & 0x00ff) +
-                    if res1 > 0x00ff { 0x100 } else { 0x000 };
-                if res2 < 0x1000 { res2 -= 0x0600; }
+                let mut res2 =
+                    (a & 0x0f00) + (v & 0x0f00) + (res1 & 0x00ff) + if res1 > 0x00ff { 0x100 } else { 0x000 };
+                if res2 < 0x1000 {
+                    res2 -= 0x0600;
+                }
 
-                (a as i32 & 0xf000) + (v as i32 & 0xf000) + (res2 as i32 & 0x0fff) +
-                    if res2 > 0x0fff { 0x1000 } else { 0x0000 }
+                (a & 0xf000) + (v & 0xf000) + (res2 & 0x0fff) + if res2 > 0x0fff { 0x1000 } else { 0x0000 }
             } else {
-                self.a as i32 + v as i32 + c as i32
+                self.a as i32 + v + c as i32
             };
             self.p.set_overflow((self.a ^ res as u16) & 0x8000 != 0 && (self.a ^ v as u16) & 0x8000 == 0);
-            if self.p.decimal() && res < 0x10000 { res -= 0x6000; }
+            if self.p.decimal() && res < 0x10000 {
+                res -= 0x6000;
+            }
             self.p.set_carry(res > 65535);
 
             self.a = self.p.set_nz(res as u16);
@@ -930,6 +965,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.a << 1);
         }
     }
+
     /// Arithmetic left-shift: Shift a memory location left by 1 bit (Read-Modify-Write)
     fn asl(&mut self, am: AddressingMode) {
         // Sets N, Z and C. The rightmost bit is filled with 0.
@@ -947,6 +983,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 2;
         }
     }
+
     /// Rotate Accumulator Left
     fn rol_a(&mut self) {
         // Sets N, Z, and C. C is used to fill the rightmost bit.
@@ -963,6 +1000,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Rotate Memory Left
     fn rol(&mut self, am: AddressingMode) {
         // Sets N, Z, and C. C is used to fill the rightmost bit.
@@ -977,7 +1015,7 @@ impl<M: Mem> Cpu<M> {
             self.p.set_carry(a & 0x8000 != 0);
             let res = self.p.set_nz((a << 1) | c as u16);
             am.storew(self, res);
-            self.cy += 1;   // FIXME times 2?
+            self.cy += 1; // FIXME times 2?
         }
     }
 
@@ -993,6 +1031,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.a >> 1);
         }
     }
+
     /// Logical Shift Right
     fn lsr(&mut self, am: AddressingMode) {
         // Sets N (always cleared), Z and C. The leftmost bit is filled with 0.
@@ -1008,6 +1047,7 @@ impl<M: Mem> Cpu<M> {
             am.storew(self, res);
         }
     }
+
     /// Rotate accumulator right
     fn ror_a(&mut self) {
         // Sets N, Z, and C. C is used to fill the leftmost bit.
@@ -1024,6 +1064,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 2;
         }
     }
+
     /// Rotate Memory Right
     fn ror(&mut self, am: AddressingMode) {
         // Sets N, Z, and C. C is used to fill the leftmost bit.
@@ -1064,6 +1105,7 @@ impl<M: Mem> Cpu<M> {
             self.x = self.p.set_nz(self.a);
         }
     }
+
     /// Transfer Accumulator to Index register Y
     fn tay(&mut self) {
         // Changes N and Z
@@ -1073,6 +1115,7 @@ impl<M: Mem> Cpu<M> {
             self.y = self.p.set_nz(self.a);
         }
     }
+
     /// Transfer X to A
     fn txa(&mut self) {
         // Changes N and Z
@@ -1082,6 +1125,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.x);
         }
     }
+
     /// Transfer X to S
     fn txs(&mut self) {
         // High Byte of X is 0 if X is 8-bit, we can just copy the whole X
@@ -1093,6 +1137,7 @@ impl<M: Mem> Cpu<M> {
             self.s = self.x;
         }
     }
+
     /// Transfer X to Y
     fn txy(&mut self) {
         // Changes N and Z
@@ -1102,6 +1147,7 @@ impl<M: Mem> Cpu<M> {
             self.y = self.p.set_nz(self.x);
         }
     }
+
     /// Transfer Index Register Y to Accumulator
     fn tya(&mut self) {
         // Changes N and Z
@@ -1111,6 +1157,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.y);
         }
     }
+
     /// Transfer Y to X
     fn tyx(&mut self) {
         // Changes N and Z
@@ -1134,6 +1181,7 @@ impl<M: Mem> Cpu<M> {
             self.storew(bank, addr, res);
         }
     }
+
     /// Increment accumulator
     fn ina(&mut self) {
         // Changes N and Z. Timing does not depend on accumulator size.
@@ -1144,6 +1192,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.a.wrapping_add(1));
         }
     }
+
     /// Increment Index Register X
     fn inx(&mut self) {
         // Changes N and Z. Timing does not depend on index register size.
@@ -1154,6 +1203,7 @@ impl<M: Mem> Cpu<M> {
             self.x = self.p.set_nz(self.x.wrapping_add(1));
         }
     }
+
     /// Increment Index Register Y
     fn iny(&mut self) {
         // Changes N and Z. Timing does not depend on index register size.
@@ -1164,6 +1214,7 @@ impl<M: Mem> Cpu<M> {
             self.y = self.p.set_nz(self.y.wrapping_add(1));
         }
     }
+
     /// Decrement Accumulator
     fn dea(&mut self) {
         // Changes N and Z. Timing does not depend on accumulator size.
@@ -1174,6 +1225,7 @@ impl<M: Mem> Cpu<M> {
             self.a = self.p.set_nz(self.a.wrapping_sub(1));
         }
     }
+
     /// Decrement memory location
     fn dec(&mut self, am: AddressingMode) {
         let (bank, addr) = am.address(self);
@@ -1187,6 +1239,7 @@ impl<M: Mem> Cpu<M> {
             self.storew(bank, addr, res);
         }
     }
+
     /// Decrement X
     fn dex(&mut self) {
         // Changes N and Z. Timing does not depend on index register size.
@@ -1199,6 +1252,7 @@ impl<M: Mem> Cpu<M> {
             self.x = self.p.set_nz(self.x.wrapping_sub(1));
         }
     }
+
     /// Decrement Y
     fn dey(&mut self) {
         // Changes N and Z. Timing does not depend on index register size.
@@ -1215,16 +1269,19 @@ impl<M: Mem> Cpu<M> {
         let a = am.address(self);
         self.branch(a);
     }
+
     /// Jump inside current program bank
     fn jmp(&mut self, am: AddressingMode) {
         let (_, addr) = am.address(self);
         self.pc = addr;
     }
+
     /// Branch always (inside current program bank, but this isn't checked)
     fn bra(&mut self, am: AddressingMode) {
         let a = am.address(self);
         self.branch(a);
     }
+
     /// Branch if Plus (N = 0)
     fn bpl(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1233,6 +1290,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if Minus/Negative (N = 1)
     fn bmi(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1241,6 +1299,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if Overflow Clear
     fn bvc(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1249,6 +1308,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if Overflow Set
     fn bvs(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1257,6 +1317,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if carry clear
     fn bcc(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1265,6 +1326,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if carry set
     fn bcs(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1273,6 +1335,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if Equal
     fn beq(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1281,6 +1344,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Branch if Not Equal (Branch if Z = 0)
     fn bne(&mut self, am: AddressingMode) {
         let a = am.address(self);
@@ -1315,6 +1379,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Test and set memory bits against accumulator
     fn tsb(&mut self, am: AddressingMode) {
         // Sets Z
@@ -1333,6 +1398,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 2;
         }
     }
+
     /// Test and reset memory bits against accumulator
     fn trb(&mut self, am: AddressingMode) {
         // Sets Z
@@ -1365,6 +1431,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Compare Index Register X with Memory
     fn cpx(&mut self, am: AddressingMode) {
         if self.p.small_index() {
@@ -1378,6 +1445,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Compare Index Register Y with Memory
     fn cpy(&mut self, am: AddressingMode) {
         if self.p.small_index() {
@@ -1409,6 +1477,7 @@ impl<M: Mem> Cpu<M> {
 
         self.pc = am.address(self).1;
     }
+
     /// Long jump to subroutine. Additionally saves PBR on the stack and sets it to the bank
     /// returned by `am.address()`.
     fn jsl(&mut self, am: AddressingMode) {
@@ -1423,15 +1492,20 @@ impl<M: Mem> Cpu<M> {
         self.pbr = pbr;
         self.pc = pc;
     }
+
     /// Return from Interrupt
-    fn rti(&mut self) { self.return_from_interrupt() }
+    fn rti(&mut self) {
+        self.return_from_interrupt()
+    }
+
     /// Return from Subroutine (Short - Like JSR)
     fn rts(&mut self) {
         let pcl = self.popb() as u16;
         let pch = self.popb() as u16;
         let pc = (pch << 8) | pcl;
-        self.pc = pc + 1;   // +1 since the last byte of the JSR was saved
+        self.pc = pc + 1; // +1 since the last byte of the JSR was saved
     }
+
     /// Return from Subroutine called with `jsl`.
     ///
     /// This also restores the PBR.
@@ -1441,17 +1515,36 @@ impl<M: Mem> Cpu<M> {
         let pbr = self.popb();
         let pc = (pch << 8) | pcl;
         self.pbr = pbr;
-        self.pc = pc + 1;   // +1 since the last byte of the JSR was saved
+        self.pc = pc + 1; // +1 since the last byte of the JSR was saved
     }
 
-    fn cli(&mut self) { self.p.set_irq_disable(false) }
-    fn sei(&mut self) { self.p.set_irq_disable(true) }
-    fn cld(&mut self) { self.p.set_decimal(false) }
-    fn sed(&mut self) { self.p.set_decimal(true) }
-    fn clc(&mut self) { self.p.set_carry(false) }
-    fn sec(&mut self) { self.p.set_carry(true) }
+    fn cli(&mut self) {
+        self.p.set_irq_disable(false)
+    }
 
-    fn wai(&mut self) { self.wai = true; }
+    fn sei(&mut self) {
+        self.p.set_irq_disable(true)
+    }
+
+    fn cld(&mut self) {
+        self.p.set_decimal(false)
+    }
+
+    fn sed(&mut self) {
+        self.p.set_decimal(true)
+    }
+
+    fn clc(&mut self) {
+        self.p.set_carry(false)
+    }
+
+    fn sec(&mut self) {
+        self.p.set_carry(true)
+    }
+
+    fn wai(&mut self) {
+        self.wai = true;
+    }
 
     /// Store 0 to memory
     fn stz(&mut self, am: AddressingMode) {
@@ -1475,6 +1568,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Load X register from memory
     fn ldx(&mut self, am: AddressingMode) {
         // Changes N and Z
@@ -1487,6 +1581,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     /// Load Y register from memory
     fn ldy(&mut self, am: AddressingMode) {
         // Changes N and Z
@@ -1512,6 +1607,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     fn stx(&mut self, am: AddressingMode) {
         // Changes no flags
         if self.p.small_index() {
@@ -1523,6 +1619,7 @@ impl<M: Mem> Cpu<M> {
             self.cy += 1;
         }
     }
+
     fn sty(&mut self, am: AddressingMode) {
         // Changes no flags
         if self.p.small_index() {
@@ -1562,10 +1659,12 @@ impl<M: Mem> Cpu<M> {
     fn tcd(&mut self) {
         self.d = self.p.set_nz(self.a);
     }
+
     /// Transfer Direct Page Register to 16-bit Accumulator
     fn tdc(&mut self) {
         self.a = self.p.set_nz(self.d);
     }
+
     /// Transfer 16-bit Accumulator to Stack Pointer
     fn tcs(&mut self) {
         if self.emulation {
@@ -1577,11 +1676,13 @@ impl<M: Mem> Cpu<M> {
             self.s = self.a;
         }
     }
+
     /// Transfer Stack Pointer to 16-bit Accumulator
     fn tsc(&mut self) {
         // Sets N and Z
         self.a = self.p.set_nz(self.s);
     }
+
     /// Transfer Stack Pointer to X Register
     fn tsx(&mut self) {
         // Sets N and Z
@@ -1593,6 +1694,7 @@ impl<M: Mem> Cpu<M> {
     }
 
     fn nop(&mut self) {}
+
     fn ill(&mut self) {}
 }
 
@@ -1601,64 +1703,83 @@ impl<M: Mem> Cpu<M> {
     fn direct_indirect(&mut self) -> AddressingMode {
         AddressingMode::DirectIndirect(self.fetchb())
     }
+
     fn direct_indirect_long(&mut self) -> AddressingMode {
         AddressingMode::DirectIndirectLong(self.fetchb())
     }
+
     fn direct_indirect_long_idx(&mut self) -> AddressingMode {
         AddressingMode::DirectIndirectLongIdx(self.fetchb())
     }
+
     fn absolute(&mut self) -> AddressingMode {
         AddressingMode::Absolute(self.fetchw())
     }
+
     fn absolute_indexed_x(&mut self) -> AddressingMode {
         AddressingMode::AbsIndexedX(self.fetchw())
     }
+
     fn absolute_indexed_y(&mut self) -> AddressingMode {
         AddressingMode::AbsIndexedY(self.fetchw())
     }
+
     fn absolute_indexed_indirect(&mut self) -> AddressingMode {
         AddressingMode::AbsIndexedIndirect(self.fetchw())
     }
+
     fn absolute_long(&mut self) -> AddressingMode {
         let addr = self.fetchw();
         let bank = self.fetchb();
         AddressingMode::AbsoluteLong(bank, addr)
     }
+
     fn absolute_long_indexed_x(&mut self) -> AddressingMode {
         let addr = self.fetchw();
         let bank = self.fetchb();
         AddressingMode::AbsLongIndexedX(bank, addr)
     }
+
     fn absolute_indirect(&mut self) -> AddressingMode {
         AddressingMode::AbsoluteIndirect(self.fetchw())
     }
+
     fn absolute_indirect_long(&mut self) -> AddressingMode {
         AddressingMode::AbsoluteIndirectLong(self.fetchw())
     }
+
     fn rel(&mut self) -> AddressingMode {
         AddressingMode::Rel(self.fetchb() as i8)
     }
+
     fn relative_long(&mut self) -> AddressingMode {
         AddressingMode::RelLong(self.fetchw() as i16)
     }
+
     fn stack_rel(&mut self) -> AddressingMode {
         AddressingMode::StackRel(self.fetchb())
     }
+
     fn direct(&mut self) -> AddressingMode {
         AddressingMode::Direct(self.fetchb())
     }
+
     fn direct_indexed_x(&mut self) -> AddressingMode {
         AddressingMode::DirectIndexedX(self.fetchb())
     }
+
     fn direct_indexed_y(&mut self) -> AddressingMode {
         AddressingMode::DirectIndexedY(self.fetchb())
     }
+
     fn direct_indexed_indirect(&mut self) -> AddressingMode {
         AddressingMode::DirectIndexedIndirect(self.fetchb())
     }
+
     fn direct_indirect_indexed(&mut self) -> AddressingMode {
         AddressingMode::DirectIndirectIndexed(self.fetchb())
     }
+
     /// Immediate value with accumulator size
     fn immediate_acc(&mut self) -> AddressingMode {
         if self.p.small_acc() {
@@ -1668,6 +1789,7 @@ impl<M: Mem> Cpu<M> {
             AddressingMode::Immediate(self.fetchw())
         }
     }
+
     /// Immediate value with index register size
     fn immediate_index(&mut self) -> AddressingMode {
         if self.p.small_index() {
@@ -1677,6 +1799,7 @@ impl<M: Mem> Cpu<M> {
             AddressingMode::Immediate(self.fetchw())
         }
     }
+
     /// Immediate value, one byte
     fn immediate8(&mut self) -> AddressingMode {
         AddressingMode::Immediate8(self.fetchb())

@@ -2,6 +2,7 @@ mod ui;
 
 use std::{cell::RefCell, env, sync::Arc};
 
+use smwe_emu::rom::Rom;
 use smwe_project::{Project, ProjectRef};
 use smwe_rom::SmwRom;
 
@@ -26,13 +27,14 @@ fn dev_open_rom() -> Option<ProjectRef> {
 
     log::info!("Opening ROM from path defined in ROM_PATH");
     let project = Project {
-        title:    String::from("Test Project"),
-        rom_data: SmwRom::from_file(rom_path)
+        title:        String::from("Test Project"),
+        old_rom_data: SmwRom::from_file(&rom_path)
             .map_err(|e| {
                 log::error!("Couldn't load ROM: {e}");
                 e
             })
             .ok()?,
+        rom:          Rom::new(std::fs::read(&rom_path).ok()?),
     };
     Some(Arc::new(RefCell::new(project)))
 }

@@ -21,6 +21,7 @@ use crate::ui::{
         palette_viewer::UiPaletteViewer,
         rom_info::UiRomInfo,
         tiles16x16::UiTiles16x16,
+        vram_view::UiVramView,
     },
     editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
     project_creator::UiProjectCreator,
@@ -103,8 +104,12 @@ impl UiMainWindow {
                             Some(path) => {
                                 use std::fmt::Write;
                                 let mut dump = String::with_capacity(4096);
-                                write!(&mut dump, "{:?}", self.project.as_ref().unwrap().borrow().rom_data.disassembly)
-                                    .unwrap();
+                                write!(
+                                    &mut dump,
+                                    "{:?}",
+                                    self.project.as_ref().unwrap().borrow().old_rom_data.disassembly
+                                )
+                                .unwrap();
                                 std::fs::write(path, dump).unwrap();
                             }
                             None => log::error!("Cannot save ROM dump."),
@@ -123,7 +128,7 @@ impl UiMainWindow {
                     ui.set_enabled(is_project_loaded);
                     if ui.button("Internal ROM Header").clicked() {
                         let rom_info =
-                            UiRomInfo::new(&self.project.as_ref().unwrap().borrow().rom_data.internal_header);
+                            UiRomInfo::new(&self.project.as_ref().unwrap().borrow().old_rom_data.internal_header);
                         self.open_tool(rom_info);
                         ui.close_menu();
                     }
@@ -141,6 +146,10 @@ impl UiMainWindow {
                     }
                     if ui.button("16x16 tiles").clicked() {
                         self.open_tool(UiTiles16x16::default());
+                        ui.close_menu();
+                    }
+                    if ui.button("VRAM view").clicked() {
+                        self.open_tool(UiVramView::default());
                         ui.close_menu();
                     }
                 });
