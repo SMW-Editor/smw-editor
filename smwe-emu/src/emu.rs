@@ -155,6 +155,37 @@ impl<'a> Mem for CheckedMem<'a> {
     }
 }
 
+pub fn fetch_anim_frame(cpu: &mut Cpu<CheckedMem>) -> u64 {
+    cpu.s = 0x1FF;
+    cpu.pc = 0x2000;
+    cpu.pbr = 0x00;
+    cpu.dbr = 0x00;
+    cpu.trace = false;
+    // quasi-loader bytecode
+    let routines = [
+        "CODE_05BB39",      // set up frames
+        "CODE_00A390",      // upload them
+    ];
+    let mut addr = 0x2000;
+    for i in routines {
+        cpu.mem.store(addr, 0x22);
+        cpu.mem.store_u24(addr+1, cpu.mem.cart.resolve(i).expect(&format!("no symbol: {}", i)));
+        addr += 4;
+    }
+    let mut cy = 0;
+    loop {
+        cy += cpu.dispatch() as u64;
+        //if cy > cy_limit { break; }
+        if cpu.ill {
+            println!("ILLEGAL INSTR");
+            break;
+        }
+        if cpu.pc == addr as u16 { break; }
+        cpu.mem.process_dma();
+    }
+    cy
+}
+
 pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     let now = std::time::Instant::now();
     cpu.emulation = false;
