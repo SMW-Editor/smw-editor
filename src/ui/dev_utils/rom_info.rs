@@ -11,7 +11,7 @@ pub struct UiRomInfo {
 }
 
 impl DockableEditorTool for UiRomInfo {
-    fn update(&mut self, ui: &mut Ui, _project_ref: &mut EditorState) {
+    fn update(&mut self, ui: &mut Ui, _state: &mut EditorState) {
         let min_scroll_height = ui.available_height();
         TableBuilder::new(ui) //
             .striped(true)

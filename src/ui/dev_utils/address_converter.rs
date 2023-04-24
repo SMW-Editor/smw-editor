@@ -36,7 +36,7 @@ impl Default for UiAddressConverter {
 }
 
 impl DockableEditorTool for UiAddressConverter {
-    fn update(&mut self, ui: &mut Ui, _project_ref: &mut EditorState) {
+    fn update(&mut self, ui: &mut Ui, _state: &mut EditorState) {
         self.mode_selection(ui);
         self.conversions(ui);
     }

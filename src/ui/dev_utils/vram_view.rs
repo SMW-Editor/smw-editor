@@ -16,9 +16,9 @@ impl Default for UiVramView {
 }
 
 impl DockableEditorTool for UiVramView {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut EditorState) {
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         SidePanel::left("vram_view.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
-        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, project_ref));
+        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, state));
     }
 
     fn title(&self) -> WidgetText {
@@ -44,7 +44,7 @@ impl UiVramView {
         ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch");
     }
 
-    fn central_panel(&mut self, ui: &mut Ui, project_ref: &mut EditorState) {
+    fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         //
     }
 }
