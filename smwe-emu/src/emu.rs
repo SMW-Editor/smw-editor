@@ -8,6 +8,7 @@ pub struct CheckedMem<'a> {
     pub wram: Vec<u8>,
     pub regs: Vec<u8>,
     pub vram: Vec<u8>,
+    pub cgram: Vec<u8>,
     pub extram: Vec<u8>,
     pub uninit: HashSet<usize>,
     pub error: Option<u32>,
@@ -57,7 +58,8 @@ impl<'a> CheckedMem<'a> {
                     self.vram[(dest*2 + i) as usize] = self.load(a + i);
                 }
             }
-        } else if b == 0x19 {
+            self.store_u16(0x2116, (dest+size) as u16);
+        } else if false && b == 0x19 {
             let _dest = self.load_u16(0x2116);
             //println!("DMA size {:04X}: VRAMh ${:02X}:{:04X} => ${:04X}", size, a_bank, a, dest);
             if params & 0x8 != 0 { // fill transfer
@@ -66,6 +68,13 @@ impl<'a> CheckedMem<'a> {
                     self.vram[i as usize * 2] = value;
                 }*/
             }
+        } else if b == 0x22 {
+            let dest = self.load(0x2121) as u32;
+            // cgram
+            for i in 0..size {
+                self.cgram[(dest*2 + i) as usize] = self.load(a + i);
+            }
+            self.store_u16(0x2121, (dest+size) as u16);
         } else {
             println!("DMA size {size:04X}: ${b:02X} ${a:06X}");
         }
@@ -202,6 +211,8 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         "CODE_00B888",      // init gfx32/33
         "CODE_05D796",      // init pointers
         "UploadSpriteGFX",  // upload graphics
+        "LoadPalette",      // init palette
+        "CODE_00922F",      // upload palette
         "CODE_05801E",      // decompress level
     ];
     let mut addr = 0x2000;
