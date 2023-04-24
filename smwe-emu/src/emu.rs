@@ -43,6 +43,7 @@ impl<'a> CheckedMem<'a> {
         let size = self.load_u16(0x4305 + ch) as u32;
         let b = self.load(0x4301 + ch);
         let params = self.load(0x4300 + ch);
+        // TODO: turn this into reg writes
         if b == 0x18 {
             let dest = self.load_u16(0x2116) as u32;
             //println!("DMA size {:04X}: VRAM ${:02X}:{:04X} => ${:04X}", size, a_bank, a, dest);
@@ -112,6 +113,17 @@ impl<'a> CheckedMem<'a> {
                 }
                 self.uninit.insert(ptr);
             }
+            // TODO: be more accurate
+            if let Some(value) = write {
+                if ptr == 0x2118 {
+                    let addr = self.load_u16(0x2116);
+                    self.vram[(addr as usize) * 2 + 0] = value;
+                } else if ptr == 0x2119 {
+                    let addr = self.load_u16(0x2116);
+                    self.vram[(addr as usize) * 2 + 1] = value;
+                    self.store_u16(0x2116, addr + 1);
+                }
+            }
             &mut self.regs[ptr-0x2000]
         } else if addr & 0xFFFF > 0x8000 {
             if let Some(c) = self.cart.read(addr) {
@@ -151,12 +163,14 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     cpu.pc = 0x2000;
     cpu.pbr = 0x00;
     cpu.dbr = 0x00;
-    cpu.trace = false;
+    cpu.trace = true;
     // quasi-loader bytecode
     cpu.mem.store(0x2000, 0x22);
     cpu.mem.store_u24(0x2001, cpu.mem.cart.resolve("CODE_05D796").unwrap());
     cpu.mem.store(0x2004, 0x22);
     cpu.mem.store_u24(0x2005, cpu.mem.cart.resolve("CODE_05801E").unwrap());
+    cpu.mem.store(0x2008, 0x22);
+    cpu.mem.store_u24(0x2009, cpu.mem.cart.resolve("UploadSpriteGFX").unwrap());
     let mut cy = 0;
     loop {
         cy += cpu.dispatch() as u64;
@@ -169,7 +183,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             cpu.a &= 0xFF00;
             cpu.a |= id & 0xFF;
         }
-        if cpu.pc == 0x2008 { break; }
+        if cpu.pc == 0x200C { break; }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());
