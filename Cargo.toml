@@ -26,7 +26,7 @@ smwe-widgets = { path = "smwe-widgets" }
 anyhow = "1.0"
 eframe = "0.21"
 egui = "0.21"
-egui_dock = "0.4"
+egui_dock = "0.5"
 egui_extras = "0.21"
 enum_dispatch = "0.3"
 inline_tweak = "1.0"

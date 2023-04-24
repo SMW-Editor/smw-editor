@@ -2,9 +2,7 @@ use std::{cell::RefCell, path::Path, sync::Arc};
 
 use eframe::egui::{Button, Ui, Window};
 use rfd::FileDialog;
-use smwe_emu::rom::Rom;
 use smwe_project::{Project, ProjectRef};
-use smwe_rom::SmwRom;
 
 use crate::ui::color;
 
@@ -126,12 +124,9 @@ impl UiProjectCreator {
     }
 
     fn handle_project_creation(&mut self, project_ref: &mut Option<ProjectRef>, created_or_cancelled: &mut bool) {
-        match SmwRom::from_file(&self.base_rom_path)
-            .and_then(|a| Ok((a, Rom::new(std::fs::read(&self.base_rom_path)?))))
-        {
-            Ok((old_rom_data, rom)) => {
+        match Project::new(&self.base_rom_path) {
+            Ok(project) => {
                 log::info!("Success creating a new project");
-                let project = Project { title: self.project_title.to_string(), old_rom_data, rom };
                 *project_ref = Some(Arc::new(RefCell::new(project)));
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();

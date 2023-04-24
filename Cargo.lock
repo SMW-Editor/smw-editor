@@ -840,11 +840,13 @@ dependencies = [
 
 [[package]]
 name = "egui_dock"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be7e6eb63cb936413bd2a4f54be4a9ef53a48252f25864f5f946d4954d7332bd"
+checksum = "7a682a90cd64cf1d25306bfd2d024f6893d57d8143c82adf7150778cbb872f8e"
 dependencies = [
+ "duplicate",
  "egui",
+ "paste",
 ]
 
 [[package]]
@@ -2445,6 +2447,8 @@ dependencies = [
 name = "smwe-project"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "log",
  "smwe-emu",
  "smwe-rom",
 ]

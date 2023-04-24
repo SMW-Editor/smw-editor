@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use eframe::Frame;
 use egui::*;
-use egui_dock::{DockArea, StyleBuilder, Tree};
+use egui_dock::{DockArea, Style as DockStyle, Tree};
 use rfd::FileDialog;
 use smwe_project::ProjectRef;
 
@@ -47,7 +47,8 @@ impl eframe::App for UiMainWindow {
             self.main_menu_bar(ctx, frame);
 
             DockArea::new(&mut self.dock_tree)
-                .style(StyleBuilder::from_egui(&ctx.style()).with_tab_scroll_area(false).build())
+                .style(DockStyle::from_egui(&ctx.style()))
+                .scroll_area_in_tabs(false)
                 .show(ctx, &mut EditorToolTabViewer { project_ref: &mut self.project });
 
             if let Some(project_creator) = &mut self.project_creator {
