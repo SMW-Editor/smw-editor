@@ -7,6 +7,7 @@ use crate::{
 
 pub const SECONDARY_ENTRANCE_TABLE: SnesSlice = SnesSlice::new(AddrSnes(0x05F800), 512);
 
+#[derive(Debug)]
 pub struct SecondaryEntrance([u8; 4]);
 
 impl SecondaryEntrance {

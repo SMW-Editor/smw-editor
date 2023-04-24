@@ -4,13 +4,12 @@ use egui::*;
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
-use smwe_project::ProjectRef;
 use smwe_rom::{
     disassembler::{binary_block::BinaryBlock, instruction::Instruction},
     snes_utils::addr::{Addr, AddrPc, AddrSnes},
 };
 
-use crate::ui::tool::DockableEditorTool;
+use crate::ui::{tool::DockableEditorTool, EditorState};
 
 #[derive(Debug)]
 pub struct UiDisassembler {
@@ -38,11 +37,11 @@ impl Default for UiDisassembler {
 }
 
 impl DockableEditorTool for UiDisassembler {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
-        SidePanel::left("disasm_switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, project_ref));
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
+        SidePanel::left("disasm_switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, state));
         let avail_area = ui.available_rect_before_wrap();
-        self.code(ui, project_ref);
-        self.branch_arrows(ui, project_ref, avail_area);
+        self.code(ui, state);
+        self.branch_arrows(ui, state, avail_area);
     }
 
     fn title(&self) -> WidgetText {
@@ -51,8 +50,8 @@ impl DockableEditorTool for UiDisassembler {
 }
 
 impl UiDisassembler {
-    fn switches(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
-        let project = project_ref.as_ref().unwrap().borrow();
+    fn switches(&mut self, ui: &mut Ui, state: &mut EditorState) {
+        let project = state.project.as_ref().unwrap().borrow();
         let disasm = &project.old_rom_data.disassembly;
 
         ui.horizontal(|ui| {
@@ -72,7 +71,7 @@ impl UiDisassembler {
         // ui.checkbox(&mut self.opt_draw_debug_info, "Draw debug info");
     }
 
-    fn code(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn code(&mut self, ui: &mut Ui, state: &mut EditorState) {
         const COLOR_ADDRESS: Color32 = Color32::from_rgba_premultiplied(0xaa, 0xaa, 0xaa, 0xff);
         const COLOR_DATA: Color32 = Color32::from_rgba_premultiplied(0xdd, 0xdd, 0xee, 0xff);
         const COLOR_CODE: Color32 = Color32::from_rgba_premultiplied(0xee, 0xdd, 0xdd, 0xff);
@@ -82,7 +81,7 @@ impl UiDisassembler {
 
         self.address_y_map.clear();
 
-        let project = project_ref.as_ref().unwrap().borrow();
+        let project = state.project.as_ref().unwrap().borrow();
         let disasm = &project.old_rom_data.disassembly;
 
         let str_buf = RefCell::new(String::with_capacity(256));
@@ -269,7 +268,7 @@ impl UiDisassembler {
             });
     }
 
-    fn branch_arrows(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>, avail_area: Rect) {
+    fn branch_arrows(&mut self, ui: &mut Ui, _project_ref: &mut EditorState, avail_area: Rect) {
         const ARROW_SZ: f32 = 4.0f32;
         const ARROW_SEP: f32 = 3.0f32;
 

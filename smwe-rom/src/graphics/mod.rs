@@ -30,11 +30,13 @@ pub struct TileFromWramError(AddrSnes);
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub enum BlockGfx<'t> {
     Animated(Vec<[&'t Tile; 4]>),
     Static([&'t Tile; 4]),
 }
 
+#[derive(Debug)]
 pub struct Gfx {
     pub files:              Vec<GfxFile>,
     pub color_palettes:     ColorPalettes,

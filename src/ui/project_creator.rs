@@ -2,10 +2,11 @@ use std::{cell::RefCell, path::Path, sync::Arc};
 
 use eframe::egui::{Button, Ui, Window};
 use rfd::FileDialog;
-use smwe_project::{Project, ProjectRef};
+use smwe_project::Project;
 
-use crate::ui::color;
+use crate::ui::{color, EditorState};
 
+#[derive(Debug)]
 pub struct UiProjectCreator {
     project_title: String,
     base_rom_path: String,
@@ -32,7 +33,7 @@ impl Default for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn update(&mut self, ui: &mut Ui, project: &mut Option<ProjectRef>) -> bool {
+    pub fn update(&mut self, ui: &mut Ui, project: &mut EditorState) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
@@ -107,7 +108,7 @@ impl UiProjectCreator {
         }
     }
 
-    fn create_or_cancel(&mut self, project: &mut Option<ProjectRef>, ui: &mut Ui, created_or_cancelled: &mut bool) {
+    fn create_or_cancel(&mut self, project: &mut EditorState, ui: &mut Ui, created_or_cancelled: &mut bool) {
         ui.horizontal(|ui| {
             if ui.add_enabled(self.no_creation_errors(), Button::new("Create").small()).clicked() {
                 log::info!("Attempting to create a new project");
@@ -123,11 +124,11 @@ impl UiProjectCreator {
         }
     }
 
-    fn handle_project_creation(&mut self, project_ref: &mut Option<ProjectRef>, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, state: &mut EditorState, created_or_cancelled: &mut bool) {
         match Project::new(&self.base_rom_path) {
             Ok(project) => {
                 log::info!("Success creating a new project");
-                *project_ref = Some(Arc::new(RefCell::new(project)));
+                state.project = Some(Arc::new(RefCell::new(project)));
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
             }

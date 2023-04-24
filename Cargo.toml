@@ -22,12 +22,14 @@ smwe-emu = { path = "smwe-emu" }
 smwe-project = { path = "smwe-project" }
 smwe-rom = { path = "smwe-rom" }
 smwe-widgets = { path = "smwe-widgets" }
+wdc65816 = { path = "wdc65816" }
 
 anyhow = "1.0"
 eframe = "0.21"
 egui = "0.21"
 egui_dock = "0.5"
 egui_extras = "0.21"
+egui-phosphor = "0.1"
 enum_dispatch = "0.3"
 inline_tweak = "1.0"
 itertools = "0.10"

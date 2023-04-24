@@ -69,6 +69,7 @@ pub mod sizes {
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct RomInternalHeader {
     pub internal_rom_name: String,
     pub map_mode:          MapMode,
@@ -94,7 +95,7 @@ pub enum MapMode {
     FastExHiRom = 0b110100,
 }
 
-#[derive(Copy, Clone, IntoPrimitive, TryFromPrimitive)]
+#[derive(Copy, Clone, Debug, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RomType {
     Rom               = 0x00,
@@ -138,7 +139,7 @@ pub enum RomType {
     RomCustomSram     = 0xF6,
 }
 
-#[derive(TryFromPrimitive)]
+#[derive(Debug, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RegionCode {
     Japan        = 0x00,

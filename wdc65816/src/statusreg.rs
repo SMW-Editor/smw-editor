@@ -17,7 +17,7 @@ const IRQ_FLAG: u8 = 0x04;
 const ZERO_FLAG: u8 = 0x02;
 const CARRY_FLAG: u8 = 0x01;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct StatusReg(pub u8);
 
 impl StatusReg {
@@ -26,14 +26,37 @@ impl StatusReg {
         StatusReg(SMALL_ACC_FLAG | SMALL_INDEX_FLAG | IRQ_FLAG)
     }
 
-    pub fn negative(&self) -> bool    { self.0 & NEG_FLAG != 0 }
-    pub fn overflow(&self) -> bool    { self.0 & OVERFLOW_FLAG != 0 }
-    pub fn small_acc(&self) -> bool   { self.0 & SMALL_ACC_FLAG != 0 }
-    pub fn small_index(&self) -> bool { self.0 & SMALL_INDEX_FLAG != 0 }
-    pub fn decimal(&self) -> bool     { self.0 & DEC_FLAG != 0 }
-    pub fn irq_disable(&self) -> bool { self.0 & IRQ_FLAG != 0 }
-    pub fn zero(&self) -> bool        { self.0 & ZERO_FLAG != 0}
-    pub fn carry(&self) -> bool       { self.0 & CARRY_FLAG != 0 }
+    pub fn negative(&self) -> bool {
+        self.0 & NEG_FLAG != 0
+    }
+
+    pub fn overflow(&self) -> bool {
+        self.0 & OVERFLOW_FLAG != 0
+    }
+
+    pub fn small_acc(&self) -> bool {
+        self.0 & SMALL_ACC_FLAG != 0
+    }
+
+    pub fn small_index(&self) -> bool {
+        self.0 & SMALL_INDEX_FLAG != 0
+    }
+
+    pub fn decimal(&self) -> bool {
+        self.0 & DEC_FLAG != 0
+    }
+
+    pub fn irq_disable(&self) -> bool {
+        self.0 & IRQ_FLAG != 0
+    }
+
+    pub fn zero(&self) -> bool {
+        self.0 & ZERO_FLAG != 0
+    }
+
+    pub fn carry(&self) -> bool {
+        self.0 & CARRY_FLAG != 0
+    }
 
     fn set(&mut self, flag: u8, value: bool) {
         if value {
@@ -43,14 +66,37 @@ impl StatusReg {
         }
     }
 
-    pub fn set_negative(&mut self, value: bool)    { self.set(NEG_FLAG, value) }
-    pub fn set_overflow(&mut self, value: bool)    { self.set(OVERFLOW_FLAG, value) }
-    pub fn set_small_acc(&mut self, value: bool)   { self.set(SMALL_ACC_FLAG, value) }
-    pub fn set_small_index(&mut self, value: bool) { self.set(SMALL_INDEX_FLAG, value) }
-    pub fn set_decimal(&mut self, value: bool)     { self.set(DEC_FLAG, value) }
-    pub fn set_irq_disable(&mut self, value: bool) { self.set(IRQ_FLAG, value) }
-    pub fn set_zero(&mut self, value: bool)        { self.set(ZERO_FLAG, value) }
-    pub fn set_carry(&mut self, value: bool)       { self.set(CARRY_FLAG, value) }
+    pub fn set_negative(&mut self, value: bool) {
+        self.set(NEG_FLAG, value)
+    }
+
+    pub fn set_overflow(&mut self, value: bool) {
+        self.set(OVERFLOW_FLAG, value)
+    }
+
+    pub fn set_small_acc(&mut self, value: bool) {
+        self.set(SMALL_ACC_FLAG, value)
+    }
+
+    pub fn set_small_index(&mut self, value: bool) {
+        self.set(SMALL_INDEX_FLAG, value)
+    }
+
+    pub fn set_decimal(&mut self, value: bool) {
+        self.set(DEC_FLAG, value)
+    }
+
+    pub fn set_irq_disable(&mut self, value: bool) {
+        self.set(IRQ_FLAG, value)
+    }
+
+    pub fn set_zero(&mut self, value: bool) {
+        self.set(ZERO_FLAG, value)
+    }
+
+    pub fn set_carry(&mut self, value: bool) {
+        self.set(CARRY_FLAG, value)
+    }
 
     pub fn set_nz(&mut self, val: u16) -> u16 {
         self.set_zero(val == 0);

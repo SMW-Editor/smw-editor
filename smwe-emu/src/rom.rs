@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Mapper {
     NoRom,
     LoRom,
@@ -52,7 +52,7 @@ impl Mapper {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Rom {
     buf:     Vec<u8>,
     mapper:  Mapper,

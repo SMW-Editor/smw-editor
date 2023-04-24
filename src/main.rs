@@ -12,7 +12,7 @@ fn main() -> eframe::Result<()> {
 
     let project = dev_open_rom();
     let native_options = NativeOptions::default();
-    eframe::run_native("SMW Editor v0.1.0", native_options, Box::new(|_| Box::new(UiMainWindow::new(project))))
+    eframe::run_native("SMW Editor v0.1.0", native_options, Box::new(|cc| Box::new(UiMainWindow::new(project, cc))))
 }
 
 fn dev_open_rom() -> Option<ProjectRef> {

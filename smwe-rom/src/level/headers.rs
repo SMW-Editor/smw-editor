@@ -13,13 +13,13 @@ pub const PRIMARY_HEADER_SIZE: usize = 5;
 pub const SECONDARY_HEADER_SIZE: usize = 4;
 pub const SPRITE_HEADER_SIZE: usize = 1;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PrimaryHeader([u8; PRIMARY_HEADER_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SecondaryHeader([u8; SECONDARY_HEADER_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpriteHeader(u8);
 
 impl PrimaryHeader {

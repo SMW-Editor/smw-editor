@@ -10,10 +10,10 @@ pub const SPRITE_INSTANCE_SIZE: usize = 3;
 
 pub type SpriteID = u8;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpriteInstance([u8; SPRITE_INSTANCE_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpriteLayer {
     _sprites: Vec<SpriteInstance>,
 }

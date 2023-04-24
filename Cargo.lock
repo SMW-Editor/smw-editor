@@ -822,6 +822,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-phosphor"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb1c01d08372b4b7d05ed15ace0e03124cf8df97be75103ee783965c71fb82ba"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui-winit"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2419,6 +2428,7 @@ dependencies = [
  "anyhow",
  "eframe",
  "egui",
+ "egui-phosphor",
  "egui_dock",
  "egui_extras",
  "enum_dispatch",
@@ -2434,6 +2444,7 @@ dependencies = [
  "smwe-rom",
  "smwe-widgets",
  "thiserror",
+ "wdc65816",
 ]
 
 [[package]]

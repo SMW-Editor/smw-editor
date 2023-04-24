@@ -145,7 +145,7 @@ macro_rules! impl_color_palette {
 
 // -------------------------------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ColorPalettes {
     pub players: Box<[Abgr1555]>,
 
@@ -162,14 +162,14 @@ pub struct ColorPalettes {
     pub lv_specific_set: LevelColorPaletteSet,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct OverworldColorPaletteSet {
     pub layer2_pre_special:  Vec<Box<[Abgr1555]>>,
     pub layer2_post_special: Vec<Box<[Abgr1555]>>,
     pub layer2_indices:      Vec<usize>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct LevelColorPaletteSet {
     pub back_area_colors: Vec<Abgr1555>,
     pub bg_palettes:      Vec<Box<[Abgr1555]>>,
@@ -177,7 +177,7 @@ pub struct LevelColorPaletteSet {
     pub sprite_palettes:  Vec<Box<[Abgr1555]>>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpecificLevelColorPalette {
     pub back_area_color: Abgr1555,
     pub background:      Box<[Abgr1555]>,
@@ -190,7 +190,7 @@ pub struct SpecificLevelColorPalette {
     pub animated:        Box<[Abgr1555]>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpecificOverworldColorPalette {
     pub layer1:  Box<[Abgr1555]>,
     pub layer2:  Box<[Abgr1555]>,
@@ -200,7 +200,7 @@ pub struct SpecificOverworldColorPalette {
     pub wtf:     Box<[Abgr1555]>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum OverworldState {
     PreSpecial,
     PostSpecial,

@@ -4,14 +4,14 @@ use egui::{panel::Side, *};
 use egui_extras::{Column, TableBuilder};
 use inline_tweak::tweak;
 use itertools::Itertools;
-use smwe_project::{Project, ProjectRef};
+use smwe_project::Project;
 use smwe_rom::{
     graphics::{palette::ColorPalette, BlockGfx},
     objects::map16::Tile8x8,
 };
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
-use crate::ui::tool::DockableEditorTool;
+use crate::ui::{tool::DockableEditorTool, EditorState};
 
 enum TileImage {
     Static(TextureHandle),
@@ -43,9 +43,9 @@ impl Default for UiTiles16x16 {
 }
 
 impl DockableEditorTool for UiTiles16x16 {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if self.tile_images.is_empty() {
-            self.load_images(project_ref, ui.ctx());
+            self.load_images(state, ui.ctx());
         }
 
         SidePanel::new(Side::Left, ui.id().with("sp")).resizable(false).show_inside(ui, |ui| {
@@ -55,7 +55,7 @@ impl DockableEditorTool for UiTiles16x16 {
                     for i in 1..=5 {
                         let response = ui.selectable_value(&mut self.selected_tileset, i, format!("Tileset {i}"));
                         if response.clicked() {
-                            self.load_images(project_ref, ui.ctx());
+                            self.load_images(state, ui.ctx());
                         }
                     }
                 });
@@ -66,36 +66,36 @@ impl DockableEditorTool for UiTiles16x16 {
                 ui.label("Level number");
 
                 if response.changed() {
-                    self.load_images(project_ref, ui.ctx());
+                    self.load_images(state, ui.ctx());
                 }
             });
 
             if ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed() {
-                self.load_images(project_ref, ui.ctx());
+                self.load_images(state, ui.ctx());
             }
 
             if ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed() {
-                self.load_images(project_ref, ui.ctx());
+                self.load_images(state, ui.ctx());
             }
 
             if ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed() {
-                self.load_images(project_ref, ui.ctx());
+                self.load_images(state, ui.ctx());
             }
 
             ui.horizontal(|ui| {
                 if ui.add_enabled(self.vram_offset > 0, Button::new("-")).clicked() {
                     self.vram_offset = self.vram_offset.saturating_sub(0x20);
-                    self.load_images(project_ref, ui.ctx());
+                    self.load_images(state, ui.ctx());
                 }
                 if ui
                     .add(DragValue::new(&mut self.vram_offset).clamp_range(0..=0xFFFF).hexadecimal(4, false, true))
                     .changed()
                 {
-                    self.load_images(project_ref, ui.ctx());
+                    self.load_images(state, ui.ctx());
                 }
                 if ui.add_enabled(self.vram_offset < 0xFFFF, Button::new("+")).clicked() {
                     self.vram_offset = self.vram_offset.saturating_add(0x20);
-                    self.load_images(project_ref, ui.ctx());
+                    self.load_images(state, ui.ctx());
                 }
                 ui.label("Level number");
             });
@@ -136,10 +136,10 @@ impl DockableEditorTool for UiTiles16x16 {
 }
 
 impl UiTiles16x16 {
-    fn load_images(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
+    fn load_images(&mut self, state: &mut EditorState, ctx: &Context) {
         self.tile_images.clear();
 
-        let project: &RefCell<Project> = project_ref.as_ref().unwrap();
+        let project: &RefCell<Project> = state.project.as_ref().unwrap();
         let rom = &project.borrow().old_rom_data;
 
         let level = &rom.levels[self.level_number as usize];

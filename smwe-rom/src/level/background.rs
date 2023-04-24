@@ -4,7 +4,7 @@ use crate::compression::{lc_rle1, DecompressionError};
 
 pub type BackgroundTileID = u8;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BackgroundData {
     _tile_ids: Vec<BackgroundTileID>,
 }

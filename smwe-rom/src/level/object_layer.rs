@@ -12,32 +12,32 @@ pub const EXIT_INSTANCE_SIZE: usize = 4;
 pub type StandardObjectID = u8;
 pub type ExtendedObjectID = u8;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct StandardObject([u8; NON_EXIT_INSTANCE_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ExitObject([u8; EXIT_INSTANCE_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ScreenJumpObject([u8; NON_EXIT_INSTANCE_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ExtendedOtherObject([u8; NON_EXIT_INSTANCE_SIZE]);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ExtendedInstance {
     Exit(ExitObject),
     ScreenJump(ScreenJumpObject),
     Other(ExtendedOtherObject),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ObjectInstance {
     Standard(StandardObject),
     Extended(ExtendedInstance),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ObjectLayer {
     _objects: Vec<ObjectInstance>,
 }

@@ -1,7 +1,6 @@
 use std::fmt::Write;
 
 use egui::{TextEdit, Ui, WidgetText};
-use smwe_project::ProjectRef;
 use smwe_rom::snes_utils::addr::{AddrPc, AddrSnes};
 
 use crate::ui::{
@@ -11,6 +10,7 @@ use crate::ui::{
         modes::{ConvDir, ConversionMode},
     },
     tool::DockableEditorTool,
+    EditorState,
 };
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl Default for UiAddressConverter {
 }
 
 impl DockableEditorTool for UiAddressConverter {
-    fn update(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui, _project_ref: &mut EditorState) {
         self.mode_selection(ui);
         self.conversions(ui);
     }

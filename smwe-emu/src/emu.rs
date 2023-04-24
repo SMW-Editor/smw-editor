@@ -1,14 +1,14 @@
 #![allow(clippy::identity_op)]
 
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc};
 
 use wdc65816::{Cpu, Mem};
 
 use crate::rom::Rom;
 
-#[derive(Clone)]
-pub struct CheckedMem<'a> {
-    pub cart:       &'a Rom,
+#[derive(Debug, Clone)]
+pub struct CheckedMem {
+    pub cart:       Rc<Rom>,
     pub wram:       Vec<u8>,
     pub regs:       Vec<u8>,
     pub vram:       Vec<u8>,
@@ -20,7 +20,21 @@ pub struct CheckedMem<'a> {
     pub last_store: Option<u32>,
 }
 
-impl<'a> CheckedMem<'a> {
+impl CheckedMem {
+    pub fn new(rom: Rc<Rom>) -> Self {
+        Self {
+            cart:       rom,
+            wram:       Vec::from([0; 0x20000]),
+            regs:       Vec::from([0; 0x6000]),
+            vram:       Vec::from([0; 0x10000]),
+            extram:     Vec::from([0; 0x10000]),
+            uninit:     HashSet::new(),
+            error:      None,
+            err_value:  None,
+            last_store: None,
+        }
+    }
+
     pub fn load_u16(&mut self, addr: u32) -> u16 {
         let l = self.load(addr);
         let h = self.load(addr + 1);
@@ -161,7 +175,7 @@ impl<'a> CheckedMem<'a> {
         *mutable
     }
 }
-impl<'a> Mem for CheckedMem<'a> {
+impl Mem for CheckedMem {
     #[allow(clippy::let_and_return)]
     fn load(&mut self, addr: u32) -> u8 {
         let value = self.map(addr, None);

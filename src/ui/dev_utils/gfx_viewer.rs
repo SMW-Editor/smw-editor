@@ -1,9 +1,8 @@
 use constants::*;
 use egui::*;
-use smwe_project::ProjectRef;
 use smwe_rom::graphics::{gfx_file::TileFormat, palette::ColorPalette};
 
-use crate::ui::tool::DockableEditorTool;
+use crate::ui::{tool::DockableEditorTool, EditorState};
 
 #[allow(dead_code)]
 #[rustfmt::skip]
@@ -57,11 +56,11 @@ impl Default for UiGfxViewer {
 }
 
 impl DockableEditorTool for UiGfxViewer {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if self.image_handle.is_none() {
-            self.update_image(project_ref, ui.ctx());
+            self.update_image(state, ui.ctx());
         }
-        SidePanel::left("switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, project_ref));
+        SidePanel::left("switches_panel").resizable(false).show_inside(ui, |ui| self.switches(ui, state));
         self.gfx_image(ui);
     }
 
@@ -71,9 +70,9 @@ impl DockableEditorTool for UiGfxViewer {
 }
 
 impl UiGfxViewer {
-    fn switches(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn switches(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let mut changed_any = false;
-        if let Some(project) = project_ref.as_ref() {
+        if let Some(project) = state.project.as_ref() {
             let project = project.borrow();
             let rom = &project.old_rom_data;
 
@@ -113,7 +112,7 @@ impl UiGfxViewer {
         }
 
         if changed_any {
-            self.update_image(project_ref, ui.ctx());
+            self.update_image(state, ui.ctx());
         }
     }
 
@@ -126,8 +125,8 @@ impl UiGfxViewer {
         }
     }
 
-    fn update_image(&mut self, project_ref: &mut Option<ProjectRef>, ctx: &Context) {
-        let project = project_ref.as_ref().unwrap().borrow();
+    fn update_image(&mut self, state: &mut EditorState, ctx: &Context) {
+        let project = state.project.as_ref().unwrap().borrow();
         let rom = &project.old_rom_data;
         let gfx_file = &rom.gfx.files[self.curr_gfx_file_num as usize];
 

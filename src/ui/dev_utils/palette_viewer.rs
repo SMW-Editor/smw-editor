@@ -2,11 +2,10 @@ use egui::*;
 use inline_tweak::tweak;
 use itertools::Itertools;
 use num_enum::TryFromPrimitive;
-use smwe_project::ProjectRef;
 use smwe_rom::graphics::palette::{ColorPalette, OverworldState};
 use smwe_widgets::flipbook::{AnimationState, Flipbook};
 
-use crate::ui::tool::DockableEditorTool;
+use crate::ui::{tool::DockableEditorTool, EditorState};
 
 #[repr(usize)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, TryFromPrimitive)]
@@ -43,16 +42,16 @@ impl Default for UiPaletteViewer {
 }
 
 impl DockableEditorTool for UiPaletteViewer {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if self.palette_image.is_none() {
-            self.update_palette_image(ui, project_ref);
+            self.update_palette_image(ui, state);
         }
 
         TopBottomPanel::top("palette_selectors_panel").show_inside(ui, |ui| {
-            self.context_selector(ui, project_ref);
+            self.context_selector(ui, state);
             match self.palette_context {
-                PaletteContext::Level => self.selectors_level(ui, project_ref),
-                PaletteContext::Overworld => self.selectors_overworld(ui, project_ref),
+                PaletteContext::Level => self.selectors_level(ui, state),
+                PaletteContext::Overworld => self.selectors_overworld(ui, state),
             }
         });
         ui.centered_and_justified(|ui| self.display_palette(ui));
@@ -64,7 +63,7 @@ impl DockableEditorTool for UiPaletteViewer {
 }
 
 impl UiPaletteViewer {
-    fn context_selector(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn context_selector(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let mut context_changed = false;
         let mut context_raw = self.palette_context as usize;
         let context_names = ["Level", "Overworld"];
@@ -80,13 +79,13 @@ impl UiPaletteViewer {
         self.palette_context = PaletteContext::try_from(context_raw).unwrap_or(PaletteContext::Level);
 
         if context_changed {
-            self.update_palette_image(ui, project_ref);
+            self.update_palette_image(ui, state);
         }
     }
 
-    fn selectors_level(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn selectors_level(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let level_count = {
-            let project = project_ref.as_ref().unwrap().borrow();
+            let project = state.project.as_ref().unwrap().borrow();
             project.old_rom_data.levels.len() as i32
         };
 
@@ -95,23 +94,23 @@ impl UiPaletteViewer {
                 DragValue::new(&mut self.level_num).clamp_range(0..=level_count - 1).hexadecimal(3, false, true);
             if ui.add(drag_level_num).changed() {
                 log::info!("Showing color palette for level {:X}", self.level_num);
-                self.update_palette_image(ui, project_ref);
+                self.update_palette_image(ui, state);
             }
             ui.label("Level number");
         });
     }
 
-    fn selectors_overworld(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn selectors_overworld(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if ui.checkbox(&mut self.special_completed, "Special world completed").changed() {
             log::info!(
                 "Showing color palette for {}",
                 if self.special_completed { "post-special world" } else { "pre-special world" }
             );
-            self.update_palette_image(ui, project_ref);
+            self.update_palette_image(ui, state);
         }
 
         let submap_count = {
-            let project = project_ref.as_ref().unwrap().borrow();
+            let project = state.project.as_ref().unwrap().borrow();
             project.old_rom_data.gfx.color_palettes.ow_specific_set.layer2_indices.len() as i32
         };
 
@@ -120,14 +119,14 @@ impl UiPaletteViewer {
                 DragValue::new(&mut self.submap_num).clamp_range(0..=submap_count - 1).hexadecimal(1, false, true);
             if ui.add(drag_submap_num).changed() {
                 log::info!("Showing color palette for submap {:X}", self.submap_num);
-                self.update_palette_image(ui, project_ref);
+                self.update_palette_image(ui, state);
             }
             ui.label("Submap number");
         });
     }
 
-    fn update_palette_image(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
-        let project = project_ref.as_ref().unwrap().borrow();
+    fn update_palette_image(&mut self, ui: &mut Ui, state: &mut EditorState) {
+        let project = state.project.as_ref().unwrap().borrow();
         let rom = &project.old_rom_data;
         self.palette_image = Some(match self.palette_context {
             PaletteContext::Level => {

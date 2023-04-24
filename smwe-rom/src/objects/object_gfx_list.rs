@@ -14,6 +14,7 @@ const OBJECT_GFX_LIST: SnesSlice = SnesSlice::new(AddrSnes(0x00A92B), 26 * 4);
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct ObjectGfxList {
     gfx_file_nums: Vec<u8>,
 }

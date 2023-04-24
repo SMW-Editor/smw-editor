@@ -32,6 +32,7 @@ use crate::{
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct SmwRom {
     pub disassembly:         RomDisassembly,
     pub internal_header:     RomInternalHeader,

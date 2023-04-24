@@ -31,7 +31,7 @@ const BRK_VEC16: u16 = 0xFFE6;
 #[allow(dead_code)]
 const COP_VEC16: u16 = 0xFFE4;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Cpu<M: Mem> {
     pub a:         u16,
     pub x:         u16,

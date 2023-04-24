@@ -1,21 +1,20 @@
 use egui::{TextEdit, Ui, WidgetText};
 use egui_extras::{Column, TableBuilder};
-use smwe_project::ProjectRef;
 use smwe_rom::disassembler::serialization::LineKind;
 
-use crate::ui::tool::DockableEditorTool;
+use crate::ui::{tool::DockableEditorTool, EditorState};
 
 #[derive(Default)]
 pub struct UiCodeEditor {}
 
 impl DockableEditorTool for UiCodeEditor {
-    fn update(&mut self, ui: &mut Ui, project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let min_scroll_height = ui.available_height();
         TableBuilder::new(ui)
             .min_scrolled_height(min_scroll_height)
             .columns(Column::remainder().at_least(300.), 2)
             .body(|tb| {
-                let mut project = project_ref.as_mut().unwrap().borrow_mut();
+                let mut project = state.project.as_mut().unwrap().borrow_mut();
                 tb.rows(15., project.old_rom_data.disassembly.code_lines.len(), |i, mut tr| {
                     match &mut project.old_rom_data.disassembly.code_lines[i] {
                         LineKind::Label { label, comment } => {

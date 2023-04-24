@@ -48,7 +48,7 @@ pub struct Tile {
     pub color_indices: Box<[u8]>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct GfxFile {
     pub tile_format: TileFormat,
     pub tiles:       Vec<Tile>,

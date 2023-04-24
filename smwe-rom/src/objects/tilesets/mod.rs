@@ -31,10 +31,12 @@ pub const TILESETS_COUNT: usize = 5;
 
 // -------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct Tilesets {
     pub tiles: Vec<Tile>,
 }
 
+#[derive(Debug)]
 pub enum Tile {
     Shared(Block),
     TilesetSpecific([Block; TILESETS_COUNT]),

@@ -62,13 +62,13 @@ pub const LEVEL_COUNT: usize = 0x200;
 
 // -------------------------------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Layer2Data {
     Background(BackgroundData),
     Objects(ObjectLayer),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Level {
     pub primary_header:   PrimaryHeader,
     pub secondary_header: SecondaryHeader,
