@@ -125,7 +125,7 @@ impl<'a> CheckedMem<'a> {
                 }
             }
             &mut self.regs[ptr-0x2000]
-        } else if addr & 0xFFFF > 0x8000 {
+        } else if addr & 0xFFFF >= 0x8000 {
             if let Some(c) = self.cart.read(addr) {
                 return c;
             } else {
@@ -164,16 +164,21 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     cpu.pc = 0x2000;
     cpu.pbr = 0x00;
     cpu.dbr = 0x00;
-    cpu.trace = true;
+    cpu.trace = false;
     // quasi-loader bytecode
-    cpu.mem.store(0x2000, 0x22);
-    cpu.mem.store_u24(0x2001, cpu.mem.cart.resolve("CODE_05D796").unwrap());
-    cpu.mem.store(0x2004, 0x22);
-    cpu.mem.store_u24(0x2005, cpu.mem.cart.resolve("CODE_05801E").unwrap());
-    cpu.mem.store(0x2008, 0x22);
-    cpu.mem.store_u24(0x2009, cpu.mem.cart.resolve("UploadSpriteGFX").unwrap());
-    cpu.mem.store(0x200C, 0x22);
-    cpu.mem.store_u24(0x200D, cpu.mem.cart.resolve("CODE_00A993").unwrap());
+    let routines = [
+        "CODE_00A993",      // init layer 3 / sp0
+        "CODE_00B888",      // init gfx32/33
+        "CODE_05D796",      // init pointers
+        "UploadSpriteGFX",  // upload graphics
+        "CODE_05801E",      // decompress level
+    ];
+    let mut addr = 0x2000;
+    for i in routines {
+        cpu.mem.store(addr, 0x22);
+        cpu.mem.store_u24(addr+1, cpu.mem.cart.resolve(i).expect(&format!("no symbol: {}", i)));
+        addr += 4;
+    }
     let mut cy = 0;
     loop {
         cy += cpu.dispatch() as u64;
@@ -186,7 +191,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             cpu.a &= 0xFF00;
             cpu.a |= id & 0xFF;
         }
-        if cpu.pc == 0x2010 { break; }
+        if cpu.pc == addr as u16 { break; }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());
