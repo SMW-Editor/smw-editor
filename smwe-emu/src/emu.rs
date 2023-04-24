@@ -27,6 +27,7 @@ impl CheckedMem {
             wram:       Vec::from([0; 0x20000]),
             regs:       Vec::from([0; 0x6000]),
             vram:       Vec::from([0; 0x10000]),
+            cgram:      Vec::from([0; 0x200]),
             extram:     Vec::from([0; 0x10000]),
             uninit:     HashSet::new(),
             error:      None,
