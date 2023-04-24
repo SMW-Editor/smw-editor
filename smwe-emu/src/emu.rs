@@ -158,6 +158,7 @@ impl<'a> Mem for CheckedMem<'a> {
 pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     let now = std::time::Instant::now();
     cpu.emulation = false;
+    // set submap
     cpu.mem.store(0x1F11, (id>>8) as _);
     cpu.s = 0x1FF;
     cpu.pc = 0x2000;
@@ -171,6 +172,8 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     cpu.mem.store_u24(0x2005, cpu.mem.cart.resolve("CODE_05801E").unwrap());
     cpu.mem.store(0x2008, 0x22);
     cpu.mem.store_u24(0x2009, cpu.mem.cart.resolve("UploadSpriteGFX").unwrap());
+    cpu.mem.store(0x200C, 0x22);
+    cpu.mem.store_u24(0x200D, cpu.mem.cart.resolve("CODE_00A993").unwrap());
     let mut cy = 0;
     loop {
         cy += cpu.dispatch() as u64;
@@ -183,7 +186,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             cpu.a &= 0xFF00;
             cpu.a |= id & 0xFF;
         }
-        if cpu.pc == 0x200C { break; }
+        if cpu.pc == 0x2010 { break; }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());
