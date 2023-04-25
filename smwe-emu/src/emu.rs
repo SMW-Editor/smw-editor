@@ -36,6 +36,13 @@ impl CheckedMem {
         }
     }
 
+
+    pub fn load_u8(&mut self, addr: u32) -> u8 {
+        self.load(addr)
+    }
+    pub fn store_u8(&mut self, addr: u32, value: u8) {
+        self.store(addr, value)
+    }
     pub fn load_u16(&mut self, addr: u32) -> u16 {
         let l = self.load(addr);
         let h = self.load(addr + 1);
@@ -239,10 +246,10 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         "CODE_00A993",     // init layer 3 / sp0
         "CODE_00B888",     // init gfx32/33
         "CODE_05D796",     // init pointers
+        "CODE_05801E",     // decompress level
         "UploadSpriteGFX", // upload graphics
         "LoadPalette",     // init palette
         "CODE_00922F",     // upload palette
-        "CODE_05801E",     // decompress level
     ];
     let mut addr = 0x2000;
     for i in routines {

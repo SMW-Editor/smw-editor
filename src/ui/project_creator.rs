@@ -21,7 +21,7 @@ impl Default for UiProjectCreator {
         log::info!("Opened Project Creator");
         let mut myself = UiProjectCreator {
             project_title: String::from("My SMW hack"),
-            base_rom_path: String::new(),
+            base_rom_path: String::from("./smw.smc"),
 
             err_project_title:    String::new(),
             err_base_rom_path:    String::new(),
