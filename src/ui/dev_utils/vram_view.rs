@@ -78,7 +78,7 @@ impl UiVramView {
             ui.label("Palette");
         });
         need_update |=
-            ui.add(DragValue::new(&mut self.show).clamp_range(0x0..=0x3).hexadecimal(1, false, true)).changed();
+            ui.add(DragValue::new(&mut self.show).clamp_range(0x0..=0x2).hexadecimal(1, false, true)).changed();
         need_update |= ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed();
         need_update |= ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed();
         need_update |= ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed();
@@ -153,59 +153,62 @@ impl UiVramView {
         let cpu = state.cpu.as_mut().unwrap(); // should be set already
         let mut new_image;
         let mut new_spr_image;
-        if self.show == 0 {
-            let palette = &cpu.mem.cgram;
-            let mut data = &cpu.mem.vram[..];
-            let img_w = 128;
-            let img_h = 1024;
-            self.curr_image_size = (img_w, img_h);
-            let mut tile_idx = 0;
-            new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            while let Ok((rest, tile)) = Tile::from_4bpp(data) {
-                data = rest;
-                let (row, column) = (tile_idx / N_TILES_IN_ROW, tile_idx % N_TILES_IN_ROW);
-                let (tile_x, tile_y) = (column * 8, row * 8);
-                for (pixel_idx, &id) in tile.color_indices.iter().enumerate() {
-                    if id == 0 {
-                        continue;
+        match self.show {
+            0 => {
+                let palette = &cpu.mem.cgram;
+                let mut data = &cpu.mem.vram[..];
+                let img_w = 128;
+                let img_h = 1024;
+                self.curr_image_size = (img_w, img_h);
+                let mut tile_idx = 0;
+                new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                while let Ok((rest, tile)) = Tile::from_4bpp(data) {
+                    data = rest;
+                    let (row, column) = (tile_idx / N_TILES_IN_ROW, tile_idx % N_TILES_IN_ROW);
+                    let (tile_x, tile_y) = (column * 8, row * 8);
+                    for (pixel_idx, &id) in tile.color_indices.iter().enumerate() {
+                        if id == 0 {
+                            continue;
+                        }
+                        let (pixel_x, pixel_y) = (tile_x + (pixel_idx % 8), tile_y + (pixel_idx / 8));
+                        let id = id as usize * 2 + self.palette_line as usize * 0x20;
+                        let color = u16::from_le_bytes([palette[id], palette[id + 1]]);
+                        new_image[(pixel_x, pixel_y)] = Color32::from(Abgr1555(color));
                     }
-                    let (pixel_x, pixel_y) = (tile_x + (pixel_idx % 8), tile_y + (pixel_idx / 8));
-                    let id = id as usize * 2 + self.palette_line as usize * 0x20;
-                    let color = u16::from_le_bytes([palette[id], palette[id + 1]]);
-                    new_image[(pixel_x, pixel_y)] = Color32::from(Abgr1555(color));
+                    tile_idx += 1;
                 }
-                tile_idx += 1;
             }
-        } else if self.show == 1 {
-            let img_w = 256;
-            let img_h = 512;
-            self.curr_image_size = (img_w, img_h);
-            new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            // TODO: symbols
-            for (idx, i) in (0..512).enumerate() {
-                let (row, column) = (idx / 16, idx % 16);
-                let (block_x, block_y) = (column * 16, row * 16);
-                Self::draw_block(cpu, &mut new_image, i, block_x, block_y);
+            1 => {
+                let img_w = 256;
+                let img_h = 512;
+                self.curr_image_size = (img_w, img_h);
+                new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                // TODO: symbols
+                for (idx, i) in (0..512).enumerate() {
+                    let (row, column) = (idx / 16, idx % 16);
+                    let (block_x, block_y) = (column * 16, row * 16);
+                    Self::draw_block(cpu, &mut new_image, i, block_x, block_y);
+                }
             }
-        } else if self.show == 2 {
-            let img_w = 512 * 16;
-            let img_h = 16 * 27;
-            self.curr_image_size = (img_w, img_h);
-            new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
-            // TODO: symbols
-            for idx in 0..512 * 27 {
-                let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
-                let (row, column) = (sidx / 16, sidx % 16);
-                let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
-                let block_id = cpu.mem.load_u8(0x7EC800 + idx as u32) as u16
-                    | ((cpu.mem.load_u8(0x7FC800 + idx as u32) as u16) << 8);
-                Self::draw_block(cpu, &mut new_image, block_id, block_x, block_y);
+            2 => {
+                let img_w = 512 * 16;
+                let img_h = 16 * 27;
+                self.curr_image_size = (img_w, img_h);
+                new_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                new_spr_image = ColorImage::new([img_w, img_h], Color32::TRANSPARENT);
+                // TODO: symbols
+                for idx in 0..512 * 27 {
+                    let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
+                    let (row, column) = (sidx / 16, sidx % 16);
+                    let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
+                    let block_id = cpu.mem.load_u8(0x7EC800 + idx as u32) as u16
+                        | ((cpu.mem.load_u8(0x7FC800 + idx as u32) as u16) << 8);
+                    Self::draw_block(cpu, &mut new_image, block_id, block_x, block_y);
+                }
             }
-        } else {
-            return;
+            _ => return,
         }
         self.image_handle = Some(ctx.load_texture("vram-image", new_image, TextureOptions::NEAREST));
         self.spr_image_handle = Some(ctx.load_texture("vram-image", new_spr_image, TextureOptions::NEAREST));

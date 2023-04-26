@@ -2432,6 +2432,7 @@ dependencies = [
  "egui_dock",
  "egui_extras",
  "enum_dispatch",
+ "glow",
  "inline_tweak",
  "itertools",
  "log",

@@ -5,7 +5,7 @@ mod project_creator;
 mod tab_viewer;
 mod tool;
 
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use eframe::{CreationContext, Frame};
 use egui::*;
@@ -35,6 +35,7 @@ use crate::ui::{
 pub struct EditorState {
     project: Option<ProjectRef>,
     cpu:     Option<Cpu<CheckedMem>>,
+    gl:      Arc<glow::Context>,
 }
 
 #[derive(Debug)]
@@ -53,7 +54,11 @@ impl UiMainWindow {
         cc.egui_ctx.set_visuals(Visuals::dark());
 
         Self {
-            state:              EditorState { project, cpu: None },
+            state:              EditorState {
+                project,
+                cpu: None,
+                gl: Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
+            },
             project_creator:    None,
             dock_tree:          Tree::default(),
             last_open_tool_idx: 0,
