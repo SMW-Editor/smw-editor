@@ -231,11 +231,52 @@ pub fn fetch_anim_frame(cpu: &mut Cpu<CheckedMem>) -> u64 {
     cy
 }
 
+pub fn exec_sprites(cpu: &mut Cpu<CheckedMem>) -> u64 {
+    let now = std::time::Instant::now();
+    cpu.emulation = false;
+    /*
+    cpu.mem.store(0x9E, id);
+    cpu.mem.store(0xAA, 0x80);
+    cpu.mem.store(0xE4, 0x80);
+    cpu.mem.store(0x14C8, 1);*/
+    //cpu.x = slot as u16;
+    cpu.s = 0x1FF;
+    cpu.pc = 0x2000;
+    cpu.pbr = 0x00;
+    cpu.dbr = 0x00;
+    cpu.trace = false;
+    // quasi-loader bytecode
+    let routines = [
+        "CODE_01808C",
+    ];
+    let mut addr = 0x2000;
+    for i in routines {
+        cpu.mem.store(addr, 0x22);
+        cpu.mem.store_u24(addr + 1, cpu.mem.cart.resolve(i).unwrap_or_else(|| panic!("no symbol: {}", i)));
+        addr += 4;
+    }
+    let mut cy = 0;
+    loop {
+        cy += cpu.dispatch() as u64;
+        //if cy > cy_limit { break; }
+        if cpu.ill {
+            println!("ILLEGAL INSTR");
+            break;
+        }
+        if cpu.pc == addr as u16 {
+            break;
+        }
+        cpu.mem.process_dma();
+    }
+    println!("took {}µs", now.elapsed().as_micros());
+    cy
+}
 pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
     let now = std::time::Instant::now();
     cpu.emulation = false;
     // set submap
     cpu.mem.store(0x1F11, (id >> 8) as _);
+    cpu.mem.store(0x141A, 1);
     cpu.s = 0x1FF;
     cpu.pc = 0x2000;
     cpu.pbr = 0x00;
@@ -265,9 +306,8 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             println!("ILLEGAL INSTR");
             break;
         }
-        if cpu.pc == 0xD89F && cpu.pbr == 0x05 {
-            cpu.a &= 0xFF00;
-            cpu.a |= id & 0xFF;
+        if cpu.pc == 0xD8B7 && cpu.pbr == 0x05 {
+            cpu.mem.store_u16(0xE, id);
         }
         if cpu.pc == addr as u16 {
             break;
