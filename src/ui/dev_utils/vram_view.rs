@@ -141,6 +141,7 @@ impl UiVramView {
         let mut cpu = state.cpu.as_mut().unwrap();   // should be set already
         let m = cpu.mem.load_u8(0x14);
         cpu.mem.store_u8(0x14, m+1);
+        cpu.mem.wram[0x300..0x400].fill(0xE0);
         smwe_emu::emu::exec_sprites(&mut cpu);
     }
     fn update_anim_frame(&mut self, state: &mut EditorState, _ctx: &Context) {
@@ -223,6 +224,7 @@ impl UiVramView {
         for spr in (0..64).rev() {
             let mut x = cpu.mem.load_u8(0x300+spr*4) as usize;
             let mut y = cpu.mem.load_u8(0x301+spr*4) as usize;
+            if y >= 0xE0 { continue; }
             x += cpu.mem.load_u16(0x1A) as usize;
             y += cpu.mem.load_u16(0x1C) as usize;
             let tile = cpu.mem.load_u16(0x302+spr*4);
