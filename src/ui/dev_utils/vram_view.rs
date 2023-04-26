@@ -139,6 +139,8 @@ impl UiVramView {
     }
     fn update_cpu_sprite(&mut self, state: &mut EditorState, _ctx: &Context) {
         let mut cpu = state.cpu.as_mut().unwrap();   // should be set already
+        let m = cpu.mem.load_u8(0x13);
+        cpu.mem.store_u8(0x13, m+1);
         let m = cpu.mem.load_u8(0x14);
         cpu.mem.store_u8(0x14, m+1);
         cpu.mem.wram[0x300..0x400].fill(0xE0);
