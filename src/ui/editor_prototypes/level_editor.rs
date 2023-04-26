@@ -7,7 +7,7 @@ use crate::ui::{tool::DockableEditorTool, EditorState};
 
 pub const N_TILES_IN_ROW: usize = 16;
 
-pub struct UiVramView {
+pub struct UiLevelEditor {
     image_handle:     Option<TextureHandle>,
     spr_image_handle: Option<TextureHandle>,
     curr_image_size:  (usize, usize),
@@ -20,7 +20,7 @@ pub struct UiVramView {
     show:             u8, // vram/mappings/level
 }
 
-impl Default for UiVramView {
+impl Default for UiLevelEditor {
     fn default() -> Self {
         Self {
             image_handle:     None,
@@ -37,23 +37,23 @@ impl Default for UiVramView {
     }
 }
 
-impl DockableEditorTool for UiVramView {
+impl DockableEditorTool for UiLevelEditor {
     fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if self.image_handle.is_none() {
             self.update_cpu(state, ui.ctx());
             self.update_cpu_sprite(state, ui.ctx());
             self.update_image(state, ui.ctx());
         }
-        SidePanel::left("vram_view.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui, state));
+        SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui, state));
         CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, state));
     }
 
     fn title(&self) -> WidgetText {
-        "VRAM View".into()
+        "Level Editor".into()
     }
 }
 
-impl UiVramView {
+impl UiLevelEditor {
     fn left_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let mut need_update_level = false;
         let mut need_update = false;
@@ -128,23 +128,23 @@ impl UiVramView {
     }
 
     fn update_cpu_sprite(&mut self, state: &mut EditorState, _ctx: &Context) {
-        let mut cpu = state.cpu.as_mut().unwrap(); // should be set already
+        let cpu = state.cpu.as_mut().unwrap(); // should be set already
         let m = cpu.mem.load_u8(0x13);
         cpu.mem.store_u8(0x13, m.wrapping_add(1));
         let m = cpu.mem.load_u8(0x14);
         cpu.mem.store_u8(0x14, m.wrapping_add(1));
         cpu.mem.wram[0x300..0x400].fill(0xE0);
-        smwe_emu::emu::exec_sprites(&mut cpu);
+        smwe_emu::emu::exec_sprites(cpu);
     }
 
     fn update_anim_frame(&mut self, state: &mut EditorState, _ctx: &Context) {
-        let mut cpu = state.cpu.as_mut().unwrap(); // should be set already
+        let cpu = state.cpu.as_mut().unwrap(); // should be set already
         cpu.mem.store_u8(0x14AD, self.blue_pswitch as u8);
         cpu.mem.store_u8(0x14AE, self.silver_pswitch as u8);
         cpu.mem.store_u8(0x14AF, self.on_off_switch as u8);
         for i in 0..8 {
             cpu.mem.store_u8(0x14, self.anim_frame * 8 + i);
-            smwe_emu::emu::fetch_anim_frame(&mut cpu);
+            smwe_emu::emu::fetch_anim_frame(cpu);
         }
     }
 
@@ -152,7 +152,7 @@ impl UiVramView {
         self.update_anim_frame(state, ctx);
         let cpu = state.cpu.as_mut().unwrap(); // should be set already
         let mut new_image;
-        let mut new_spr_image;
+        let new_spr_image;
         match self.show {
             0 => {
                 let palette = &cpu.mem.cgram;
@@ -216,7 +216,7 @@ impl UiVramView {
     }
 
     fn draw_sprites(&mut self, state: &mut EditorState, ctx: &Context) {
-        let mut cpu = state.cpu.as_mut().unwrap(); // should be set already
+        let cpu = state.cpu.as_mut().unwrap(); // should be set already
         let img_w = 512 * 16;
         let img_h = 16 * 27;
         self.curr_image_size = (img_w, img_h);

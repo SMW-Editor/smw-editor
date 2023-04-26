@@ -23,9 +23,8 @@ use crate::ui::{
         palette_viewer::UiPaletteViewer,
         rom_info::UiRomInfo,
         tiles16x16::UiTiles16x16,
-        vram_view::UiVramView,
     },
-    editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor},
+    editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor, level_editor::UiLevelEditor},
     project_creator::UiProjectCreator,
     tab_viewer::EditorToolTabViewer,
     tool::{DockableEditorTool, DockableEditorToolEnum},
@@ -170,10 +169,6 @@ impl UiMainWindow {
                         self.open_tool(UiTiles16x16::default());
                         ui.close_menu();
                     }
-                    if ui.button("VRAM view").clicked() {
-                        self.open_tool(UiVramView::default());
-                        ui.close_menu();
-                    }
                 });
 
                 ui.menu_button("Prototypes", |ui| {
@@ -183,6 +178,10 @@ impl UiMainWindow {
                     }
                     if ui.button("Code editor").clicked() {
                         self.open_tool(UiCodeEditor::default());
+                        ui.close_menu();
+                    }
+                    if ui.button("Level editor").clicked() {
+                        self.open_tool(UiLevelEditor::default());
                         ui.close_menu();
                     }
                 });
