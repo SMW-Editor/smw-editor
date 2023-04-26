@@ -2489,6 +2489,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "egui",
+ "egui-phosphor",
  "itertools",
  "thiserror",
 ]

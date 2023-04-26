@@ -36,13 +36,14 @@ impl CheckedMem {
         }
     }
 
-
     pub fn load_u8(&mut self, addr: u32) -> u8 {
         self.load(addr)
     }
+
     pub fn store_u8(&mut self, addr: u32, value: u8) {
         self.store(addr, value)
     }
+
     pub fn load_u16(&mut self, addr: u32) -> u16 {
         let l = self.load(addr);
         let h = self.load(addr + 1);
@@ -75,6 +76,7 @@ impl CheckedMem {
         let b = self.load(0x4301 + ch);
         let params = self.load(0x4300 + ch);
         // TODO: turn this into reg writes
+        #[allow(clippy::overly_complex_bool_expr)]
         if b == 0x18 {
             let dest = self.load_u16(0x2116) as u32;
             //println!("DMA size {:04X}: VRAM ${:02X}:{:04X} => ${:04X}", size, a_bank, a, dest);
@@ -246,9 +248,7 @@ pub fn exec_sprites(cpu: &mut Cpu<CheckedMem>) -> u64 {
     cpu.dbr = 0x00;
     cpu.trace = false;
     // quasi-loader bytecode
-    let routines = [
-        "CODE_01808C",
-    ];
+    let routines = ["CODE_01808C"];
     let mut addr = 0x2000;
     for i in routines {
         cpu.mem.store(addr, 0x22);

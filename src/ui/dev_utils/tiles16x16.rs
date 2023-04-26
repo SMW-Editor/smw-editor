@@ -9,7 +9,10 @@ use smwe_rom::{
     graphics::{palette::ColorPalette, BlockGfx},
     objects::map16::Tile8x8,
 };
-use smwe_widgets::flipbook::{AnimationState, Flipbook};
+use smwe_widgets::{
+    flipbook::{AnimationState, Flipbook},
+    value_switcher::{ValueSwitcher, ValueSwitcherButtons},
+};
 
 use crate::ui::{tool::DockableEditorTool, EditorState};
 
@@ -82,23 +85,11 @@ impl DockableEditorTool for UiTiles16x16 {
                 self.load_images(state, ui.ctx());
             }
 
-            ui.horizontal(|ui| {
-                if ui.add_enabled(self.vram_offset > 0, Button::new("-")).clicked() {
-                    self.vram_offset = self.vram_offset.saturating_sub(0x20);
-                    self.load_images(state, ui.ctx());
-                }
-                if ui
-                    .add(DragValue::new(&mut self.vram_offset).clamp_range(0..=0xFFFF).hexadecimal(4, false, true))
-                    .changed()
-                {
-                    self.load_images(state, ui.ctx());
-                }
-                if ui.add_enabled(self.vram_offset < 0xFFFF, Button::new("+")).clicked() {
-                    self.vram_offset = self.vram_offset.saturating_add(0x20);
-                    self.load_images(state, ui.ctx());
-                }
-                ui.label("Level number");
-            });
+            ui.add(
+                ValueSwitcher::new(&mut self.vram_offset, "VRAM offset", ValueSwitcherButtons::MinusPlus)
+                    .range(0..=0xFFFF)
+                    .hexadecimal(4, false, true),
+            );
         });
 
         let block_size = Vec2::splat(tweak!(32.0));
