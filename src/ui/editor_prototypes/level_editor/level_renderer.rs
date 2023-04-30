@@ -57,9 +57,10 @@ impl BackgroundLayer {
         });
 
         let vao = unsafe { gl.create_vertex_array().expect("Failed to create vertex array for background layer") };
-
+        
         let vbo = unsafe {
             let buf = gl.create_buffer().expect("Failed to create vertex buffer for background layer");
+            gl.bind_vertex_array(Some(vao));
             gl.bind_buffer(ARRAY_BUFFER, Some(buf));
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_i32(0, 4, INT, 0, 0);
@@ -119,6 +120,7 @@ impl BackgroundLayer {
         }
         self.tiles_count = tiles.len();
         unsafe {
+            gl.bind_vertex_array(Some(self.vao));
             gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
             gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
         }
