@@ -6,9 +6,6 @@ use smwe_rom::graphics::color::Abgr1555;
 
 use crate::ui::editor_prototypes::level_editor::shaders::{TILE_FS_SRC, TILE_GS_SRC, TILE_VS_SRC};
 
-const LAYER1_GFX: u32 = 0x7EC800;
-const LAYER2_GFX: u32 = 0x7EB900;
-
 struct BackgroundLayer {
     shader_program: Program,
     vao:            VertexArray,
@@ -108,16 +105,23 @@ impl BackgroundLayer {
         }
     }
 
-    fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, gfx_addr: u32, symbol: &str) {
+    fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, bg: bool) {
         let mut tiles = Vec::new();
+        let map16_bank = cpu.mem.cart.resolve("Map16Common").expect("Cannot resolve Map16Common") & 0xFF0000;
+        let map16_bg = cpu.mem.cart.resolve("Map16BGTiles").expect("Cannot resolve Map16BGTiles");
+        let blocks_lo_addr = if bg { 0x7EB900 } else { 0x7EC800 };
+        let blocks_hi_addr = if bg { 0x7EBD00 } else { 0x7FC800 };
         for idx in 0..512 * 27 {
             let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
             let (row, column) = (sidx / 16, sidx % 16);
             let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
-            let block_id = cpu.mem.load_u8(gfx_addr + idx as u32) as u16
-                | ((cpu.mem.load_u8(gfx_addr + 0x10000 + idx as u32) as u16) << 8);
-            let map16_ptr = cpu.mem.cart.resolve(symbol).unwrap_or_else(|| panic!("Cannot resolve symbol {symbol}"));
-            let block_ptr = cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_ptr - 0x8000;
+            let block_id = cpu.mem.load_u8(blocks_lo_addr + idx as u32) as u16
+                | ((cpu.mem.load_u8(blocks_hi_addr + idx as u32) as u16) << 8);
+            let block_ptr = if bg {
+                block_id as u32 * 8 + map16_bg
+            } else {
+                cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_bank
+            };
             for (tile_id, (off_x, off_y)) in (0..4).zip([(0, 0), (0, 8), (8, 0), (8, 8)].into_iter()) {
                 let tile_id = cpu.mem.load_u16(block_ptr + tile_id * 2) as i32;
                 tiles.push([block_x + off_x, block_y + off_y, tile_id, 0]);
@@ -180,8 +184,8 @@ impl LevelRenderer {
     }
 
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
-        self.layer1.load_layer(gl, cpu, LAYER1_GFX, "Map16Common");
-        self.layer2.load_layer(gl, cpu, LAYER2_GFX, "Map16BGTiles");
+        self.layer1.load_layer(gl, cpu, false);
+        self.layer2.load_layer(gl, cpu, true);
     }
 }
 
