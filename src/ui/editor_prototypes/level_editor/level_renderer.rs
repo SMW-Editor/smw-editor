@@ -6,6 +6,9 @@ use smwe_rom::graphics::color::Abgr1555;
 
 use crate::ui::editor_prototypes::level_editor::shaders::{TILE_FS_SRC, TILE_GS_SRC, TILE_VS_SRC};
 
+const LAYER1_GFX: u32 = 0x7EC800;
+const LAYER2_GFX: u32 = 0x7EB900;
+
 struct BackgroundLayer {
     shader_program: Program,
     vao:            VertexArray,
@@ -15,6 +18,7 @@ struct BackgroundLayer {
 
 pub(super) struct LevelRenderer {
     layer1: BackgroundLayer,
+    layer2: BackgroundLayer,
 
     palette_buf: Buffer,
     vram_buf:    Buffer,
@@ -57,7 +61,7 @@ impl BackgroundLayer {
         });
 
         let vao = unsafe { gl.create_vertex_array().expect("Failed to create vertex array for background layer") };
-        
+
         let vbo = unsafe {
             let buf = gl.create_buffer().expect("Failed to create vertex buffer for background layer");
             gl.bind_vertex_array(Some(vao));
@@ -104,15 +108,16 @@ impl BackgroundLayer {
         }
     }
 
-    fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu) {
+    fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, gfx_addr: u32, symbol: &str) {
         let mut tiles = Vec::new();
         for idx in 0..512 * 27 {
             let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
             let (row, column) = (sidx / 16, sidx % 16);
             let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
-            let block_id =
-                cpu.mem.load_u8(0x7EC800 + idx as u32) as u16 | ((cpu.mem.load_u8(0x7FC800 + idx as u32) as u16) << 8);
-            let block_ptr = cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + 0x0D0000;
+            let block_id = cpu.mem.load_u8(gfx_addr + idx as u32) as u16
+                | ((cpu.mem.load_u8(gfx_addr + 0x10000 + idx as u32) as u16) << 8);
+            let map16_ptr = cpu.mem.cart.resolve(symbol).unwrap_or_else(|| panic!("Cannot resolve symbol {symbol}"));
+            let block_ptr = cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_ptr - 0x8000;
             for (tile_id, (off_x, off_y)) in (0..4).zip([(0, 0), (0, 8), (8, 0), (8, 8)].into_iter()) {
                 let tile_id = cpu.mem.load_u16(block_ptr + tile_id * 2) as i32;
                 tiles.push([block_x + off_x, block_y + off_y, tile_id, 0]);
@@ -130,11 +135,12 @@ impl BackgroundLayer {
 impl LevelRenderer {
     pub(super) fn new(gl: &Context) -> Self {
         let layer1 = BackgroundLayer::new(gl);
+        let layer2 = BackgroundLayer::new(gl);
 
         let palette_buf = make_buffer(gl, 256 * 16, 0);
         let vram_buf = make_buffer(gl, 0x2000, 1);
 
-        Self { layer1, palette_buf, vram_buf }
+        Self { layer1, layer2, palette_buf, vram_buf }
     }
 
     pub(super) fn destroy(&self, gl: &Context) {
@@ -143,9 +149,11 @@ impl LevelRenderer {
             gl.delete_buffer(self.palette_buf);
         }
         self.layer1.destroy(gl);
+        self.layer2.destroy(gl);
     }
 
     pub(super) fn paint(&self, gl: &Context, screen_size: Vec2) {
+        self.layer2.paint(gl, self.palette_buf, self.vram_buf, screen_size);
         self.layer1.paint(gl, self.palette_buf, self.vram_buf, screen_size);
     }
 
@@ -172,7 +180,8 @@ impl LevelRenderer {
     }
 
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
-        self.layer1.load_layer(gl, cpu);
+        self.layer1.load_layer(gl, cpu, LAYER1_GFX, "Map16Common");
+        self.layer2.load_layer(gl, cpu, LAYER2_GFX, "Map16BGTiles");
     }
 }
 

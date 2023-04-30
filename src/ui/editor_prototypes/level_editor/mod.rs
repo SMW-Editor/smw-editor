@@ -3,7 +3,7 @@ mod shaders;
 
 use std::sync::{Arc, Mutex};
 
-use egui::{Button, CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
+use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
 use smwe_emu::Cpu;
 use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
@@ -110,26 +110,6 @@ impl UiLevelEditor {
     }
 
     fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
-        // if let Some(handle) = &self.image_handle {
-        //     let (img_w, img_h) = self.curr_image_size;
-        //     ScrollArea::both().min_scrolled_height(ui.available_height()).show(ui, |ui| {
-        //         let image_rect = vec2(img_w as f32, img_h as f32);
-        //         let (_id, rect) = ui.allocate_space(image_rect);
-        //         ui.image(handle, [(img_w * 1) as f32, (img_h * 1) as f32]);
-        //         ui.painter().image(
-        //             handle.id(),
-        //             rect,
-        //             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-        //             Color32::WHITE,
-        //         );
-        //         ui.painter().image(
-        //             self.spr_image_handle.as_ref().unwrap().id(),
-        //             rect,
-        //             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-        //             Color32::WHITE,
-        //         );
-        //     });
-        // }
         let level_renderer = Arc::clone(&self.level_renderer);
         Frame::canvas(ui.style()).show(ui, |ui| {
             let (rect, _response) =
