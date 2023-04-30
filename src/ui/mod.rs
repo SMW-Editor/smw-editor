@@ -181,7 +181,7 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.button("Level editor").clicked() {
-                        self.open_tool(UiLevelEditor::default());
+                        self.open_tool(UiLevelEditor::new(Arc::clone(&self.state.gl)));
                         ui.close_menu();
                     }
                 });

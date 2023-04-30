@@ -32,4 +32,5 @@ pub enum DockableEditorToolEnum {
 pub trait DockableEditorTool {
     fn update(&mut self, ui: &mut Ui, state: &mut EditorState);
     fn title(&self) -> WidgetText;
+    fn on_closed(&mut self) {}
 }

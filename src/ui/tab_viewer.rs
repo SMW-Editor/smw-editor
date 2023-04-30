@@ -22,6 +22,7 @@ impl TabViewer for EditorToolTabViewer<'_> {
     }
 
     fn on_close(&mut self, tab: &mut Self::Tab) -> bool {
+        tab.on_closed();
         log::info!("Closed {}", tab.title().text());
         true
     }

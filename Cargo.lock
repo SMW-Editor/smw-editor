@@ -2431,6 +2431,7 @@ dependencies = [
  "egui-phosphor",
  "egui_dock",
  "egui_extras",
+ "egui_glow",
  "enum_dispatch",
  "glow",
  "inline_tweak",
