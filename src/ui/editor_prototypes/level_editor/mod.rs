@@ -59,7 +59,12 @@ impl DockableEditorTool for UiLevelEditor {
             self.initialized = true;
         }
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui, state));
-        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, state));
+        let cpu = state.cpu.as_mut().unwrap();
+        let bg_color = cpu.mem.load_u16(0x7E0701);
+        let bg_color = Color32::from(Abgr1555(bg_color));
+        CentralPanel::default()
+            .frame(Frame::none().inner_margin(0.).fill(bg_color))
+            .show_inside(ui, |ui| self.central_panel(ui, state));
     }
 
     fn title(&self) -> WidgetText {
@@ -112,19 +117,26 @@ impl UiLevelEditor {
     fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let level_renderer = Arc::clone(&self.level_renderer);
         let cpu = state.cpu.as_mut().unwrap();
-        let bg_color = cpu.mem.load_u16(0x7E0701);
-        Frame::canvas(ui.style()).fill(Color32::from(Abgr1555(bg_color))).show(ui, |ui| {
-            let (rect, _response) =
-                ui.allocate_exact_size(vec2(ui.available_width(), (16 * 27) as f32), Sense::click_and_drag());
-            ui.painter().add(PaintCallback {
-                rect,
-                callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    level_renderer
-                        .lock()
-                        .expect("Cannot lock mutex on level_renderer")
-                        .paint(painter.gl(), rect.size());
-                })),
-            });
+        //
+        //Frame::canvas(ui.style()).inner_margin(Margin::same(0.)).fill(Color32::from(Abgr1555(bg_color))).show(ui, |ui| {
+        let (rect, response) =
+            ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
+        if response.dragged() {
+            let mut r = level_renderer.lock().unwrap();
+            let delta = response.drag_delta();
+            let o = r.offsets_mut();
+            o[0][0] += delta.x;
+            o[0][1] += delta.y;
+            *o[1] = *o[0];
+        }
+        ui.painter().add(PaintCallback {
+            rect,
+            callback: Arc::new(CallbackFn::new(move |_info, painter| {
+                level_renderer
+                    .lock()
+                    .expect("Cannot lock mutex on level_renderer")
+                    .paint(painter.gl(), rect.size());
+            })),
         });
     }
 

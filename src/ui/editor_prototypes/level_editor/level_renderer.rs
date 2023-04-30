@@ -11,6 +11,7 @@ struct BackgroundLayer {
     vao:            VertexArray,
     vbo:            Buffer,
     tiles_count:    usize,
+    offset:         [f32; 2],
 }
 
 pub(super) struct LevelRenderer {
@@ -68,7 +69,7 @@ impl BackgroundLayer {
             buf
         };
 
-        Self { shader_program, vao, vbo, tiles_count: 0 }
+        Self { shader_program, vao, vbo, offset: [0.0; 2], tiles_count: 0 }
     }
 
     fn destroy(&self, gl: &Context) {
@@ -83,7 +84,7 @@ impl BackgroundLayer {
             gl.use_program(Some(self.shader_program));
 
             let u = gl.get_uniform_location(self.shader_program, "offset");
-            gl.uniform_2_f32_slice(u.as_ref(), &[0., 0.]);
+            gl.uniform_2_f32_slice(u.as_ref(), &self.offset);
 
             let u = gl.get_uniform_location(self.shader_program, "screen_size");
             gl.uniform_2_f32(u.as_ref(), screen_size.x, screen_size.y);
@@ -115,6 +116,7 @@ impl BackgroundLayer {
             let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
             let (row, column) = (sidx / 16, sidx % 16);
             let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
+            let idx = if bg { idx % (16*27*2) } else { idx };
             let block_id = cpu.mem.load_u8(blocks_lo_addr + idx as u32) as u16
                 | ((cpu.mem.load_u8(blocks_hi_addr + idx as u32) as u16) << 8);
             let block_ptr = if bg {
@@ -186,6 +188,10 @@ impl LevelRenderer {
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
         self.layer1.load_layer(gl, cpu, false);
         self.layer2.load_layer(gl, cpu, true);
+    }
+
+    pub(super) fn offsets_mut(&mut self) -> [&mut [f32;2]; 2] {
+        [&mut self.layer1.offset, &mut self.layer2.offset]
     }
 }
 
