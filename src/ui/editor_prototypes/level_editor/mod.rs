@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
-use smwe_emu::Cpu;
+use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
@@ -109,9 +109,11 @@ impl UiLevelEditor {
         }
     }
 
-    fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+    fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         let level_renderer = Arc::clone(&self.level_renderer);
-        Frame::canvas(ui.style()).show(ui, |ui| {
+        let cpu = state.cpu.as_mut().unwrap();
+        let bg_color = cpu.mem.load_u16(0x7E0701);
+        Frame::canvas(ui.style()).fill(Color32::from(Abgr1555(bg_color))).show(ui, |ui| {
             let (rect, _response) =
                 ui.allocate_exact_size(vec2(ui.available_width(), (16 * 27) as f32), Sense::click_and_drag());
             ui.painter().add(PaintCallback {
@@ -128,7 +130,7 @@ impl UiLevelEditor {
 
     fn update_cpu(&mut self, state: &mut EditorState) {
         let project = state.project.as_ref().unwrap().borrow();
-        let mut cpu = Cpu::new(smwe_emu::emu::CheckedMem::new(project.rom.clone()));
+        let mut cpu = Cpu::new(CheckedMem::new(project.rom.clone()));
         drop(project);
         smwe_emu::emu::decompress_sublevel(&mut cpu, self.level_num);
         println!("Updated CPU");

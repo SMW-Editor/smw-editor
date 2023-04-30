@@ -62,6 +62,12 @@ impl From<Abgr1555> for Rgba {
 
 impl From<Abgr1555> for Color32 {
     fn from(color: Abgr1555) -> Self {
-        Color32::from(Rgba::from(color))
+        let cmf = SNES_BGR_CHANNEL_MAX as f32;
+        Color32::from_rgba_unmultiplied(
+            ((((color.0 >> 0x0) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.) as u8,
+            ((((color.0 >> 0x5) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.) as u8,
+            ((((color.0 >> 0xA) & SNES_BGR_CHANNEL_MAX) as f32 / cmf) * 255.) as u8,
+            ((1.0 - ((color.0 >> 0xF) & 1) as f32) * 255.) as u8,
+        )
     }
 }
