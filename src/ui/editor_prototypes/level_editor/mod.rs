@@ -131,8 +131,10 @@ impl UiLevelEditor {
             let delta = response.drag_delta();
             let o = r.offsets_mut();
             o[0][0] += delta.x;
-            o[0][1] += delta.y;
+            //o[0][1] += delta.y;
             *o[1] = *o[0];
+            o[1][0] /= 2.;
+            //o[1][1] /= 2.;
         }
 
         ui.painter().add(PaintCallback {
