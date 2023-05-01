@@ -155,16 +155,39 @@ impl BackgroundLayer {
         let mut tiles = Vec::new();
         let map16_bank = cpu.mem.cart.resolve("Map16Common").expect("Cannot resolve Map16Common") & 0xFF0000;
         let map16_bg = cpu.mem.cart.resolve("Map16BGTiles").expect("Cannot resolve Map16BGTiles");
-        let blocks_lo_addr = if bg { 0x7EB900 } else { 0x7EC800 };
-        let blocks_hi_addr = if bg { 0x7EBD00 } else { 0x7FC800 };
-        for idx in 0..512 * 27 {
-            let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
-            let (row, column) = (sidx / 16, sidx % 16);
-            let (block_x, block_y) = (column * 16 + screen * 256, row * 16);
-            let idx = if bg { idx % (16*27*2) } else { idx };
+        let vertical = cpu.mem.load_u8(0x5B) & if bg { 2 } else { 1 } != 0;
+        let has_layer2 = {
+            let mode = cpu.mem.load_u8(0x1925);
+            let renderer_table = cpu.mem.cart.resolve("CODE_058955").unwrap() + 9;
+            let renderer = cpu.mem.load_u24(renderer_table + (mode as u32) * 3);
+            let l2_renderers = [cpu.mem.cart.resolve("CODE_058B8D"), cpu.mem.cart.resolve("CODE_058C71")];
+            l2_renderers.contains(&Some(renderer))
+        };
+        let scr_len = match (vertical, has_layer2) {
+            (false, false) => 0x20,
+            (true, false) => 0x1C,
+            (false, true) => 0x10,
+            (true, true) => 0x0E,
+        };
+        let scr_size = if vertical { 16*32 } else { 16*27 };
+        let blocks_lo_addr = if bg { if has_layer2 { 0x7EC800+scr_len*scr_size } else { 0x7EB900 } } else { 0x7EC800 };
+        let blocks_hi_addr = if bg { if has_layer2 { 0x7FC800+scr_len*scr_size } else { 0x7EBD00 } } else { 0x7FC800 };
+        let len = if has_layer2 { 256*27 } else { 512*27 };
+        for idx in 0..len {
+            let (block_x, block_y) = if vertical {
+                let (screen, sidx) = (idx / (16 * 16), idx % (16 * 16));
+                let (row, column) = (sidx / 16, sidx % 16);
+                let (sub_y, sub_x) = (screen / 2, screen % 2);
+                (column * 16 + sub_x * 256, row * 16 + sub_y * 256)
+            } else {
+                let (screen, sidx) = (idx / (16 * 27), idx % (16 * 27));
+                let (row, column) = (sidx / 16, sidx % 16);
+                (column * 16 + screen * 256, row * 16)
+            };
+            let idx = if bg & !has_layer2 { idx % (16*27*2) } else { idx };
             let block_id = cpu.mem.load_u8(blocks_lo_addr + idx as u32) as u16
                 | ((cpu.mem.load_u8(blocks_hi_addr + idx as u32) as u16) << 8);
-            let block_ptr = if bg {
+            let block_ptr = if bg & !has_layer2 {
                 block_id as u32 * 8 + map16_bg
             } else {
                 cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_bank
@@ -257,9 +280,9 @@ impl LevelRenderer {
     }
 
     pub(super) fn set_offsets(&mut self, offset: [f32; 2]) {
-        self.layer1.offset[0] = offset[0];
-        self.layer2.offset[0] = offset[0];
-        self.sprites.offset[0] = offset[0];
+        self.layer1.offset = offset;
+        self.layer2.offset = offset;
+        self.sprites.offset = offset;
     }
 }
 
