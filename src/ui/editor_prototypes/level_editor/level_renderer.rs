@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 use egui::{Rgba, Vec2};
 use glow::*;
 use itertools::Itertools;
@@ -6,9 +8,8 @@ use smwe_rom::graphics::color::Abgr1555;
 
 use crate::ui::editor_prototypes::level_editor::shaders::{TILE_FS_SRC, TILE_GS_SRC, TILE_VS_SRC};
 
-struct GlTile([u32;4]);
-impl GlTile {
-}
+struct GlTile([u32; 4]);
+impl GlTile {}
 
 struct BackgroundLayer {
     shader_program: Program,
@@ -19,8 +20,8 @@ struct BackgroundLayer {
 }
 
 pub(super) struct LevelRenderer {
-    layer1: BackgroundLayer,
-    layer2: BackgroundLayer,
+    layer1:  BackgroundLayer,
+    layer2:  BackgroundLayer,
     sprites: BackgroundLayer,
 
     palette_buf: Buffer,
@@ -133,10 +134,10 @@ impl BackgroundLayer {
             if size & 0x02 != 0 {
                 let (xn, xf) = if tile & 0x4000 == 0 { (0, 8) } else { (8, 0) };
                 let (yn, yf) = if tile & 0x8000 == 0 { (0, 8) } else { (8, 0) };
-                tiles.push(self.sp_tile(x + xn, y + yn, tile     ));
-                tiles.push(self.sp_tile(x + xf, y + yn, tile + 1 ));
-                tiles.push(self.sp_tile(x + xn, y + yf, tile + 16));
-                tiles.push(self.sp_tile(x + xf, y + yf, tile + 17));
+                tiles.push(self.sp_tile(x.wrapping_add(xn), y.wrapping_add(yn), tile));
+                tiles.push(self.sp_tile(x.wrapping_add(xf), y.wrapping_add(yn), tile + 1));
+                tiles.push(self.sp_tile(x.wrapping_add(xn), y.wrapping_add(yf), tile + 16));
+                tiles.push(self.sp_tile(x.wrapping_add(xf), y.wrapping_add(yf), tile + 17));
                 //Self::draw_tile_sp(cpu, &mut new_image, tile + 1, x + xf, y + yn);
                 //Self::draw_tile_sp(cpu, &mut new_image, tile + 16, x + xn, y + yf);
                 //Self::draw_tile_sp(cpu, &mut new_image, tile + 17, x + xf, y + yf);
@@ -151,6 +152,7 @@ impl BackgroundLayer {
             gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
         }
     }
+
     fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, bg: bool) {
         let mut tiles = Vec::new();
         let map16_bank = cpu.mem.cart.resolve("Map16Common").expect("Cannot resolve Map16Common") & 0xFF0000;
@@ -169,10 +171,16 @@ impl BackgroundLayer {
             (false, true) => 0x10,
             (true, true) => 0x0E,
         };
-        let scr_size = if vertical { 16*32 } else { 16*27 };
-        let blocks_lo_addr = if bg { if has_layer2 { 0x7EC800+scr_len*scr_size } else { 0x7EB900 } } else { 0x7EC800 };
-        let blocks_hi_addr = if bg { if has_layer2 { 0x7FC800+scr_len*scr_size } else { 0x7EBD00 } } else { 0x7FC800 };
-        let len = if has_layer2 { 256*27 } else { 512*27 };
+        let scr_size = if vertical { 16 * 32 } else { 16 * 27 };
+        let (blocks_lo_addr, blocks_hi_addr) = match (bg, has_layer2) {
+            (true, true) => {
+                let offset = scr_len * scr_size;
+                (0x7EC800 + offset, 0x7FC800 + offset)
+            }
+            (true, false) => (0x7EB900, 0x7EBD00),
+            (false, _) => (0x7EC800, 0x7FC800),
+        };
+        let len = if has_layer2 { 256 * 27 } else { 512 * 27 };
         for idx in 0..len {
             let (block_x, block_y) = if vertical {
                 let (screen, sidx) = (idx / (16 * 16), idx % (16 * 16));
@@ -184,7 +192,7 @@ impl BackgroundLayer {
                 let (row, column) = (sidx / 16, sidx % 16);
                 (column * 16 + screen * 256, row * 16)
             };
-            let idx = if bg & !has_layer2 { idx % (16*27*2) } else { idx };
+            let idx = if bg & !has_layer2 { idx % (16 * 27 * 2) } else { idx };
             let block_id = cpu.mem.load_u8(blocks_lo_addr + idx as u32) as u16
                 | ((cpu.mem.load_u8(blocks_hi_addr + idx as u32) as u16) << 8);
             let block_ptr = if bg & !has_layer2 {
@@ -204,7 +212,8 @@ impl BackgroundLayer {
             gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
         }
     }
-    fn bg_tile(&self, x: u32, y: u32, t: u16) -> [u32;4] {
+
+    fn bg_tile(&self, x: u32, y: u32, t: u16) -> [u32; 4] {
         let t = t as u32;
         let tile = t & 0x3FF;
         let scale = 8;
@@ -212,7 +221,8 @@ impl BackgroundLayer {
         let params = scale | (pal << 8) | (t & 0xC000);
         [x, y, tile, params]
     }
-    fn sp_tile(&self, x: u32, y: u32, t: u16) -> [u32;4] {
+
+    fn sp_tile(&self, x: u32, y: u32, t: u16) -> [u32; 4] {
         let t = t as u32;
         let tile = (t & 0x1FF) + 0x600;
         let scale = 8;
@@ -275,6 +285,7 @@ impl LevelRenderer {
         self.layer1.load_layer(gl, cpu, false);
         self.layer2.load_layer(gl, cpu, true);
     }
+
     pub(super) fn upload_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
         self.sprites.load_sprites(gl, cpu);
     }
