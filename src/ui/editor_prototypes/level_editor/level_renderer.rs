@@ -6,6 +6,10 @@ use smwe_rom::graphics::color::Abgr1555;
 
 use crate::ui::editor_prototypes::level_editor::shaders::{TILE_FS_SRC, TILE_GS_SRC, TILE_VS_SRC};
 
+struct GlTile([u32;4]);
+impl GlTile {
+}
+
 struct BackgroundLayer {
     shader_program: Program,
     vao:            VertexArray,
@@ -17,6 +21,7 @@ struct BackgroundLayer {
 pub(super) struct LevelRenderer {
     layer1: BackgroundLayer,
     layer2: BackgroundLayer,
+    sprites: BackgroundLayer,
 
     palette_buf: Buffer,
     vram_buf:    Buffer,
@@ -106,6 +111,42 @@ impl BackgroundLayer {
         }
     }
 
+    fn load_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
+        let mut tiles = Vec::new();
+        for spr in (0..64).rev() {
+            let mut x = cpu.mem.load_u8(0x300 + spr * 4) as u32;
+            let mut y = cpu.mem.load_u8(0x301 + spr * 4) as u32;
+            if y >= 0xE0 {
+                continue;
+            }
+            x += cpu.mem.load_u16(0x1A) as u32;
+            y += cpu.mem.load_u16(0x1C) as u32;
+            let tile = cpu.mem.load_u16(0x302 + spr * 4);
+            let size = cpu.mem.load_u8(0x460 + spr);
+            if size & 0x01 != 0 {
+                x = x.wrapping_sub(256);
+            }
+            if size & 0x02 != 0 {
+                let (xn, xf) = if tile & 0x4000 == 0 { (0, 8) } else { (8, 0) };
+                let (yn, yf) = if tile & 0x8000 == 0 { (0, 8) } else { (8, 0) };
+                tiles.push(self.sp_tile(x + xn, y + yn, tile     ));
+                tiles.push(self.sp_tile(x + xf, y + yn, tile + 1 ));
+                tiles.push(self.sp_tile(x + xn, y + yf, tile + 16));
+                tiles.push(self.sp_tile(x + xf, y + yf, tile + 17));
+                //Self::draw_tile_sp(cpu, &mut new_image, tile + 1, x + xf, y + yn);
+                //Self::draw_tile_sp(cpu, &mut new_image, tile + 16, x + xn, y + yf);
+                //Self::draw_tile_sp(cpu, &mut new_image, tile + 17, x + xf, y + yf);
+            } else {
+                tiles.push(self.sp_tile(x, y, tile));
+            }
+        }
+        self.tiles_count = tiles.len();
+        unsafe {
+            gl.bind_vertex_array(Some(self.vao));
+            gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
+            gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
+        }
+    }
     fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, bg: bool) {
         let mut tiles = Vec::new();
         let map16_bank = cpu.mem.cart.resolve("Map16Common").expect("Cannot resolve Map16Common") & 0xFF0000;
@@ -125,8 +166,8 @@ impl BackgroundLayer {
                 cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_bank
             };
             for (tile_id, (off_x, off_y)) in (0..4).zip([(0, 0), (0, 8), (8, 0), (8, 8)].into_iter()) {
-                let tile_id = cpu.mem.load_u16(block_ptr + tile_id * 2) as i32;
-                tiles.push([block_x + off_x, block_y + off_y, tile_id, 0]);
+                let tile_id = cpu.mem.load_u16(block_ptr + tile_id * 2);
+                tiles.push(self.bg_tile(block_x + off_x, block_y + off_y, tile_id));
             }
         }
         self.tiles_count = tiles.len();
@@ -136,17 +177,34 @@ impl BackgroundLayer {
             gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
         }
     }
+    fn bg_tile(&self, x: u32, y: u32, t: u16) -> [u32;4] {
+        let t = t as u32;
+        let tile = t & 0x3FF;
+        let scale = 8;
+        let pal = (t >> 10) & 0x7;
+        let params = scale | (pal << 8) | (t & 0xC000);
+        [x, y, tile, params]
+    }
+    fn sp_tile(&self, x: u32, y: u32, t: u16) -> [u32;4] {
+        let t = t as u32;
+        let tile = (t & 0x1FF) + 0x600;
+        let scale = 8;
+        let pal = ((t >> 9) & 0x7) + 8;
+        let params = scale | (pal << 8) | (t & 0xC000);
+        [x, y, tile, params]
+    }
 }
 
 impl LevelRenderer {
     pub(super) fn new(gl: &Context) -> Self {
         let layer1 = BackgroundLayer::new(gl);
         let layer2 = BackgroundLayer::new(gl);
+        let sprites = BackgroundLayer::new(gl);
 
         let palette_buf = make_buffer(gl, 256 * 16, 0);
         let vram_buf = make_buffer(gl, 0x2000, 1);
 
-        Self { layer1, layer2, palette_buf, vram_buf }
+        Self { layer1, layer2, sprites, palette_buf, vram_buf }
     }
 
     pub(super) fn destroy(&self, gl: &Context) {
@@ -161,6 +219,7 @@ impl LevelRenderer {
     pub(super) fn paint(&self, gl: &Context, screen_size: Vec2) {
         self.layer2.paint(gl, self.palette_buf, self.vram_buf, screen_size);
         self.layer1.paint(gl, self.palette_buf, self.vram_buf, screen_size);
+        self.sprites.paint(gl, self.palette_buf, self.vram_buf, screen_size);
     }
 
     pub(super) fn upload_gfx(&self, gl: &Context, data: &[u8]) {
@@ -188,6 +247,9 @@ impl LevelRenderer {
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
         self.layer1.load_layer(gl, cpu, false);
         self.layer2.load_layer(gl, cpu, true);
+    }
+    pub(super) fn upload_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
+        self.sprites.load_sprites(gl, cpu);
     }
 
     pub(super) fn offsets_mut(&mut self) -> [&mut [f32;2]; 2] {

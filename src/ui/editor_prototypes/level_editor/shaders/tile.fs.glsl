@@ -17,12 +17,12 @@ out vec4 out_color;
 void main() {
     const int scale = 8;
     
-    int tile_id = g_tile_id & 0x3FF;
-    int color_row = (g_tile_id >> 10) & 0x7;
+    int tile_id = g_tile_id;
+    int color_row = (g_params >> 8) & 0xF;
     ivec2 icoord = ivec2(g_tex_coords) * 8 / scale;
     
-    bool flip_x = (g_tile_id & 0x4000) != 0;
-    bool flip_y = (g_tile_id & 0x8000) != 0;
+    bool flip_x = (g_params & 0x4000) != 0;
+    bool flip_y = (g_params & 0x8000) != 0;
     
     if (flip_y) {
         icoord.y = 7 - icoord.y;

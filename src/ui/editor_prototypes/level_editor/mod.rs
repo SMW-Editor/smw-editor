@@ -163,6 +163,7 @@ impl UiLevelEditor {
         cpu.mem.store_u8(0x14, m.wrapping_add(1));
         cpu.mem.wram[0x300..0x400].fill(0xE0);
         smwe_emu::emu::exec_sprites(cpu);
+        self.level_renderer.lock().unwrap().upload_sprites(&self.gl, cpu);
     }
 
     fn update_anim_frame(&mut self, state: &mut EditorState, anim_frame: u8) {
