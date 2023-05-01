@@ -124,7 +124,11 @@ impl BackgroundLayer {
             let tile = cpu.mem.load_u16(0x302 + spr * 4);
             let size = cpu.mem.load_u8(0x460 + spr);
             if size & 0x01 != 0 {
-                x = x.wrapping_sub(256);
+                if x > 0x80 {
+                    x = x.wrapping_sub(256);
+                } else {
+                    x = x.wrapping_add(256);
+                }
             }
             if size & 0x02 != 0 {
                 let (xn, xf) = if tile & 0x4000 == 0 { (0, 8) } else { (8, 0) };
@@ -252,8 +256,10 @@ impl LevelRenderer {
         self.sprites.load_sprites(gl, cpu);
     }
 
-    pub(super) fn offsets_mut(&mut self) -> [&mut [f32;2]; 2] {
-        [&mut self.layer1.offset, &mut self.layer2.offset]
+    pub(super) fn set_offsets(&mut self, offset: [f32; 2]) {
+        self.layer1.offset[0] = offset[0];
+        self.layer2.offset[0] = offset[0];
+        self.sprites.offset[0] = offset[0];
     }
 }
 

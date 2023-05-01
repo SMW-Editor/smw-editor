@@ -28,7 +28,10 @@ pub struct UiLevelEditor {
     blue_pswitch:     bool,
     silver_pswitch:   bool,
     on_off_switch:    bool,
+    run_sprites:      bool,
     palette_line:     u8,
+    offset:           [f32;2],
+    timestamp:        std::time::Instant,
 }
 
 impl UiLevelEditor {
@@ -44,7 +47,10 @@ impl UiLevelEditor {
             blue_pswitch: false,
             silver_pswitch: false,
             on_off_switch: false,
+            run_sprites: true,
             palette_line: 0,
+            offset: [0., 0.],
+            timestamp: std::time::Instant::now(),
         }
     }
 }
@@ -67,6 +73,7 @@ impl DockableEditorTool for UiLevelEditor {
             .show_inside(ui, |ui| self.central_panel(ui, state));
 
         // Auto-play animations
+        /*
         let anim_frame = ui.ctx().animate_value_with_time(Id::new("level_anim"), 4., tweak!(0.4)) as u8;
         match anim_frame {
             0..=3 => self.update_anim_frame(state, anim_frame),
@@ -74,6 +81,18 @@ impl DockableEditorTool for UiLevelEditor {
                 ui.ctx().animate_value_with_time(Id::new("level_anim"), 0., 0.);
             }
             _ => unreachable!(),
+        }*/
+        let ft = std::time::Duration::from_secs_f32(1./60.);
+        let now = std::time::Instant::now();
+        while now - self.timestamp > ft {
+            self.timestamp += ft;
+            self.update_timers(state);
+            self.update_anim_frame(state);
+            if self.run_sprites {
+                self.update_cpu_sprite(state);
+                //let cpu = state.cpu.as_mut().unwrap();
+                //self.level_renderer.lock().unwrap().upload_level(&self.gl, cpu);
+            }
         }
         ui.ctx().request_repaint();
     }
@@ -106,7 +125,8 @@ impl UiLevelEditor {
         need_update |= ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed();
         need_update |= ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed();
         need_update |= ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed();
-        if ui.button("frame advance").hovered() {
+        ui.checkbox(&mut self.run_sprites, "Run sprites");
+        if ui.button("»").clicked() {
             self.update_cpu_sprite(state);
             // self.draw_sprites(state, ui.ctx());
         }
@@ -129,12 +149,9 @@ impl UiLevelEditor {
         if response.dragged() {
             let mut r = level_renderer.lock().unwrap();
             let delta = response.drag_delta();
-            let o = r.offsets_mut();
-            o[0][0] += delta.x;
-            //o[0][1] += delta.y;
-            *o[1] = *o[0];
-            o[1][0] /= 2.;
-            //o[1][1] /= 2.;
+            self.offset[0] += delta.x;
+            self.offset[1] += delta.y;
+            r.set_offsets(self.offset);
         }
 
         ui.painter().add(PaintCallback {
@@ -155,31 +172,32 @@ impl UiLevelEditor {
         state.cpu = Some(cpu);
     }
 
-    fn update_cpu_sprite(&mut self, state: &mut EditorState) {
+    fn update_timers(&mut self, state: &mut EditorState) {
         let cpu = state.cpu.as_mut().unwrap(); // should be set already
         let m = cpu.mem.load_u8(0x13);
         cpu.mem.store_u8(0x13, m.wrapping_add(1));
         let m = cpu.mem.load_u8(0x14);
         cpu.mem.store_u8(0x14, m.wrapping_add(1));
+    }
+
+    fn update_cpu_sprite(&mut self, state: &mut EditorState) {
+        let cpu = state.cpu.as_mut().unwrap(); // should be set already
         cpu.mem.wram[0x300..0x400].fill(0xE0);
         smwe_emu::emu::exec_sprites(cpu);
         self.level_renderer.lock().unwrap().upload_sprites(&self.gl, cpu);
     }
 
-    fn update_anim_frame(&mut self, state: &mut EditorState, anim_frame: u8) {
+    fn update_anim_frame(&mut self, state: &mut EditorState) {
         let cpu = state.cpu.as_mut().unwrap(); // should be set already
         cpu.mem.store_u8(0x14AD, self.blue_pswitch as u8);
         cpu.mem.store_u8(0x14AE, self.silver_pswitch as u8);
         cpu.mem.store_u8(0x14AF, self.on_off_switch as u8);
-        for i in 0..8 {
-            cpu.mem.store_u8(0x14, anim_frame * 8 + i);
-            smwe_emu::emu::fetch_anim_frame(cpu);
-        }
+        smwe_emu::emu::fetch_anim_frame(cpu);
         self.level_renderer.lock().expect("Cannot lock mutex on level_renderer").upload_gfx(&self.gl, &cpu.mem.vram);
     }
 
     fn update_image(&mut self, state: &mut EditorState) {
-        self.update_anim_frame(state, 0);
+        self.update_anim_frame(state);
 
         // should be set already
         let cpu = state.cpu.as_mut().unwrap();
