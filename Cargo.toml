@@ -1,11 +1,11 @@
 [workspace]
 
 members = [
-    "smwe-project",
-    "smwe-rom",
-    "smwe-widgets",
-    "smwe-emu",
-    "wdc65816"
+    "crates/smwe-project",
+    "crates/smwe-rom",
+    "crates/smwe-widgets",
+    "crates/smwe-emu",
+    "crates/wdc65816"
 ]
 
 [package]
@@ -18,11 +18,11 @@ readme = "README.md"
 rust-version = "1.65"
 
 [dependencies]
-smwe-emu = { path = "smwe-emu" }
-smwe-project = { path = "smwe-project" }
-smwe-rom = { path = "smwe-rom" }
-smwe-widgets = { path = "smwe-widgets" }
-wdc65816 = { path = "wdc65816" }
+smwe-emu = { path = "crates/smwe-emu" }
+smwe-project = { path = "crates/smwe-project" }
+smwe-rom = { path = "crates/smwe-rom" }
+smwe-widgets = { path = "crates/smwe-widgets" }
+wdc65816 = { path = "crates/wdc65816" }
 
 anyhow = "1.0"
 eframe = "0.21"
