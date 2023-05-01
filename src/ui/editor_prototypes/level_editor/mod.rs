@@ -124,6 +124,8 @@ impl UiLevelEditor {
         let level_renderer = Arc::clone(&self.level_renderer);
         let (rect, response) =
             ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
+        let screen_size = rect.size() * ui.ctx().pixels_per_point();
+
         if response.dragged() {
             let mut r = level_renderer.lock().unwrap();
             let delta = response.drag_delta();
@@ -132,10 +134,11 @@ impl UiLevelEditor {
             o[0][1] += delta.y;
             *o[1] = *o[0];
         }
+
         ui.painter().add(PaintCallback {
             rect,
             callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                level_renderer.lock().expect("Cannot lock mutex on level_renderer").paint(painter.gl(), rect.size());
+                level_renderer.lock().expect("Cannot lock mutex on level_renderer").paint(painter.gl(), screen_size);
             })),
         });
     }
