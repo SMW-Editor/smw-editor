@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
+use inline_tweak::tweak;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
@@ -28,7 +29,6 @@ pub struct UiLevelEditor {
     silver_pswitch:   bool,
     on_off_switch:    bool,
     palette_line:     u8,
-    anim_frame:       u8,
 }
 
 impl UiLevelEditor {
@@ -45,7 +45,6 @@ impl UiLevelEditor {
             silver_pswitch: false,
             on_off_switch: false,
             palette_line: 0,
-            anim_frame: 0,
         }
     }
 }
@@ -59,12 +58,24 @@ impl DockableEditorTool for UiLevelEditor {
             self.initialized = true;
         }
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui, state));
+
         let cpu = state.cpu.as_mut().unwrap();
         let bg_color = cpu.mem.load_u16(0x7E0701);
         let bg_color = Color32::from(Abgr1555(bg_color));
         CentralPanel::default()
             .frame(Frame::none().inner_margin(0.).fill(bg_color))
             .show_inside(ui, |ui| self.central_panel(ui, state));
+
+        // Auto-play animations
+        let anim_frame = ui.ctx().animate_value_with_time(Id::new("level_anim"), 4., tweak!(0.4)) as u8;
+        match anim_frame {
+            0..=3 => self.update_anim_frame(state, anim_frame),
+            4 => {
+                ui.ctx().animate_value_with_time(Id::new("level_anim"), 0., 0.);
+            }
+            _ => unreachable!(),
+        }
+        ui.ctx().request_repaint();
     }
 
     fn title(&self) -> WidgetText {
@@ -84,11 +95,6 @@ impl UiLevelEditor {
             let switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::MinusPlus)
                 .range(0..=0x1FF)
                 .hexadecimal(3, false, true);
-            ui.add(switcher).changed()
-        };
-        need_update |= {
-            let switcher = ValueSwitcher::new(&mut self.anim_frame, "Animation Frame", ValueSwitcherButtons::MinusPlus)
-                .range(0..=4);
             ui.add(switcher).changed()
         };
         ui.horizontal(|ui| {
@@ -114,11 +120,8 @@ impl UiLevelEditor {
         }
     }
 
-    fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
+    fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
         let level_renderer = Arc::clone(&self.level_renderer);
-        let cpu = state.cpu.as_mut().unwrap();
-        //
-        //Frame::canvas(ui.style()).inner_margin(Margin::same(0.)).fill(Color32::from(Abgr1555(bg_color))).show(ui, |ui| {
         let (rect, response) =
             ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
         if response.dragged() {
@@ -132,10 +135,7 @@ impl UiLevelEditor {
         ui.painter().add(PaintCallback {
             rect,
             callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                level_renderer
-                    .lock()
-                    .expect("Cannot lock mutex on level_renderer")
-                    .paint(painter.gl(), rect.size());
+                level_renderer.lock().expect("Cannot lock mutex on level_renderer").paint(painter.gl(), rect.size());
             })),
         });
     }
@@ -160,22 +160,26 @@ impl UiLevelEditor {
         smwe_emu::emu::exec_sprites(cpu);
     }
 
-    fn update_anim_frame(&mut self, state: &mut EditorState) {
+    fn update_anim_frame(&mut self, state: &mut EditorState, anim_frame: u8) {
         let cpu = state.cpu.as_mut().unwrap(); // should be set already
         cpu.mem.store_u8(0x14AD, self.blue_pswitch as u8);
         cpu.mem.store_u8(0x14AE, self.silver_pswitch as u8);
         cpu.mem.store_u8(0x14AF, self.on_off_switch as u8);
         for i in 0..8 {
-            cpu.mem.store_u8(0x14, self.anim_frame * 8 + i);
+            cpu.mem.store_u8(0x14, anim_frame * 8 + i);
             smwe_emu::emu::fetch_anim_frame(cpu);
         }
+        self.level_renderer.lock().expect("Cannot lock mutex on level_renderer").upload_gfx(&self.gl, &cpu.mem.vram);
     }
 
     fn update_image(&mut self, state: &mut EditorState) {
-        self.update_anim_frame(state);
+        self.update_anim_frame(state, 0);
 
         // should be set already
         let cpu = state.cpu.as_mut().unwrap();
+        let level_renderer = self.level_renderer.lock().unwrap();
+        level_renderer.upload_palette(&self.gl, &cpu.mem.cgram);
+        level_renderer.upload_gfx(&self.gl, &cpu.mem.vram);
         // let mut new_image;
         // let new_spr_image;
         // match 0 {
@@ -238,10 +242,6 @@ impl UiLevelEditor {
         // self.image_handle = Some(ctx.load_texture("vram-image", new_image, TextureOptions::NEAREST));
         // self.spr_image_handle = Some(ctx.load_texture("sprite-image", new_spr_image, TextureOptions::NEAREST));
         // log::info!("Successfully created a VRAM file image (w = {img_w}, h = {img_h}).");
-
-        let level_renderer = self.level_renderer.lock().unwrap();
-        level_renderer.upload_palette(&self.gl, &cpu.mem.cgram);
-        level_renderer.upload_gfx(&self.gl, &cpu.mem.vram);
     }
 
     fn draw_sprites(&mut self, state: &mut EditorState, ctx: &Context) {
