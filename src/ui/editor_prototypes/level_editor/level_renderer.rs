@@ -1,5 +1,3 @@
-use std::num::Wrapping;
-
 use egui::{Rgba, Vec2};
 use glow::*;
 use itertools::Itertools;
@@ -108,6 +106,7 @@ impl BackgroundLayer {
             gl.draw_arrays(POINTS, 0, self.tiles_count as i32)
         }
     }
+
     fn load_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
         let mut tiles = Vec::new();
         for spr in (0..64).rev() {

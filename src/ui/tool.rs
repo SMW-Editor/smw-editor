@@ -11,7 +11,11 @@ use crate::ui::{
         rom_info::UiRomInfo,
         tiles16x16::UiTiles16x16,
     },
-    editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor, level_editor::UiLevelEditor},
+    editor_prototypes::{
+        block_editor::UiBlockEditor,
+        code_editor::UiCodeEditor,
+        level_editor::{level_view::UiLevelView, sprite_tile_editor::UiSpriteTileEditor, UiLevelEditor},
+    },
     EditorState,
 };
 
@@ -26,6 +30,8 @@ pub enum DockableEditorToolEnum {
     UiRomInfo,
     UiTiles16x16,
     UiLevelEditor,
+    UiLevelView,
+    UiSpriteTileEditor,
 }
 
 #[enum_dispatch(DockableEditorToolEnum)]
