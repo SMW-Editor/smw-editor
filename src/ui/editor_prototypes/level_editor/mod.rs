@@ -31,6 +31,7 @@ pub struct UiLevelEditor {
     run_sprites:      bool,
     palette_line:     u8,
     offset:           [f32;2],
+    sprite_id:        u8,
     timestamp:        std::time::Instant,
 }
 
@@ -50,6 +51,7 @@ impl UiLevelEditor {
             run_sprites: true,
             palette_line: 0,
             offset: [0., 0.],
+            sprite_id: 0,
             timestamp: std::time::Instant::now(),
         }
     }
@@ -116,6 +118,12 @@ impl UiLevelEditor {
                 .hexadecimal(3, false, true);
             ui.add(switcher).changed()
         };
+        need_update_level |= {
+            let switcher = ValueSwitcher::new(&mut self.sprite_id, "Sprite ID", ValueSwitcherButtons::MinusPlus)
+                .range(0..=0xFF)
+                .hexadecimal(2, false, true);
+            ui.add(switcher).changed()
+        };
         ui.horizontal(|ui| {
             need_update |= ui
                 .add(DragValue::new(&mut self.palette_line).clamp_range(0x0..=0xF).hexadecimal(1, false, true))
@@ -127,13 +135,13 @@ impl UiLevelEditor {
         need_update |= ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed();
         ui.checkbox(&mut self.run_sprites, "Run sprites");
         if ui.button("»").clicked() {
-            self.update_cpu_sprite(state);
+            self.update_cpu_sprite_id(state);
             // self.draw_sprites(state, ui.ctx());
         }
 
         if need_update_level {
             self.update_cpu(state);
-            self.update_cpu_sprite(state);
+            self.update_cpu_sprite_id(state);
         }
         if need_update || need_update_level {
             self.update_image(state);
@@ -185,6 +193,14 @@ impl UiLevelEditor {
         cpu.mem.wram[0x300..0x400].fill(0xE0);
         smwe_emu::emu::exec_sprites(cpu);
         self.level_renderer.lock().unwrap().upload_sprites(&self.gl, cpu);
+    }
+
+    fn update_cpu_sprite_id(&mut self, state: &mut EditorState) {
+        let cpu = state.cpu.as_mut().unwrap(); // should be set already
+        let mut cpu = cpu.clone();
+        cpu.mem.wram[0x300..0x400].fill(0xE0);
+        smwe_emu::emu::exec_sprite_id(&mut cpu, self.sprite_id);
+        self.level_renderer.lock().unwrap().upload_sprites(&self.gl, &mut cpu);
     }
 
     fn update_anim_frame(&mut self, state: &mut EditorState) {

@@ -233,6 +233,50 @@ pub fn fetch_anim_frame(cpu: &mut Cpu<CheckedMem>) -> u64 {
     cy
 }
 
+pub fn exec_sprite_id(cpu: &mut Cpu<CheckedMem>, id: u8) -> u64 {
+    let now = std::time::Instant::now();
+    cpu.emulation = false;
+    cpu.mem.store(0x9E, id);
+    cpu.mem.store(0x1A, 0x00);
+    cpu.mem.store(0x1C, 0x00);
+    cpu.mem.store(0xD8, 0x80);
+    cpu.mem.store(0xE4, 0x80);
+    for i in 0..12 {
+        cpu.mem.store(0x14C8+i, 0);
+    }
+    cpu.mem.store(0x14C8, 1);
+    cpu.y = 0;
+    cpu.x = 0;
+    cpu.s = 0x1FF;
+    cpu.pc = 0x2000;
+    cpu.pbr = 0x00;
+    cpu.dbr = 0x01;
+    cpu.trace = false;
+    // quasi-loader bytecode
+    let routines = ["InitSpriteTables", "CODE_01808C", "CODE_01808C"];
+    let mut addr = 0x2000;
+    for i in routines {
+        cpu.mem.store(addr, 0x22);
+        cpu.mem.store_u24(addr + 1, cpu.mem.cart.resolve(i).unwrap_or_else(|| panic!("no symbol: {}", i)));
+        addr += 4;
+    }
+    let mut cy = 0;
+    loop {
+        cy += cpu.dispatch() as u64;
+        //if cy > cy_limit { break; }
+        if cpu.ill {
+            println!("ILLEGAL INSTR");
+            break;
+        }
+        if cpu.pc == addr as u16 {
+            break;
+        }
+        if cy > 10000000 { println!("took too long"); break }
+        cpu.mem.process_dma();
+    }
+    println!("took {}µs", now.elapsed().as_micros());
+    cy
+}
 pub fn exec_sprites(cpu: &mut Cpu<CheckedMem>) -> u64 {
     let now = std::time::Instant::now();
     cpu.emulation = false;
@@ -245,7 +289,7 @@ pub fn exec_sprites(cpu: &mut Cpu<CheckedMem>) -> u64 {
     cpu.s = 0x1FF;
     cpu.pc = 0x2000;
     cpu.pbr = 0x00;
-    cpu.dbr = 0x00;
+    cpu.dbr = 0x01;
     cpu.trace = false;
     // quasi-loader bytecode
     let routines = ["CODE_01808C"];

@@ -8,9 +8,6 @@ use smwe_rom::graphics::color::Abgr1555;
 
 use crate::ui::editor_prototypes::level_editor::shaders::{TILE_FS_SRC, TILE_GS_SRC, TILE_VS_SRC};
 
-struct GlTile([u32; 4]);
-impl GlTile {}
-
 struct BackgroundLayer {
     shader_program: Program,
     vao:            VertexArray,
@@ -111,7 +108,6 @@ impl BackgroundLayer {
             gl.draw_arrays(POINTS, 0, self.tiles_count as i32)
         }
     }
-
     fn load_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
         let mut tiles = Vec::new();
         for spr in (0..64).rev() {
