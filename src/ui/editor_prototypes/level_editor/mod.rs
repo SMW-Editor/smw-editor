@@ -1,22 +1,17 @@
 mod level_renderer;
-pub mod level_view;
 mod shaders;
 pub mod sprite_tile_editor;
 
 use std::sync::{Arc, Mutex};
 
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
-use egui_dock::{DockArea, NodeIndex, Tree};
+use egui_glow::CallbackFn;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use crate::ui::{
-    editor_prototypes::level_editor::{
-        level_renderer::LevelRenderer,
-        level_view::UiLevelView,
-        sprite_tile_editor::UiSpriteTileEditor,
-    },
+    editor_prototypes::level_editor::{level_renderer::LevelRenderer, sprite_tile_editor::UiSpriteTileEditor},
     tab_viewer::EditorToolTabViewer,
     tool::{DockableEditorTool, DockableEditorToolEnum},
     EditorState,
@@ -27,10 +22,10 @@ pub const N_TILES_IN_ROW: usize = 16;
 pub struct UiLevelEditor {
     gl:               Arc<glow::Context>,
     level_renderer:   Arc<Mutex<LevelRenderer>>,
-    docking_tree:     Tree<DockableEditorToolEnum>,
     initialized:      bool,
     spr_image_handle: Option<TextureHandle>,
     curr_image_size:  (usize, usize),
+    offset:           [f32; 2],
     level_num:        u16,
     blue_pswitch:     bool,
     silver_pswitch:   bool,
@@ -45,19 +40,14 @@ impl UiLevelEditor {
     pub fn new(gl: Arc<glow::Context>) -> Self {
         let level_renderer = Arc::new(Mutex::new(LevelRenderer::new(&gl)));
 
-        let level_view = UiLevelView::new(Arc::clone(&level_renderer));
-        let sprite_tile_editor = UiSpriteTileEditor::default();
-        let mut docking_tree = Tree::new(vec![level_view.into()]);
-        docking_tree.split_below(NodeIndex::root(), 0.5, vec![sprite_tile_editor.into()]);
-
         Self {
             gl,
             level_renderer,
-            docking_tree,
             initialized: false,
             spr_image_handle: None,
             curr_image_size: (0, 0),
             level_num: 0,
+            offset: [0., 0.],
             blue_pswitch: false,
             silver_pswitch: false,
             on_off_switch: false,
@@ -155,9 +145,33 @@ impl UiLevelEditor {
     }
 
     fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
-        DockArea::new(&mut self.docking_tree)
-            .id(Id::new("level_editor_dock_area"))
-            .show_inside(ui, &mut EditorToolTabViewer { state });
+        let cpu = state.cpu.as_mut().unwrap();
+        let bg_color = cpu.mem.load_u16(0x7E0701);
+        let bg_color = Color32::from(Abgr1555(bg_color));
+        CentralPanel::default().frame(Frame::none().inner_margin(0.).fill(bg_color)).show_inside(ui, |ui| {
+            let level_renderer = Arc::clone(&self.level_renderer);
+            let (rect, response) =
+                ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
+            let screen_size = rect.size() * ui.ctx().pixels_per_point();
+
+            if response.dragged() {
+                let mut r = level_renderer.lock().unwrap();
+                let delta = response.drag_delta();
+                self.offset[0] += delta.x;
+                self.offset[1] += delta.y;
+                r.set_offsets(self.offset);
+            }
+
+            ui.painter().add(PaintCallback {
+                rect,
+                callback: Arc::new(CallbackFn::new(move |_info, painter| {
+                    level_renderer
+                        .lock()
+                        .expect("Cannot lock mutex on level_renderer")
+                        .paint(painter.gl(), screen_size);
+                })),
+            });
+        });
     }
 
     fn update_cpu(&mut self, state: &mut EditorState) {
