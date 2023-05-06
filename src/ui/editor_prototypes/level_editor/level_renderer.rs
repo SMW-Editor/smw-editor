@@ -21,6 +21,8 @@ pub(super) struct LevelRenderer {
 
     palette_buf: Buffer,
     vram_buf:    Buffer,
+
+    destroyed: bool,
 }
 
 impl BackgroundLayer {
@@ -103,7 +105,7 @@ impl BackgroundLayer {
             gl.bind_vertex_array(Some(self.vao));
             gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
 
-            gl.draw_arrays(POINTS, 0, self.tiles_count as i32)
+            gl.draw_arrays(POINTS, 0, self.tiles_count as i32);
         }
     }
 
@@ -236,25 +238,32 @@ impl LevelRenderer {
         let palette_buf = make_buffer(gl, 256 * 16, 0);
         let vram_buf = make_buffer(gl, 0x2000, 1);
 
-        Self { layer1, layer2, sprites, palette_buf, vram_buf }
+        Self { layer1, layer2, sprites, palette_buf, vram_buf, destroyed: false }
     }
 
-    pub(super) fn destroy(&self, gl: &Context) {
+    pub(super) fn destroy(&mut self, gl: &Context) {
         unsafe {
             gl.delete_buffer(self.vram_buf);
             gl.delete_buffer(self.palette_buf);
         }
         self.layer1.destroy(gl);
         self.layer2.destroy(gl);
+        self.destroyed = true;
     }
 
     pub(super) fn paint(&self, gl: &Context, screen_size: Vec2) {
+        if self.destroyed {
+            return;
+        }
         self.layer2.paint(gl, self.palette_buf, self.vram_buf, screen_size);
         self.layer1.paint(gl, self.palette_buf, self.vram_buf, screen_size);
         self.sprites.paint(gl, self.palette_buf, self.vram_buf, screen_size);
     }
 
     pub(super) fn upload_gfx(&self, gl: &Context, data: &[u8]) {
+        if self.destroyed {
+            return;
+        }
         unsafe {
             gl.bind_buffer(ARRAY_BUFFER, Some(self.vram_buf));
             gl.buffer_data_u8_slice(ARRAY_BUFFER, data, DYNAMIC_DRAW);
@@ -262,6 +271,9 @@ impl LevelRenderer {
     }
 
     pub(super) fn upload_palette(&self, gl: &Context, data: &[u8]) {
+        if self.destroyed {
+            return;
+        }
         let colors = data
             .iter()
             .tuples::<(&u8, &u8)>()
@@ -277,15 +289,24 @@ impl LevelRenderer {
     }
 
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
+        if self.destroyed {
+            return;
+        }
         self.layer1.load_layer(gl, cpu, false);
         self.layer2.load_layer(gl, cpu, true);
     }
 
     pub(super) fn upload_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
+        if self.destroyed {
+            return;
+        }
         self.sprites.load_sprites(gl, cpu);
     }
 
     pub(super) fn set_offsets(&mut self, offset: [f32; 2]) {
+        if self.destroyed {
+            return;
+        }
         self.layer1.offset = offset;
         self.layer2.offset = offset;
         self.sprites.offset = offset;
