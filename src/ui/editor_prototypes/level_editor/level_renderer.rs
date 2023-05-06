@@ -190,8 +190,8 @@ impl BackgroundLayer {
                 (column * 16 + screen * 256, row * 16)
             };
             let idx = if bg & !has_layer2 { idx % (16 * 27 * 2) } else { idx };
-            let block_id = cpu.mem.load_u8(blocks_lo_addr + idx as u32) as u16
-                | ((cpu.mem.load_u8(blocks_hi_addr + idx as u32) as u16) << 8);
+            let block_id =
+                cpu.mem.load_u8(blocks_lo_addr + idx) as u16 | ((cpu.mem.load_u8(blocks_hi_addr + idx) as u16) << 8);
             let block_ptr = if bg & !has_layer2 {
                 block_id as u32 * 8 + map16_bg
             } else {

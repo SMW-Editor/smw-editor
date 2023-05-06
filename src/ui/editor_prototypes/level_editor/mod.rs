@@ -11,9 +11,8 @@ use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use crate::ui::{
-    editor_prototypes::level_editor::{level_renderer::LevelRenderer, sprite_tile_editor::UiSpriteTileEditor},
-    tab_viewer::EditorToolTabViewer,
-    tool::{DockableEditorTool, DockableEditorToolEnum},
+    editor_prototypes::level_editor::level_renderer::LevelRenderer,
+    tool::DockableEditorTool,
     EditorState,
 };
 
