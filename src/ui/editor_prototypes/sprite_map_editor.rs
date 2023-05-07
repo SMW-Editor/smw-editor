@@ -1,9 +1,10 @@
 use egui::{Ui, WidgetText};
+use smwe_render::tile_renderer::Tile;
 
 use crate::ui::{tool::DockableEditorTool, EditorState};
 
 pub struct UiSpriteMapEditor {
-    tiles: Vec<[u32; 4]>,
+    tiles: Vec<Tile>,
 }
 
 impl Default for UiSpriteMapEditor {

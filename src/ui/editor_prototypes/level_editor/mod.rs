@@ -1,5 +1,4 @@
 mod level_renderer;
-mod shaders;
 
 use std::sync::{Arc, Mutex};
 
@@ -23,7 +22,7 @@ pub struct UiLevelEditor {
     initialized:      bool,
     spr_image_handle: Option<TextureHandle>,
     curr_image_size:  (usize, usize),
-    offset:           [f32; 2],
+    offset:           Vec2,
     level_num:        u16,
     blue_pswitch:     bool,
     silver_pswitch:   bool,
@@ -45,7 +44,7 @@ impl UiLevelEditor {
             spr_image_handle: None,
             curr_image_size: (0, 0),
             level_num: 0,
-            offset: [0., 0.],
+            offset: Vec2::splat(0.),
             blue_pswitch: false,
             silver_pswitch: false,
             on_off_switch: false,
@@ -155,9 +154,8 @@ impl UiLevelEditor {
             if response.dragged() {
                 let mut r = level_renderer.lock().unwrap();
                 let delta = response.drag_delta();
-                self.offset[0] += delta.x;
-                self.offset[1] += delta.y;
-                r.set_offsets(self.offset);
+                self.offset += delta;
+                r.set_offset(self.offset);
             }
 
             ui.painter().add(PaintCallback {

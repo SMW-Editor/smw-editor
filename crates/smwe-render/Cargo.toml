@@ -1,0 +1,14 @@
+[package]
+name = "smwe-render"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+smwe-emu = { path = "../smwe-emu" }
+
+emath = "0.21"
+epaint = "0.21"
+glow = "0.12"
+itertools = "0.10"

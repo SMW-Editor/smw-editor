@@ -1,10 +1,11 @@
 [workspace]
 
 members = [
+    "crates/smwe-emu",
     "crates/smwe-project",
+    "crates/smwe-render",
     "crates/smwe-rom",
     "crates/smwe-widgets",
-    "crates/smwe-emu",
     "crates/wdc65816"
 ]
 
@@ -20,6 +21,7 @@ rust-version = "1.65"
 [dependencies]
 smwe-emu = { path = "crates/smwe-emu" }
 smwe-project = { path = "crates/smwe-project" }
+smwe-render = { path = "crates/smwe-render" }
 smwe-rom = { path = "crates/smwe-rom" }
 smwe-widgets = { path = "crates/smwe-widgets" }
 wdc65816 = { path = "crates/wdc65816" }

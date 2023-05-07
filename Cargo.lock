@@ -2443,6 +2443,7 @@ dependencies = [
  "rfd",
  "smwe-emu",
  "smwe-project",
+ "smwe-render",
  "smwe-rom",
  "smwe-widgets",
  "thiserror",
@@ -2464,6 +2465,17 @@ dependencies = [
  "log",
  "smwe-emu",
  "smwe-rom",
+]
+
+[[package]]
+name = "smwe-render"
+version = "0.1.0"
+dependencies = [
+ "emath",
+ "epaint",
+ "glow",
+ "itertools",
+ "smwe-emu",
 ]
 
 [[package]]

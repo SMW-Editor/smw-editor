@@ -14,7 +14,8 @@ use crate::ui::{
     editor_prototypes::{
         block_editor::UiBlockEditor,
         code_editor::UiCodeEditor,
-        level_editor::{sprite_tile_editor::UiSpriteTileEditor, UiLevelEditor},
+        level_editor::UiLevelEditor,
+        sprite_map_editor::UiSpriteMapEditor,
     },
     EditorState,
 };
