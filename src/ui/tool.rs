@@ -30,7 +30,7 @@ pub enum DockableEditorToolEnum {
     UiRomInfo,
     UiTiles16x16,
     UiLevelEditor,
-    UiSpriteTileEditor,
+    UiSpriteMapEditor,
 }
 
 #[enum_dispatch(DockableEditorToolEnum)]

@@ -1,6 +1,5 @@
 mod level_renderer;
 mod shaders;
-pub mod sprite_tile_editor;
 
 use std::sync::{Arc, Mutex};
 

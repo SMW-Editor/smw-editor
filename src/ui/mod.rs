@@ -24,7 +24,12 @@ use crate::ui::{
         rom_info::UiRomInfo,
         tiles16x16::UiTiles16x16,
     },
-    editor_prototypes::{block_editor::UiBlockEditor, code_editor::UiCodeEditor, level_editor::UiLevelEditor},
+    editor_prototypes::{
+        block_editor::UiBlockEditor,
+        code_editor::UiCodeEditor,
+        level_editor::UiLevelEditor,
+        sprite_map_editor::UiSpriteMapEditor,
+    },
     project_creator::UiProjectCreator,
     tab_viewer::EditorToolTabViewer,
     tool::{DockableEditorTool, DockableEditorToolEnum},
@@ -182,6 +187,10 @@ impl UiMainWindow {
                     }
                     if ui.button("Level editor").clicked() {
                         self.open_tool(UiLevelEditor::new(Arc::clone(&self.state.gl)));
+                        ui.close_menu();
+                    }
+                    if ui.button("Sprite map editor").clicked() {
+                        self.open_tool(UiSpriteMapEditor::default());
                         ui.close_menu();
                     }
                 });
