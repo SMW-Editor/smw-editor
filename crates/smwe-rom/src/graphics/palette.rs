@@ -3,10 +3,10 @@ use std::{convert::TryInto, ops::RangeInclusive};
 use duplicate::duplicate;
 use nom::{combinator::map, multi::many1, number::complete::le_u16};
 use paste::paste;
+use smwe_render::color::{Abgr1555, ABGR1555_SIZE};
 use thiserror::Error;
 
 use crate::{
-    graphics::color::{Abgr1555, ABGR1555_SIZE},
     level::{headers::PrimaryHeader, Level},
     snes_utils::{addr::AddrSnes, rom_slice::SnesSlice},
     DataBlock,

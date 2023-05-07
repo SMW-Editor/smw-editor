@@ -1,17 +1,16 @@
-use egui::{Rgba, Vec2};
+use egui::Vec2;
 use glow::*;
-use itertools::Itertools;
 use smwe_emu::Cpu;
-use smwe_render::tile_renderer::{Tile, TileRenderer};
-use smwe_rom::graphics::color::Abgr1555;
+use smwe_render::{
+    gfx_buffers::GfxBuffers,
+    tile_renderer::{Tile, TileRenderer},
+};
 
 pub(super) struct LevelRenderer {
-    layer1:  TileRenderer,
-    layer2:  TileRenderer,
-    sprites: TileRenderer,
-
-    palette_buf: Buffer,
-    vram_buf:    Buffer,
+    layer1:   TileRenderer,
+    layer2:   TileRenderer,
+    sprites:  TileRenderer,
+    gfx_bufs: GfxBuffers,
 
     offset:    Vec2,
     destroyed: bool,
@@ -22,18 +21,12 @@ impl LevelRenderer {
         let layer1 = TileRenderer::new(gl);
         let layer2 = TileRenderer::new(gl);
         let sprites = TileRenderer::new(gl);
-
-        let palette_buf = make_buffer(gl, 256 * 16, 0);
-        let vram_buf = make_buffer(gl, 0x2000, 1);
-
-        Self { layer1, layer2, sprites, palette_buf, vram_buf, offset: Vec2::splat(0.), destroyed: false }
+        let gfx_bufs = GfxBuffers::new(gl);
+        Self { layer1, layer2, sprites, gfx_bufs, offset: Vec2::splat(0.), destroyed: false }
     }
 
     pub(super) fn destroy(&mut self, gl: &Context) {
-        unsafe {
-            gl.delete_buffer(self.vram_buf);
-            gl.delete_buffer(self.palette_buf);
-        }
+        self.gfx_bufs.destroy(gl);
         self.layer1.destroy(gl);
         self.layer2.destroy(gl);
         self.destroyed = true;
@@ -43,37 +36,23 @@ impl LevelRenderer {
         if self.destroyed {
             return;
         }
-        self.layer2.paint(gl, self.palette_buf, self.vram_buf, screen_size, self.offset);
-        self.layer1.paint(gl, self.palette_buf, self.vram_buf, screen_size, self.offset);
-        self.sprites.paint(gl, self.palette_buf, self.vram_buf, screen_size, self.offset);
+        self.layer2.paint(gl, self.gfx_bufs, screen_size, self.offset);
+        self.layer1.paint(gl, self.gfx_bufs, screen_size, self.offset);
+        self.sprites.paint(gl, self.gfx_bufs, screen_size, self.offset);
     }
 
     pub(super) fn upload_gfx(&self, gl: &Context, data: &[u8]) {
         if self.destroyed {
             return;
         }
-        unsafe {
-            gl.bind_buffer(ARRAY_BUFFER, Some(self.vram_buf));
-            gl.buffer_data_u8_slice(ARRAY_BUFFER, data, DYNAMIC_DRAW);
-        }
+        self.gfx_bufs.upload_vram(gl, data);
     }
 
     pub(super) fn upload_palette(&self, gl: &Context, data: &[u8]) {
         if self.destroyed {
             return;
         }
-        let colors = data
-            .iter()
-            .tuples::<(&u8, &u8)>()
-            .map(|(b1, b2)| u16::from_le_bytes([*b1, *b2]))
-            .map(Abgr1555)
-            .map(Rgba::from)
-            .flat_map(|color| color.to_array())
-            .collect_vec();
-        unsafe {
-            gl.bind_buffer(ARRAY_BUFFER, Some(self.palette_buf));
-            gl.buffer_data_u8_slice(ARRAY_BUFFER, colors.align_to().1, DYNAMIC_DRAW);
-        }
+        self.gfx_bufs.upload_palette(gl, data);
     }
 
     pub(super) fn upload_level(&mut self, gl: &Context, cpu: &mut Cpu) {
@@ -210,14 +189,4 @@ fn sp_tile(x: u32, y: u32, t: u16) -> Tile {
     let pal = ((t >> 9) & 0x7) + 8;
     let params = scale | (pal << 8) | (t & 0xC000);
     Tile([x, y, tile, params])
-}
-
-fn make_buffer(gl: &Context, size: i32, index: u32) -> Buffer {
-    unsafe {
-        let buf = gl.create_buffer().expect("Failed to create buffer");
-        gl.bind_buffer(ARRAY_BUFFER, Some(buf));
-        gl.buffer_data_size(ARRAY_BUFFER, size, DYNAMIC_DRAW);
-        gl.bind_buffer_base(UNIFORM_BUFFER, index, Some(buf));
-        buf
-    }
 }

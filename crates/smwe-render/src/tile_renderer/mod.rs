@@ -2,6 +2,8 @@ use emath::Vec2;
 use glow::*;
 use itertools::Itertools;
 
+use crate::gfx_buffers::GfxBuffers;
+
 const VERTEX_SHADER_SRC: &str = include_str!("tile.vs.glsl");
 const GEOMETRY_SHADER_SRC: &str = include_str!("tile.gs.glsl");
 const FRAGMENT_SHADER_SRC: &str = include_str!("tile.fs.glsl");
@@ -78,7 +80,7 @@ impl TileRenderer {
         }
     }
 
-    pub fn paint(&self, gl: &Context, palette_buf: Buffer, vram_buf: Buffer, screen_size: Vec2, offset: Vec2) {
+    pub fn paint(&self, gl: &Context, gfx_bufs: GfxBuffers, screen_size: Vec2, offset: Vec2) {
         unsafe {
             gl.use_program(Some(self.shader_program));
 
@@ -88,12 +90,12 @@ impl TileRenderer {
             let u = gl.get_uniform_location(self.shader_program, "screen_size");
             gl.uniform_2_f32(u.as_ref(), screen_size.x, screen_size.y);
 
-            gl.bind_buffer_base(ARRAY_BUFFER, 0, Some(palette_buf));
+            gl.bind_buffer_base(ARRAY_BUFFER, 0, Some(gfx_bufs.palette_buf));
             let palette_block =
                 gl.get_uniform_block_index(self.shader_program, "Color").expect("Failed to get 'Color' block");
             gl.uniform_block_binding(self.shader_program, palette_block, 0);
 
-            gl.bind_buffer_base(ARRAY_BUFFER, 1, Some(vram_buf));
+            gl.bind_buffer_base(ARRAY_BUFFER, 1, Some(gfx_bufs.vram_buf));
             let vram_block =
                 gl.get_uniform_block_index(self.shader_program, "Graphics").expect("Failed to get 'Graphics' block");
             gl.uniform_block_binding(self.shader_program, vram_block, 1);

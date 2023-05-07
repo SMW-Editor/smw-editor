@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
 use smwe_emu::{emu::CheckedMem, Cpu};
-use smwe_rom::graphics::{color::Abgr1555, gfx_file::Tile};
+use smwe_render::color::Abgr1555;
+use smwe_rom::graphics::gfx_file::Tile;
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use crate::ui::{

@@ -1,3 +1,4 @@
+#![allow(clippy::identity_op)]
 #![allow(clippy::unusual_byte_groupings)]
 #![allow(dead_code)]
 

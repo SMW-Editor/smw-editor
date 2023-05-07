@@ -2494,6 +2494,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "smwe-render",
  "thiserror",
 ]
 
@@ -2504,7 +2505,10 @@ dependencies = [
  "anyhow",
  "egui",
  "egui-phosphor",
+ "egui_glow",
  "itertools",
+ "smwe-emu",
+ "smwe-render",
  "thiserror",
 ]
 

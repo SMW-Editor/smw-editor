@@ -5,11 +5,11 @@ use std::fmt::{self, Display, Formatter};
 pub(crate) use data::GFX_FILES_META;
 use epaint::Rgba;
 use nom::{bytes::complete::take, combinator::map_parser, multi::many1, IResult};
+use smwe_render::color::Abgr1555;
 use thiserror::Error;
 
 use crate::{
     compression::{lc_lz2, DecompressionError},
-    graphics::color::Abgr1555,
     DataBlock,
     DataKind,
     RomDisassembly,

@@ -48,10 +48,8 @@ void main() {
     
     if (color_col == 0) {
         discard;
-//        out_color = vec4(1, 0, 0, 0);
     } else {
         uint color_idx = color_col + color_row * 0x10;
         out_color = colors[color_idx];
-//        out_color = vec4(0, 1, 0, 0);
     }
 }
