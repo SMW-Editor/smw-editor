@@ -15,7 +15,7 @@ layout(std140) uniform Color {
 out vec4 out_color;
 
 void main() {
-    const int scale = 8;
+    int scale = g_params & 0xFF;
     
     int tile_id = g_tile_id;
     int color_row = (g_params >> 8) & 0xF;

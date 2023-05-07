@@ -190,7 +190,7 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.button("Sprite map editor").clicked() {
-                        self.open_tool(UiSpriteMapEditor::default());
+                        self.open_tool(UiSpriteMapEditor::new(Arc::clone(&self.state.gl)));
                         ui.close_menu();
                     }
                 });

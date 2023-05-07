@@ -15,7 +15,7 @@ void main() {
 
 	g_tile_id = v_tile_id[0];
 	g_params = v_params[0];
-    float scale = 8.0;
+    float scale = float(v_params[0] & 0xFF);
 
 	vec2 pos;
 	vec2 p;

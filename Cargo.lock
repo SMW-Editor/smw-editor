@@ -2506,6 +2506,7 @@ dependencies = [
  "egui",
  "egui-phosphor",
  "egui_glow",
+ "glow",
  "itertools",
  "smwe-emu",
  "smwe-render",

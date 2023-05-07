@@ -67,17 +67,7 @@ impl LevelRenderer {
         if self.destroyed {
             return;
         }
-        self.load_sprites(gl, cpu);
-    }
 
-    pub(super) fn set_offset(&mut self, offset: Vec2) {
-        if self.destroyed {
-            return;
-        }
-        self.offset = offset;
-    }
-
-    fn load_sprites(&mut self, gl: &Context, cpu: &mut Cpu) {
         let mut tiles = Vec::new();
         for spr in (0..64).rev() {
             let mut x = cpu.mem.load_u8(0x300 + spr * 4) as u32;
@@ -111,6 +101,13 @@ impl LevelRenderer {
             }
         }
         self.sprites.set_tiles(gl, tiles);
+    }
+
+    pub(super) fn set_offset(&mut self, offset: Vec2) {
+        if self.destroyed {
+            return;
+        }
+        self.offset = offset;
     }
 
     fn load_layer(&mut self, gl: &Context, cpu: &mut Cpu, bg: bool) {
@@ -165,6 +162,8 @@ impl LevelRenderer {
                 tiles.push(bg_tile(block_x + off_x, block_y + off_y, tile_id));
             }
         }
+
+        // todo: non-background layer2
         if bg {
             self.layer2.set_tiles(gl, tiles);
         } else {
