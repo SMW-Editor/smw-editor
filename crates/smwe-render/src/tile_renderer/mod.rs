@@ -17,6 +17,7 @@ pub struct TileRenderer {
     vao:            VertexArray,
     vbo:            Buffer,
     tiles_count:    usize,
+    destroyed:      bool,
 }
 
 impl TileRenderer {
@@ -69,18 +70,25 @@ impl TileRenderer {
             buf
         };
 
-        Self { shader_program, vao, vbo, tiles_count: 0 }
+        Self { shader_program, vao, vbo, tiles_count: 0, destroyed: false }
     }
 
-    pub fn destroy(&self, gl: &Context) {
+    pub fn destroy(&mut self, gl: &Context) {
+        if self.destroyed {
+            return;
+        }
         unsafe {
             gl.delete_program(self.shader_program);
             gl.delete_vertex_array(self.vao);
             gl.delete_buffer(self.vbo);
         }
+        self.destroyed = true;
     }
 
     pub fn paint(&self, gl: &Context, gfx_bufs: GfxBuffers, screen_size: Vec2, offset: Vec2) {
+        if self.destroyed {
+            return;
+        }
         unsafe {
             gl.use_program(Some(self.shader_program));
 
@@ -108,6 +116,9 @@ impl TileRenderer {
     }
 
     pub fn set_tiles(&mut self, gl: &Context, tiles: Vec<Tile>) {
+        if self.destroyed {
+            return;
+        }
         self.tiles_count = tiles.len();
         unsafe {
             gl.bind_vertex_array(Some(self.vao));
