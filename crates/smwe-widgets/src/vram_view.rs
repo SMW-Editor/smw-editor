@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{pos2, vec2, Color32, PaintCallback, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2, Widget};
+use egui::{vec2, Color32, PaintCallback, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2, Widget};
 use egui_glow::CallbackFn;
 use glow::Context;
 use inline_tweak::tweak;
@@ -23,11 +23,12 @@ pub struct VramView<'a> {
     gfx_bufs:     GfxBuffers,
     viewed_tiles: ViewedVramTiles,
     selection:    Option<&'a mut (u32, u32)>,
+    zoom:         f32,
 }
 
 impl<'a> VramView<'a> {
     pub fn new(renderer: Arc<Mutex<TileRenderer>>, gfx_bufs: GfxBuffers) -> Self {
-        Self { renderer, gfx_bufs, viewed_tiles: ViewedVramTiles::All, selection: None }
+        Self { renderer, gfx_bufs, viewed_tiles: ViewedVramTiles::All, selection: None, zoom: 1. }
     }
 
     pub fn viewed_tiles(mut self, viewed_tiles: ViewedVramTiles) -> Self {
@@ -40,10 +41,15 @@ impl<'a> VramView<'a> {
         self
     }
 
+    pub fn zoom(mut self, zoom: f32) -> Self {
+        self.zoom = zoom;
+        self
+    }
+
     pub fn new_renderer(gl: &Context) -> TileRenderer {
         let tiles = (0..16 * 64)
             .map(|t| {
-                let scale = 16;
+                let scale = 8;
                 let pos_x = (t % 16) * scale;
                 let pos_y = (t / 16) * scale;
                 let (tile, pal) = if t < 16 * 32 {
@@ -65,8 +71,8 @@ impl<'a> VramView<'a> {
 
 impl Widget for VramView<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let Self { renderer, gfx_bufs, viewed_tiles, selection } = self;
-        let scale = tweak!(16.);
+        let Self { renderer, gfx_bufs, viewed_tiles, selection, zoom } = self;
+        let scale = tweak!(8.);
         let (height, offset) = match viewed_tiles {
             ViewedVramTiles::All => (64., Vec2::ZERO),
             ViewedVramTiles::BackgroundOnly => (32., Vec2::ZERO),
@@ -75,10 +81,11 @@ impl Widget for VramView<'_> {
         let px = ui.ctx().pixels_per_point();
         let scale = scale / px;
 
-        let rect_size = vec2(16., height) * scale;
+        let rect_size = vec2(16., height) * scale * zoom;
         let (rect, response) =
             ui.allocate_exact_size(rect_size, if selection.is_some() { Sense::click() } else { Sense::hover() });
 
+        // VRAM image
         let screen_size = rect.size() * px;
         ui.painter().add(PaintCallback {
             rect,
@@ -88,21 +95,21 @@ impl Widget for VramView<'_> {
                     gfx_bufs,
                     screen_size,
                     offset,
+                    zoom,
                 );
             })),
         });
 
+        // Hover/select tile
         if let Some(selection) = selection {
+            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(scale * zoom));
+
             if let Some(hover_pos) = response.hover_pos() {
                 let relative_pos = hover_pos - rect.left_top();
-                let hovered_tile = (relative_pos / scale).floor().clamp(vec2(0., 0.), vec2(15., 31.));
+                let hovered_tile = (relative_pos / scale / zoom).floor().clamp(vec2(0., 0.), vec2(15., 31.));
 
-                let hover_rect = Rect::from_min_size(
-                    (hovered_tile * scale + rect.left_top().to_vec2()).to_pos2(),
-                    Vec2::splat(scale),
-                );
                 ui.painter().rect_filled(
-                    hover_rect,
+                    selection_rect.translate(hovered_tile * scale * zoom),
                     Rounding::same(tweak!(3.)),
                     Color32::from_white_alpha(tweak!(100)),
                 );
@@ -112,12 +119,8 @@ impl Widget for VramView<'_> {
                 }
             }
 
-            let selection_rect = Rect::from_min_size(
-                (vec2(selection.0 as f32 * scale, selection.1 as f32 * scale) + rect.left_top().to_vec2()).to_pos2(),
-                Vec2::splat(scale),
-            );
             ui.painter().rect_stroke(
-                selection_rect,
+                selection_rect.translate(vec2(selection.0 as f32, selection.1 as f32) * scale * zoom),
                 Rounding::same(tweak!(3.)),
                 Stroke::new(tweak!(2.), Color32::from_rgba_premultiplied(200, 100, 30, 100)),
             );

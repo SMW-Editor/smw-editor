@@ -32,13 +32,13 @@ impl LevelRenderer {
         self.destroyed = true;
     }
 
-    pub(super) fn paint(&self, gl: &Context, screen_size: Vec2) {
+    pub(super) fn paint(&self, gl: &Context, screen_size: Vec2, zoom: f32) {
         if self.destroyed {
             return;
         }
-        self.layer2.paint(gl, self.gfx_bufs, screen_size, self.offset);
-        self.layer1.paint(gl, self.gfx_bufs, screen_size, self.offset);
-        self.sprites.paint(gl, self.gfx_bufs, screen_size, self.offset);
+        self.layer2.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
+        self.layer1.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
+        self.sprites.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
     }
 
     pub(super) fn upload_gfx(&self, gl: &Context, data: &[u8]) {

@@ -85,7 +85,7 @@ impl TileRenderer {
         self.destroyed = true;
     }
 
-    pub fn paint(&self, gl: &Context, gfx_bufs: GfxBuffers, screen_size: Vec2, offset: Vec2) {
+    pub fn paint(&self, gl: &Context, gfx_bufs: GfxBuffers, screen_size: Vec2, offset: Vec2, zoom: f32) {
         if self.destroyed {
             return;
         }
@@ -97,6 +97,9 @@ impl TileRenderer {
 
             let u = gl.get_uniform_location(self.shader_program, "screen_size");
             gl.uniform_2_f32(u.as_ref(), screen_size.x, screen_size.y);
+
+            let u = gl.get_uniform_location(self.shader_program, "zoom");
+            gl.uniform_1_f32(u.as_ref(), zoom);
 
             gl.bind_buffer_base(ARRAY_BUFFER, 0, Some(gfx_bufs.palette_buf));
             let palette_block =

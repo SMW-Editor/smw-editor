@@ -27,6 +27,7 @@ pub struct UiLevelEditor {
     palette_line:   u8,
     sprite_id:      u8,
     timestamp:      std::time::Instant,
+    zoom:           f32,
 }
 
 impl UiLevelEditor {
@@ -45,6 +46,7 @@ impl UiLevelEditor {
             palette_line: 0,
             sprite_id: 0,
             timestamp: std::time::Instant::now(),
+            zoom: 1.,
         }
     }
 }
@@ -117,6 +119,8 @@ impl UiLevelEditor {
             // self.draw_sprites(state, ui.ctx());
         }
 
+        ui.add(Slider::new(&mut self.zoom, 1.0..=3.0).step_by(0.25));
+
         if need_update_level {
             self.update_cpu(state);
             self.update_cpu_sprite_id(state);
@@ -136,20 +140,22 @@ impl UiLevelEditor {
                 ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
             let screen_size = rect.size() * ui.ctx().pixels_per_point();
 
+            let zoom = self.zoom;
             if response.dragged() {
                 let mut r = level_renderer.lock().unwrap();
                 let delta = response.drag_delta();
-                self.offset += delta;
+                self.offset += delta / zoom;
                 r.set_offset(self.offset);
             }
 
             ui.painter().add(PaintCallback {
                 rect,
                 callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    level_renderer
-                        .lock()
-                        .expect("Cannot lock mutex on level_renderer")
-                        .paint(painter.gl(), screen_size);
+                    level_renderer.lock().expect("Cannot lock mutex on level_renderer").paint(
+                        painter.gl(),
+                        screen_size,
+                        zoom,
+                    );
                 })),
             });
         });

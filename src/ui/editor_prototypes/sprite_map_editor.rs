@@ -3,8 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use egui::{SidePanel, TopBottomPanel, Ui, WidgetText};
+use egui::{vec2, PaintCallback, Sense, SidePanel, TopBottomPanel, Ui, Vec2, WidgetText};
+use egui_glow::CallbackFn;
 use glow::Context;
+use inline_tweak::tweak;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_render::{
     gfx_buffers::GfxBuffers,
@@ -119,11 +121,39 @@ impl UiSpriteMapEditor {
     }
 
     fn left_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+        let vram_renderer = Arc::clone(&self.vram_renderer);
+        let gfx_bufs = self.gfx_bufs;
+
+        // Tile selector
+        ui.label("VRAM view");
         ui.add(
-            VramView::new(Arc::clone(&self.vram_renderer), self.gfx_bufs)
+            VramView::new(Arc::clone(&vram_renderer), gfx_bufs)
                 .viewed_tiles(ViewedVramTiles::SpritesOnly)
-                .selection(&mut self.selected_vram_tile),
+                .selection(&mut self.selected_vram_tile)
+                .zoom(2.),
         );
+
+        // Selected tile preview
+        ui.label("Selection preview");
+        let px = ui.ctx().pixels_per_point();
+        let zoom = tweak!(8.);
+        let (rect, _response) = ui.allocate_exact_size(Vec2::splat(zoom * 8. / px), Sense::hover());
+
+        let screen_size = rect.size() * px;
+        let offset = vec2(-(self.selected_vram_tile.0 as f32), -32. - self.selected_vram_tile.1 as f32) * zoom;
+
+        ui.painter().add(PaintCallback {
+            rect,
+            callback: Arc::new(CallbackFn::new(move |_info, painter| {
+                vram_renderer.lock().expect("Cannot lock mutex on selected tile view's tile renderer").paint(
+                    painter.gl(),
+                    gfx_bufs,
+                    screen_size,
+                    offset,
+                    zoom,
+                );
+            })),
+        });
     }
 }
 

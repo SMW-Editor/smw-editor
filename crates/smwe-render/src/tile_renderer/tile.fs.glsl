@@ -4,6 +4,7 @@ flat in int g_params;
 in vec2 g_tex_coords;
 
 uniform vec2 screen_size;
+uniform float zoom;
 
 layout(std140) uniform Graphics {
     uvec4 graphics[0x1000];
@@ -19,7 +20,7 @@ void main() {
     
     int tile_id = g_tile_id;
     int color_row = (g_params >> 8) & 0xF;
-    ivec2 icoord = ivec2(g_tex_coords) * 8 / scale;
+    ivec2 icoord = ivec2(g_tex_coords) * 8 / int(scale * zoom);
     
     bool flip_x = (g_params & 0x4000) != 0;
     bool flip_y = (g_params & 0x8000) != 0;

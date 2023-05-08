@@ -4,6 +4,7 @@ in int v_tile_id[1];
 in int v_params[1];
 
 uniform vec2 screen_size;
+uniform float zoom;
 
 layout(triangle_strip, max_vertices = 4) out;
 flat out int g_tile_id;
@@ -15,7 +16,7 @@ void main() {
 
 	g_tile_id = v_tile_id[0];
 	g_params = v_params[0];
-    float scale = float(v_params[0] & 0xFF);
+    float scale = float(v_params[0] & 0xFF) * zoom;
 
 	vec2 pos;
 	vec2 p;
