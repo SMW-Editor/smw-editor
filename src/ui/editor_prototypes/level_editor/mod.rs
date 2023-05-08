@@ -141,7 +141,7 @@ impl UiLevelEditor {
             let screen_size = rect.size() * ui.ctx().pixels_per_point();
 
             let zoom = self.zoom;
-            if response.dragged() {
+            if response.dragged_by(PointerButton::Middle) {
                 let mut r = level_renderer.lock().unwrap();
                 let delta = response.drag_delta();
                 self.offset += delta / zoom;
