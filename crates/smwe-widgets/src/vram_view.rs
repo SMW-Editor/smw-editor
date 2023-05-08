@@ -46,7 +46,7 @@ impl<'a> VramView<'a> {
         self
     }
 
-    pub fn new_renderer(gl: &Context) -> TileRenderer {
+    pub fn new_renderer(gl: &Context) -> (TileRenderer, Vec<Tile>) {
         let tiles = (0..16 * 64)
             .map(|t| {
                 let scale = 8;
@@ -64,8 +64,8 @@ impl<'a> VramView<'a> {
             })
             .collect_vec();
         let mut renderer = TileRenderer::new(gl);
-        renderer.set_tiles(gl, tiles);
-        renderer
+        renderer.set_tiles(gl, tiles.clone());
+        (renderer, tiles)
     }
 }
 

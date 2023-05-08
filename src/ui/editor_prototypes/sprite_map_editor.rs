@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{vec2, PaintCallback, Sense, SidePanel, TopBottomPanel, Ui, Vec2, WidgetText};
+use egui::{vec2, CentralPanel, Frame, PaintCallback, Pos2, Sense, SidePanel, TopBottomPanel, Ui, Vec2, WidgetText};
 use egui_glow::CallbackFn;
 use glow::Context;
 use inline_tweak::tweak;
@@ -18,7 +18,8 @@ use crate::ui::{tool::DockableEditorTool, EditorState};
 
 pub struct UiSpriteMapEditor {
     gl:              Arc<Context>,
-    tiles:           Vec<Tile>,
+    sprite_tiles:    Vec<Tile>,
+    tile_palette:    Vec<Tile>,
     vram_renderer:   Arc<Mutex<TileRenderer>>,
     sprite_renderer: Arc<Mutex<TileRenderer>>,
     gfx_bufs:        GfxBuffers,
@@ -35,12 +36,13 @@ pub struct UiSpriteMapEditor {
 
 impl UiSpriteMapEditor {
     pub fn new(gl: Arc<Context>) -> Self {
-        let vram_renderer = VramView::new_renderer(&gl);
+        let (vram_renderer, tile_palette) = VramView::new_renderer(&gl);
         let sprite_renderer = TileRenderer::new(&gl);
         let gfx_bufs = GfxBuffers::new(&gl);
         Self {
             gl,
-            tiles: Vec::new(),
+            sprite_tiles: Vec::new(),
+            tile_palette,
             vram_renderer: Arc::new(Mutex::new(vram_renderer)),
             sprite_renderer: Arc::new(Mutex::new(sprite_renderer)),
             gfx_bufs,
@@ -72,6 +74,7 @@ impl DockableEditorTool for UiSpriteMapEditor {
         SidePanel::left("sprite_map_editor.left_panel")
             .resizable(false)
             .show_inside(ui, |ui| self.left_panel(ui, state));
+        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, state));
     }
 
     fn title(&self) -> WidgetText {
@@ -120,6 +123,7 @@ impl UiSpriteMapEditor {
         );
 
         // Selected tile preview
+        ui.add_space(tweak!(25.));
         ui.label("Selection preview");
         let px = ui.ctx().pixels_per_point();
         let zoom = tweak!(8.);
@@ -141,6 +145,36 @@ impl UiSpriteMapEditor {
             })),
         });
     }
+
+    fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+        Frame::canvas(ui.style()).show(ui, |ui| {
+            let sprite_renderer = Arc::clone(&self.sprite_renderer);
+            let gfx_bufs = self.gfx_bufs;
+            let px = ui.ctx().pixels_per_point();
+            let zoom = tweak!(2.);
+            let editing_area_size = tweak!(256.) * zoom;
+            let (rect, response) = ui.allocate_exact_size(Vec2::splat(editing_area_size / px), Sense::click());
+            let screen_size = rect.size() * px;
+
+            if response.secondary_clicked() {
+                let click_pos = (response.hover_pos().unwrap().to_vec2() - rect.left_top().to_vec2()) / zoom * px;
+                self.add_selected_tile_at(click_pos.to_pos2());
+            }
+
+            ui.painter().add(PaintCallback {
+                rect,
+                callback: Arc::new(CallbackFn::new(move |_info, painter| {
+                    sprite_renderer.lock().expect("Cannot lock mutex on sprite renderer").paint(
+                        painter.gl(),
+                        gfx_bufs,
+                        screen_size,
+                        Vec2::ZERO,
+                        zoom,
+                    );
+                })),
+            });
+        });
+    }
 }
 
 // Internals
@@ -158,5 +192,18 @@ impl UiSpriteMapEditor {
         let cpu = state.cpu.as_mut().unwrap();
         self.gfx_bufs.upload_palette(&self.gl, &cpu.mem.cgram);
         self.gfx_bufs.upload_vram(&self.gl, &cpu.mem.vram);
+    }
+
+    fn add_selected_tile_at(&mut self, pos: Pos2) {
+        let tile_idx = (self.selected_vram_tile.0 + self.selected_vram_tile.1 * 16) as usize;
+        let mut tile = self.tile_palette[tile_idx + (32 * 16)];
+        tile.0[0] = pos.x.floor() as u32;
+        tile.0[1] = pos.y.floor() as u32;
+        self.sprite_tiles.push(tile);
+        self.sprite_renderer
+            .lock()
+            .expect("Cannot lock mutex on sprite renderer")
+            .set_tiles(&self.gl, self.sprite_tiles.clone());
+        println!("Placed tile {:X} at ({}, {})", tile.0[2], pos.x, pos.y);
     }
 }
