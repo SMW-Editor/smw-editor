@@ -12,7 +12,7 @@ use smwe_render::{
 };
 use smwe_widgets::{
     value_switcher::{ValueSwitcher, ValueSwitcherButtons},
-    vram_view::VramView,
+    vram_view::{ViewedVramTiles, VramView},
 };
 
 use crate::ui::{tool::DockableEditorTool, EditorState};
@@ -116,7 +116,7 @@ impl UiSpriteMapEditor {
     }
 
     fn left_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
-        ui.add(VramView::new(Arc::clone(&self.vram_renderer), self.gfx_bufs));
+        ui.add(VramView::new(Arc::clone(&self.vram_renderer), self.gfx_bufs, ViewedVramTiles::SpritesOnly));
     }
 }
 
