@@ -31,6 +31,8 @@ pub struct UiSpriteMapEditor {
 
     initialized: bool,
     timestamp:   Instant,
+
+    selected_vram_tile: (u32, u32),
 }
 
 impl UiSpriteMapEditor {
@@ -50,6 +52,7 @@ impl UiSpriteMapEditor {
             on_off_switch: false,
             initialized: false,
             timestamp: Instant::now(),
+            selected_vram_tile: (0, 0),
         }
     }
 
@@ -116,7 +119,11 @@ impl UiSpriteMapEditor {
     }
 
     fn left_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
-        ui.add(VramView::new(Arc::clone(&self.vram_renderer), self.gfx_bufs, ViewedVramTiles::SpritesOnly));
+        ui.add(
+            VramView::new(Arc::clone(&self.vram_renderer), self.gfx_bufs)
+                .viewed_tiles(ViewedVramTiles::SpritesOnly)
+                .selection(&mut self.selected_vram_tile),
+        );
     }
 }
 
