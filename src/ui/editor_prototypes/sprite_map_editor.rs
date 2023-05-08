@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
+use std::sync::{Arc, Mutex};
 
 use egui::{vec2, PaintCallback, Sense, SidePanel, TopBottomPanel, Ui, Vec2, WidgetText};
 use egui_glow::CallbackFn;
@@ -32,7 +29,6 @@ pub struct UiSpriteMapEditor {
     on_off_switch:  bool,
 
     initialized: bool,
-    timestamp:   Instant,
 
     selected_vram_tile: (u32, u32),
 }
@@ -53,7 +49,6 @@ impl UiSpriteMapEditor {
             silver_pswitch: false,
             on_off_switch: false,
             initialized: false,
-            timestamp: Instant::now(),
             selected_vram_tile: (0, 0),
         }
     }
@@ -66,18 +61,10 @@ impl UiSpriteMapEditor {
 impl DockableEditorTool for UiSpriteMapEditor {
     fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
         if !self.initialized {
-            self.init(state);
+            self.update_cpu(state);
+            self.update_renderers(state);
+            self.initialized = true;
         }
-
-        // Auto-play animations
-        let ft = Duration::from_secs_f32(1. / 60.);
-        let now = Instant::now();
-        while now - self.timestamp > ft {
-            self.timestamp += ft;
-            self.update_timers(state);
-            self.update_anim_frame(state);
-        }
-        ui.ctx().request_repaint();
 
         TopBottomPanel::top("sprite_map_editor.top_panel")
             .resizable(false)
@@ -112,7 +99,6 @@ impl UiSpriteMapEditor {
 
             if need_update_level {
                 self.update_cpu(state);
-                self.update_cpu_sprite_id(state);
             }
             if need_update || need_update_level {
                 self.update_renderers(state);
@@ -159,13 +145,6 @@ impl UiSpriteMapEditor {
 
 // Internals
 impl UiSpriteMapEditor {
-    fn init(&mut self, state: &mut EditorState) {
-        self.update_cpu(state);
-        self.update_cpu_sprite(state);
-        self.update_renderers(state);
-        self.initialized = true;
-    }
-
     fn update_cpu(&mut self, state: &mut EditorState) {
         let project = state.project.as_ref().unwrap().borrow();
         let mut cpu = Cpu::new(CheckedMem::new(project.rom.clone()));
@@ -175,39 +154,7 @@ impl UiSpriteMapEditor {
         state.cpu = Some(cpu);
     }
 
-    fn update_timers(&mut self, state: &mut EditorState) {
-        let cpu = state.cpu.as_mut().unwrap(); // should be set already
-        let m = cpu.mem.load_u8(0x13);
-        cpu.mem.store_u8(0x13, m.wrapping_add(1));
-        let m = cpu.mem.load_u8(0x14);
-        cpu.mem.store_u8(0x14, m.wrapping_add(1));
-    }
-
-    fn update_cpu_sprite(&mut self, state: &mut EditorState) {
-        let cpu = state.cpu.as_mut().unwrap(); // should be set already
-        cpu.mem.wram[0x300..0x400].fill(0xE0);
-        smwe_emu::emu::exec_sprites(cpu);
-    }
-
-    fn update_cpu_sprite_id(&mut self, state: &mut EditorState) {
-        let cpu = state.cpu.as_mut().unwrap(); // should be set already
-        let mut cpu = cpu.clone();
-        cpu.mem.wram[0x300..0x400].fill(0xE0);
-        smwe_emu::emu::exec_sprite_id(&mut cpu, 0);
-    }
-
-    fn update_anim_frame(&mut self, state: &mut EditorState) {
-        let cpu = state.cpu.as_mut().unwrap(); // should be set already
-        cpu.mem.store_u8(0x14AD, self.blue_pswitch as u8);
-        cpu.mem.store_u8(0x14AE, self.silver_pswitch as u8);
-        cpu.mem.store_u8(0x14AF, self.on_off_switch as u8);
-        smwe_emu::emu::fetch_anim_frame(cpu);
-        self.gfx_bufs.upload_vram(&self.gl, &cpu.mem.vram);
-    }
-
     fn update_renderers(&mut self, state: &mut EditorState) {
-        self.update_anim_frame(state);
-
         let cpu = state.cpu.as_mut().unwrap();
         self.gfx_bufs.upload_palette(&self.gl, &cpu.mem.cgram);
         self.gfx_bufs.upload_vram(&self.gl, &cpu.mem.vram);
