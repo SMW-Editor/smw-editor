@@ -1,6 +1,22 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{vec2, CentralPanel, Frame, PaintCallback, Pos2, Sense, SidePanel, TopBottomPanel, Ui, Vec2, WidgetText};
+use egui::{
+    vec2,
+    CentralPanel,
+    Color32,
+    Frame,
+    PaintCallback,
+    Pos2,
+    Rect,
+    Rounding,
+    Sense,
+    SidePanel,
+    Stroke,
+    TopBottomPanel,
+    Ui,
+    Vec2,
+    WidgetText,
+};
 use egui_glow::CallbackFn;
 use glow::Context;
 use inline_tweak::tweak;
@@ -155,11 +171,8 @@ impl UiSpriteMapEditor {
             let editing_area_size = tweak!(256.) * zoom;
             let (rect, response) = ui.allocate_exact_size(Vec2::splat(editing_area_size / px), Sense::click());
             let screen_size = rect.size() * px;
-
-            if response.secondary_clicked() {
-                let click_pos = (response.hover_pos().unwrap().to_vec2() - rect.left_top().to_vec2()) / zoom * px;
-                self.add_selected_tile_at(click_pos.to_pos2());
-            }
+            let scale = tweak!(8.);
+            let scale_pp = scale / px;
 
             ui.painter().add(PaintCallback {
                 rect,
@@ -173,6 +186,25 @@ impl UiSpriteMapEditor {
                     );
                 })),
             });
+
+            // Hover/select tile
+            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(scale_pp * zoom));
+
+            if let Some(hover_pos) = response.hover_pos() {
+                let relative_pos = hover_pos - rect.left_top();
+                let hovered_tile = (relative_pos / scale_pp / zoom).floor().clamp(vec2(0., 0.), vec2(31., 31.));
+                let place_pos = hovered_tile * scale_pp * zoom;
+
+                ui.painter().rect_filled(
+                    selection_rect.translate(place_pos),
+                    Rounding::same(tweak!(3.)),
+                    Color32::from_white_alpha(tweak!(100)),
+                );
+
+                if response.secondary_clicked() {
+                    self.add_selected_tile_at((hovered_tile * scale).to_pos2());
+                }
+            }
         });
     }
 }
@@ -204,6 +236,5 @@ impl UiSpriteMapEditor {
             .lock()
             .expect("Cannot lock mutex on sprite renderer")
             .set_tiles(&self.gl, self.sprite_tiles.clone());
-        println!("Placed tile {:X} at ({}, {})", tile.0[2], pos.x, pos.y);
     }
 }
