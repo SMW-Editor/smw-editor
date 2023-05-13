@@ -1,5 +1,6 @@
 mod color;
 mod dev_utils;
+mod editing_mode;
 mod editor_prototypes;
 mod project_creator;
 mod tab_viewer;

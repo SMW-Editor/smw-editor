@@ -1,23 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{
-    vec2,
-    CentralPanel,
-    Color32,
-    Frame,
-    PaintCallback,
-    Pos2,
-    Rect,
-    Rounding,
-    Sense,
-    SidePanel,
-    Stroke,
-    TopBottomPanel,
-    Ui,
-    Vec2,
-    WidgetText,
-};
+use egui::*;
 use egui_glow::CallbackFn;
+use egui_phosphor as icons;
 use glow::Context;
 use inline_tweak::tweak;
 use smwe_emu::{emu::CheckedMem, Cpu};
@@ -30,7 +15,7 @@ use smwe_widgets::{
     vram_view::{ViewedVramTiles, VramView},
 };
 
-use crate::ui::{tool::DockableEditorTool, EditorState};
+use crate::ui::{editing_mode::EditingMode, tool::DockableEditorTool, EditorState};
 
 pub struct UiSpriteMapEditor {
     gl:              Arc<Context>,
@@ -40,14 +25,15 @@ pub struct UiSpriteMapEditor {
     sprite_renderer: Arc<Mutex<TileRenderer>>,
     gfx_bufs:        GfxBuffers,
 
-    level_num:      u16,
-    blue_pswitch:   bool,
-    silver_pswitch: bool,
-    on_off_switch:  bool,
+    level_num:    u16,
+    editing_mode: EditingMode,
 
     initialized: bool,
+    scale:       f32,
+    zoom:        f32,
 
     selected_vram_tile: (u32, u32),
+    last_inserted_tile: Pos2,
 }
 
 impl UiSpriteMapEditor {
@@ -63,11 +49,12 @@ impl UiSpriteMapEditor {
             sprite_renderer: Arc::new(Mutex::new(sprite_renderer)),
             gfx_bufs,
             level_num: 0,
-            blue_pswitch: false,
-            silver_pswitch: false,
-            on_off_switch: false,
+            editing_mode: EditingMode::Insert,
             initialized: false,
+            scale: 8.,
+            zoom: 2.,
             selected_vram_tile: (0, 0),
+            last_inserted_tile: pos2(-1., -1.),
         }
     }
 
@@ -105,24 +92,52 @@ impl DockableEditorTool for UiSpriteMapEditor {
 impl UiSpriteMapEditor {
     fn top_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         ui.horizontal(|ui| {
-            let mut need_update_level = false;
-            let mut need_update = false;
-            let level_switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::MinusPlus)
-                .range(0..=0x1FF)
-                .hexadecimal(3, false, true);
+            self.level_selector(ui, state);
 
-            need_update_level |= ui.add(level_switcher).changed();
-            need_update |= ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed();
-            need_update |= ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed();
-            need_update |= ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed();
+            ui.add_space(tweak!(62.) * ui.ctx().pixels_per_point());
+            ui.separator();
 
-            if need_update_level {
-                self.update_cpu(state);
-            }
-            if need_update || need_update_level {
-                self.update_renderers(state);
-            }
+            self.editing_mode_selector(ui, state);
         });
+    }
+
+    fn level_selector(&mut self, ui: &mut Ui, state: &mut EditorState) {
+        let level_switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::MinusPlus)
+            .range(0..=0x1FF)
+            .hexadecimal(3, false, true);
+
+        if ui.add(level_switcher).changed() {
+            self.update_cpu(state);
+            self.update_renderers(state);
+        }
+    }
+
+    fn editing_mode_selector(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+        let editing_mode_data = [
+            (icons::CURSOR, "Insert mode", "Insert tile on double-click, select on drag.", EditingMode::Insert),
+            (icons::RECTANGLE, "Select mode", "Left-click and drag to select tiles.", EditingMode::Select),
+            (icons::PENCIL, "Draw mode", "Insert tiles while left mouse button is pressed.", EditingMode::Draw),
+            (icons::ERASER, "Erase mode", "Delete tiles while left mouse button is pressed.", EditingMode::Erase),
+            (icons::EYEDROPPER, "Probe mode", "Pick a tile from the canvas on left-click.", EditingMode::Probe),
+        ];
+
+        for (icon, mode_name, mode_desc, mode) in editing_mode_data.into_iter() {
+            let button = if self.editing_mode == mode {
+                Button::new(icon).fill(Color32::from_rgb(tweak!(200), tweak!(30), tweak!(70)))
+            } else {
+                Button::new(icon)
+            };
+            if ui
+                .add(button)
+                .on_hover_ui_at_pointer(|ui| {
+                    ui.strong(mode_name);
+                    ui.label(mode_desc);
+                })
+                .clicked()
+            {
+                self.editing_mode = mode;
+            }
+        }
     }
 
     fn left_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
@@ -167,12 +182,11 @@ impl UiSpriteMapEditor {
             let sprite_renderer = Arc::clone(&self.sprite_renderer);
             let gfx_bufs = self.gfx_bufs;
             let px = ui.ctx().pixels_per_point();
-            let zoom = tweak!(2.);
-            let editing_area_size = tweak!(256.) * zoom;
-            let (rect, response) = ui.allocate_exact_size(Vec2::splat(editing_area_size / px), Sense::click());
+            let editing_area_size = tweak!(256.) * self.zoom;
+            let (rect, response) = ui.allocate_exact_size(Vec2::splat(editing_area_size / px), Sense::click_and_drag());
             let screen_size = rect.size() * px;
-            let scale = tweak!(8.);
-            let scale_pp = scale / px;
+            let scale_pp = self.scale / px;
+            let zoom = self.zoom;
 
             ui.painter().add(PaintCallback {
                 rect,
@@ -188,21 +202,38 @@ impl UiSpriteMapEditor {
             });
 
             // Hover/select tile
-            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(scale_pp * zoom));
+            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(scale_pp * self.zoom));
 
             if let Some(hover_pos) = response.hover_pos() {
                 let relative_pos = hover_pos - rect.left_top();
-                let hovered_tile = (relative_pos / scale_pp / zoom).floor().clamp(vec2(0., 0.), vec2(31., 31.));
-                let place_pos = hovered_tile * scale_pp * zoom;
+                let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
+                let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
 
                 ui.painter().rect_filled(
-                    selection_rect.translate(place_pos),
+                    selection_rect.translate(hovered_tile * scale_pp * self.zoom),
                     Rounding::same(tweak!(3.)),
                     Color32::from_white_alpha(tweak!(100)),
                 );
 
-                if response.secondary_clicked() {
-                    self.add_selected_tile_at((hovered_tile * scale).to_pos2());
+                if self.editing_mode.inserted(&response) {
+                    let place_pos = (hovered_tile * self.scale).to_pos2();
+                    if self.last_inserted_tile != place_pos {
+                        self.add_selected_tile_at(place_pos);
+                        self.last_inserted_tile = place_pos;
+                    }
+                }
+
+                if self.editing_mode.selected(&response) {
+                    // todo
+                }
+
+                if self.editing_mode.erased(&response) {
+                    let pixel_pos = relative_pos / self.zoom * px;
+                    self.delete_tiles_at(pixel_pos.to_pos2());
+                }
+
+                if self.editing_mode.probed(&response) {
+                    // todo
                 }
             }
         });
@@ -226,15 +257,28 @@ impl UiSpriteMapEditor {
         self.gfx_bufs.upload_vram(&self.gl, &cpu.mem.vram);
     }
 
+    fn upload_tiles(&self) {
+        self.sprite_renderer
+            .lock()
+            .expect("Cannot lock mutex on sprite renderer")
+            .set_tiles(&self.gl, self.sprite_tiles.clone());
+    }
+
     fn add_selected_tile_at(&mut self, pos: Pos2) {
         let tile_idx = (self.selected_vram_tile.0 + self.selected_vram_tile.1 * 16) as usize;
         let mut tile = self.tile_palette[tile_idx + (32 * 16)];
         tile.0[0] = pos.x.floor() as u32;
         tile.0[1] = pos.y.floor() as u32;
         self.sprite_tiles.push(tile);
-        self.sprite_renderer
-            .lock()
-            .expect("Cannot lock mutex on sprite renderer")
-            .set_tiles(&self.gl, self.sprite_tiles.clone());
+        self.upload_tiles();
+    }
+
+    fn delete_tiles_at(&mut self, pos: Pos2) {
+        self.sprite_tiles.retain(|tile| {
+            let min = pos2(tile.0[0] as f32, tile.0[1] as f32);
+            let size = Vec2::splat(self.scale);
+            !Rect::from_min_size(min, size).contains(pos)
+        });
+        self.upload_tiles();
     }
 }
