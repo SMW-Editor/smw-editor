@@ -106,13 +106,24 @@ impl DockableEditorTool for UiSpriteMapEditor {
 }
 
 impl UiSpriteMapEditor {
+    #[allow(clippy::collapsible_if)]
     fn handle_keyboard(&mut self, ui: &mut Ui, _state: &mut EditorState) {
-        ui.input(|i| {
-            if i.key_pressed(Key::Delete) {
+        ui.input(|input| {
+            let move_distance = if input.modifiers.shift_only() { self.scale } else { 1. };
+
+            if input.key_pressed(Key::Delete) {
                 for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
                     self.sprite_tiles.remove(idx);
                 }
                 self.upload_tiles();
+            } else if input.key_pressed(Key::ArrowUp) {
+                self.move_selected_tiles_by(vec2(0., -move_distance), input.modifiers.shift_only());
+            } else if input.key_pressed(Key::ArrowDown) {
+                self.move_selected_tiles_by(vec2(0., move_distance), input.modifiers.shift_only());
+            } else if input.key_pressed(Key::ArrowLeft) {
+                self.move_selected_tiles_by(vec2(-move_distance, 0.), input.modifiers.shift_only());
+            } else if input.key_pressed(Key::ArrowRight) {
+                self.move_selected_tiles_by(vec2(move_distance, 0.), input.modifiers.shift_only());
             }
         });
     }
@@ -159,14 +170,13 @@ impl UiSpriteMapEditor {
             } else {
                 Button::new(icon)
             };
-            if ui
-                .add(button)
-                .on_hover_ui_at_pointer(|ui| {
-                    ui.strong(mode_name);
-                    ui.label(mode_desc);
-                })
-                .clicked()
-            {
+
+            let tooltip = |ui: &mut Ui| {
+                ui.strong(mode_name);
+                ui.label(mode_desc);
+            };
+
+            if ui.add(button).on_hover_ui_at_pointer(tooltip).clicked() {
                 self.editing_mode = mode;
             }
         }
@@ -214,14 +224,14 @@ impl UiSpriteMapEditor {
             let sprite_renderer = Arc::clone(&self.sprite_renderer);
             let gfx_bufs = self.gfx_bufs;
             let editing_area_size = tweak!(256.) * self.zoom;
-            let (rect, response) =
+            let (canvas_rect, response) =
                 ui.allocate_exact_size(Vec2::splat(editing_area_size / self.pixels_per_point), Sense::click_and_drag());
-            let screen_size = rect.size() * self.pixels_per_point;
+            let screen_size = canvas_rect.size() * self.pixels_per_point;
             let scale_pp = self.scale / self.pixels_per_point;
             let zoom = self.zoom;
 
             ui.painter().add(PaintCallback {
-                rect,
+                rect:     canvas_rect,
                 callback: Arc::new(CallbackFn::new(move |_info, painter| {
                     sprite_renderer.lock().expect("Cannot lock mutex on sprite renderer").paint(
                         painter.gl(),
@@ -234,7 +244,7 @@ impl UiSpriteMapEditor {
             });
 
             if let Some(hover_pos) = response.hover_pos() {
-                let relative_pos = hover_pos - rect.left_top();
+                let relative_pos = hover_pos - canvas_rect.left_top();
                 let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
                 let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
                 let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
@@ -251,7 +261,7 @@ impl UiSpriteMapEditor {
                     EditingMode::Draw => {
                         self.highlight_tile_at(
                             ui,
-                            rect.left_top() + hovered_tile_exact_offset,
+                            canvas_rect.left_top() + hovered_tile_exact_offset,
                             Color32::from_white_alpha(tweak!(100)),
                         );
                     }
@@ -266,30 +276,30 @@ impl UiSpriteMapEditor {
                     self.selected_sprite_tile_indices.clear();
                 }
 
-                self.editing_mode.selected(&response).map(|selection| {
+                if let Some(selection) = self.editing_mode.selected(&response) {
                     let should_clear = ui.input(|i| !i.modifiers.shift_only());
                     match selection {
                         Selection::Click(origin) => {
-                            origin.map(|origin| {
-                                let pos = origin - rect.left_top();
+                            if let Some(origin) = origin {
+                                let pos = origin - canvas_rect.left_top();
                                 self.select_tile_at(pos.to_pos2(), should_clear)
-                            });
+                            }
                         }
                         Selection::Drag(selection_rect) => {
-                            selection_rect.map(|selection_rect| {
+                            if let Some(selection_rect) = selection_rect {
                                 ui.painter().rect_stroke(
                                     selection_rect,
                                     Rounding::none(),
                                     Stroke::new(1., ui.visuals().selection.bg_fill),
                                 );
                                 self.select_tiles_in(
-                                    selection_rect.translate(-rect.left_top().to_vec2()),
+                                    selection_rect.translate(-canvas_rect.left_top().to_vec2()),
                                     should_clear,
                                 );
-                            });
+                            }
                         }
                     }
-                });
+                }
 
                 if self.editing_mode.erased(&response) {
                     self.delete_tiles_at(relative_pos.to_pos2());
@@ -302,7 +312,7 @@ impl UiSpriteMapEditor {
                 }
             }
 
-            self.highlight_selected_tiles(ui, rect.left_top());
+            self.highlight_selected_tiles(ui, canvas_rect.left_top());
         });
     }
 
@@ -349,6 +359,21 @@ impl UiSpriteMapEditor {
             .set_tiles(&self.gl, self.sprite_tiles.clone());
     }
 
+    fn move_selected_tiles_by(&mut self, offset: Vec2, snap_to_grid: bool) {
+        let stays_in_bounds = |tile: &Tile| {
+            Rect::from_min_size(pos2(0., 0.), Vec2::splat(31. * self.scale)).contains(tile.pos() + offset)
+        };
+        if self.selected_sprite_tile_indices.iter().map(|&i| &self.sprite_tiles[i]).all(stays_in_bounds) {
+            for &idx in self.selected_sprite_tile_indices.iter() {
+                self.sprite_tiles[idx].move_by(offset);
+                if snap_to_grid {
+                    self.sprite_tiles[idx].snap_to_grid(self.scale as u32);
+                }
+            }
+            self.upload_tiles();
+        }
+    }
+
     fn add_selected_tile_at(&mut self, pos: Pos2) {
         let tile_idx = (self.selected_vram_tile.0 + self.selected_vram_tile.1 * 16) as usize;
         let mut tile = self.tile_palette[tile_idx + (32 * 16)];
@@ -362,14 +387,15 @@ impl UiSpriteMapEditor {
         if clear {
             self.selected_sprite_tile_indices.clear();
         }
-        self.sprite_tiles
+        if let Some((idx, _)) = self
+            .sprite_tiles
             .iter()
             .enumerate()
             .rev()
             .find(|(_, tile)| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
-            .map(|(idx, _)| {
-                self.selected_sprite_tile_indices.insert(idx);
-            });
+        {
+            self.selected_sprite_tile_indices.insert(idx);
+        }
     }
 
     fn select_tiles_in(&mut self, rect: Rect, clear: bool) {
@@ -392,14 +418,15 @@ impl UiSpriteMapEditor {
     }
 
     fn probe_tile_at(&mut self, pos: Pos2) {
-        self.sprite_tiles
+        if let Some(tile) = self
+            .sprite_tiles
             .iter()
             .rev()
             .find(|tile| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
-            .map(|tile| {
-                let (y, x) = tile.tile_num().div_rem(&16);
-                self.selected_vram_tile = (x, y - 96);
-            });
+        {
+            let (y, x) = tile.tile_num().div_rem(&16);
+            self.selected_vram_tile = (x, y - 96);
+        };
     }
 }
 

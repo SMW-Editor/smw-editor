@@ -143,4 +143,14 @@ impl Tile {
     pub fn scale(self) -> u32 {
         self.0[3] & 0xFF
     }
+
+    pub fn move_by(&mut self, offset: Vec2) {
+        self.0[0] = (self.0[0] as i32 + offset.x as i32) as u32;
+        self.0[1] = (self.0[1] as i32 + offset.y as i32) as u32;
+    }
+
+    pub fn snap_to_grid(&mut self, cell_size: u32) {
+        self.0[0] = self.0[0] / cell_size * cell_size;
+        self.0[1] = self.0[1] / cell_size * cell_size;
+    }
 }
