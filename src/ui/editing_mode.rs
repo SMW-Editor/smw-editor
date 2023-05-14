@@ -1,13 +1,17 @@
-use egui::{CursorIcon, PointerButton, Response};
+use egui::{CursorIcon, PointerButton, Pos2, Rect, Response};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EditingMode {
     Draw,
     Erase,
-    Insert,
-    Paint,
+    Move,
     Probe,
     Select,
+}
+
+pub enum Selection {
+    Click(Option<Pos2>),
+    Drag(Option<Rect>),
 }
 
 impl EditingMode {
@@ -16,8 +20,7 @@ impl EditingMode {
         match self {
             Self::Draw => CursorIcon::Default,
             Self::Erase => CursorIcon::Default,
-            Self::Insert => CursorIcon::Default,
-            Self::Paint => CursorIcon::Default,
+            Self::Move => CursorIcon::Default,
             Self::Probe => CursorIcon::Default,
             Self::Select => CursorIcon::Default,
         }
@@ -25,25 +28,31 @@ impl EditingMode {
 
     pub fn inserted(self, response: &Response) -> bool {
         match self {
-            Self::Insert => response.double_clicked_by(PointerButton::Primary),
-            Self::Draw | Self::Paint => {
-                response.clicked_by(PointerButton::Primary) || response.dragged_by(PointerButton::Primary)
-            }
+            Self::Move => response.double_clicked_by(PointerButton::Primary),
+            Self::Draw => response.clicked_by(PointerButton::Primary) || response.dragged_by(PointerButton::Primary),
             _ => false,
         }
     }
 
     pub fn moved(self, response: &Response) -> bool {
         match self {
-            Self::Insert => response.dragged_by(PointerButton::Primary),
+            Self::Move => response.dragged_by(PointerButton::Primary),
             _ => false,
         }
     }
 
-    pub fn selected(self, response: &Response) -> bool {
+    pub fn selected(self, response: &Response) -> Option<Selection> {
         match self {
-            Self::Select => response.dragged_by(PointerButton::Primary),
-            _ => false,
+            Self::Move => {
+                response.clicked_by(PointerButton::Primary).then(|| Selection::Click(response.interact_pointer_pos()))
+            }
+            Self::Select => response.dragged_by(PointerButton::Primary).then(|| {
+                Selection::Drag(match response.ctx.input(|i| (i.pointer.press_origin(), i.pointer.interact_pos())) {
+                    (Some(origin), Some(current)) => Some(Rect::from_two_pos(origin, current)),
+                    _ => None,
+                })
+            }),
+            _ => None,
         }
     }
 

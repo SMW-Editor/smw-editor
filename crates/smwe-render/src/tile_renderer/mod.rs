@@ -1,4 +1,4 @@
-use emath::Vec2;
+use emath::{pos2, Pos2, Vec2};
 use glow::*;
 use itertools::Itertools;
 
@@ -8,9 +8,6 @@ const VERTEX_SHADER_SRC: &str = include_str!("tile.vs.glsl");
 const GEOMETRY_SHADER_SRC: &str = include_str!("tile.gs.glsl");
 const FRAGMENT_SHADER_SRC: &str = include_str!("tile.fs.glsl");
 
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Tile(pub [u32; 4]);
-
 #[derive(Debug)]
 pub struct TileRenderer {
     shader_program: Program,
@@ -19,6 +16,9 @@ pub struct TileRenderer {
     tiles_count:    usize,
     destroyed:      bool,
 }
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Tile(pub [u32; 4]);
 
 impl TileRenderer {
     pub fn new(gl: &Context) -> Self {
@@ -128,5 +128,19 @@ impl TileRenderer {
             gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
             gl.buffer_data_u8_slice(ARRAY_BUFFER, tiles.align_to().1, DYNAMIC_DRAW);
         }
+    }
+}
+
+impl Tile {
+    pub fn pos(self) -> Pos2 {
+        pos2(self.0[0] as f32, self.0[1] as f32)
+    }
+
+    pub fn tile_num(self) -> u32 {
+        self.0[2]
+    }
+
+    pub fn scale(self) -> u32 {
+        self.0[3] & 0xFF
     }
 }
