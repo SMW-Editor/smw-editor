@@ -56,7 +56,7 @@ impl EditingMode {
 
     pub fn probed(self, response: &Response) -> bool {
         match self {
-            Self::Probe => response.dragged_by(PointerButton::Primary),
+            Self::Probe => response.clicked_by(PointerButton::Primary),
             _ => false,
         }
     }

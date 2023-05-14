@@ -5,6 +5,7 @@ use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use glow::Context;
 use inline_tweak::tweak;
+use num::Integer;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_render::{
     gfx_buffers::GfxBuffers,
@@ -154,7 +155,7 @@ impl UiSpriteMapEditor {
         );
 
         // Selected tile preview
-        ui.add_space(tweak!(25.));
+        ui.add_space(tweak!(10.));
         ui.label("Selection preview");
         let px = ui.ctx().pixels_per_point();
         let zoom = tweak!(8.);
@@ -208,6 +209,8 @@ impl UiSpriteMapEditor {
                 let relative_pos = hover_pos - rect.left_top();
                 let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
                 let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
+                let grid_cell_pos = (hovered_tile * self.scale).to_pos2();
+                let pixel_pos = (relative_pos / self.zoom * px).to_pos2();
 
                 ui.painter().rect_filled(
                     selection_rect.translate(hovered_tile * scale_pp * self.zoom),
@@ -216,10 +219,9 @@ impl UiSpriteMapEditor {
                 );
 
                 if self.editing_mode.inserted(&response) {
-                    let place_pos = (hovered_tile * self.scale).to_pos2();
-                    if self.last_inserted_tile != place_pos {
-                        self.add_selected_tile_at(place_pos);
-                        self.last_inserted_tile = place_pos;
+                    if self.last_inserted_tile != grid_cell_pos {
+                        self.add_selected_tile_at(grid_cell_pos);
+                        self.last_inserted_tile = grid_cell_pos;
                     }
                 }
 
@@ -228,12 +230,11 @@ impl UiSpriteMapEditor {
                 }
 
                 if self.editing_mode.erased(&response) {
-                    let pixel_pos = relative_pos / self.zoom * px;
-                    self.delete_tiles_at(pixel_pos.to_pos2());
+                    self.delete_tiles_at(pixel_pos);
                 }
 
                 if self.editing_mode.probed(&response) {
-                    // todo
+                    self.probe_tile_at(pixel_pos);
                 }
             }
         });
@@ -274,11 +275,26 @@ impl UiSpriteMapEditor {
     }
 
     fn delete_tiles_at(&mut self, pos: Pos2) {
-        self.sprite_tiles.retain(|tile| {
-            let min = pos2(tile.0[0] as f32, tile.0[1] as f32);
+        self.sprite_tiles.retain(|&Tile([x, y, ..])| {
+            let min = pos2(x as f32, y as f32);
             let size = Vec2::splat(self.scale);
             !Rect::from_min_size(min, size).contains(pos)
         });
         self.upload_tiles();
+    }
+
+    fn probe_tile_at(&mut self, pos: Pos2) {
+        self.sprite_tiles
+            .iter()
+            .rev()
+            .find(|tile| {
+                let min = pos2(tile.0[0] as f32, tile.0[1] as f32);
+                let size = Vec2::splat(self.scale);
+                Rect::from_min_size(min, size).contains(pos)
+            })
+            .map(|&Tile([_, _, tile_idx, _])| {
+                let (y, x) = tile_idx.div_rem(&16);
+                self.selected_vram_tile = (x, y - 96);
+            });
     }
 }
