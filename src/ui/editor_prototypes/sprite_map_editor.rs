@@ -8,6 +8,7 @@ use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use glow::Context;
 use inline_tweak::tweak;
+use itertools::Itertools;
 use num::Integer;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_render::{
@@ -84,6 +85,8 @@ impl DockableEditorTool for UiSpriteMapEditor {
             self.initialized = true;
         }
 
+        self.handle_keyboard(ui, state);
+
         TopBottomPanel::top("sprite_map_editor.top_panel")
             .resizable(false)
             .show_inside(ui, |ui| self.top_panel(ui, state));
@@ -103,6 +106,17 @@ impl DockableEditorTool for UiSpriteMapEditor {
 }
 
 impl UiSpriteMapEditor {
+    fn handle_keyboard(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+        ui.input(|i| {
+            if i.key_pressed(Key::Delete) {
+                for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
+                    self.sprite_tiles.remove(idx);
+                }
+                self.upload_tiles();
+            }
+        });
+    }
+
     fn top_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
         ui.horizontal(|ui| {
             self.level_selector(ui, state);
@@ -226,12 +240,22 @@ impl UiSpriteMapEditor {
                 let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
                 let grid_cell_pos = (hovered_tile * self.scale).to_pos2();
 
-                if matches!(self.editing_mode, EditingMode::Draw | EditingMode::Move) {
-                    self.highlight_tile_at(
-                        ui,
-                        rect.left_top() + hovered_tile_exact_offset,
-                        Color32::from_white_alpha(tweak!(100)),
-                    );
+                // Highlight hovered cell/tile
+                match self.editing_mode {
+                    EditingMode::Move => {
+                        //
+                    }
+                    EditingMode::Erase => {
+                        //
+                    }
+                    EditingMode::Draw => {
+                        self.highlight_tile_at(
+                            ui,
+                            rect.left_top() + hovered_tile_exact_offset,
+                            Color32::from_white_alpha(tweak!(100)),
+                        );
+                    }
+                    _ => {}
                 }
 
                 if self.editing_mode.inserted(&response) {
