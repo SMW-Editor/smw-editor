@@ -23,8 +23,9 @@ pub struct UiSpriteMapEditor {
     sprite_renderer: Arc<Mutex<TileRenderer>>,
     gfx_bufs:        GfxBuffers,
 
-    level_num:    u16,
-    editing_mode: EditingMode,
+    level_num:        u16,
+    editing_mode:     EditingMode,
+    always_show_grid: bool,
 
     initialized:      bool,
     scale:            f32,
@@ -50,6 +51,7 @@ impl UiSpriteMapEditor {
             gfx_bufs,
             level_num: 0,
             editing_mode: EditingMode::Move(None),
+            always_show_grid: false,
             initialized: false,
             scale: 8.,
             zoom: 2.,

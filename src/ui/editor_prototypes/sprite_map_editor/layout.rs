@@ -77,6 +77,10 @@ impl UiSpriteMapEditor {
             ui.separator();
 
             self.editing_mode_selector(ui, state);
+
+            ui.separator();
+
+            ui.checkbox(&mut self.always_show_grid, "Always show grid");
         });
     }
 
@@ -206,6 +210,11 @@ impl UiSpriteMapEditor {
                 })),
             });
 
+            // Grid
+            if self.always_show_grid || ui.input(|i| i.modifiers.shift_only()) {
+                self.draw_grid(ui, canvas_rect);
+            }
+
             if let Some(hover_pos) = response.hover_pos() {
                 let relative_pos = hover_pos - canvas_rect.left_top();
                 let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
@@ -231,6 +240,7 @@ impl UiSpriteMapEditor {
                     _ => {}
                 }
 
+                // Interaction
                 if self.editing_mode.inserted(&response) {
                     if self.last_inserted_tile != grid_cell_pos {
                         self.add_selected_tile_at(grid_cell_pos);
@@ -300,6 +310,23 @@ impl UiSpriteMapEditor {
                 ui,
                 canvas_pos + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
                 Color32::from_white_alpha(tweak!(40)),
+            );
+        }
+    }
+
+    pub(super) fn draw_grid(&self, ui: &mut Ui, canvas_rect: Rect) {
+        let spacing = self.zoom * self.scale / self.pixels_per_point;
+        for cell in 0..33 {
+            let position = cell as f32 * spacing;
+            ui.painter().hline(
+                canvas_rect.min.x..=canvas_rect.max.x,
+                canvas_rect.min.y + position,
+                Stroke::new(1., Color32::from_white_alpha(70)),
+            );
+            ui.painter().vline(
+                canvas_rect.min.x + position,
+                canvas_rect.min.y..=canvas_rect.max.y,
+                Stroke::new(1., Color32::from_white_alpha(70)),
             );
         }
     }
