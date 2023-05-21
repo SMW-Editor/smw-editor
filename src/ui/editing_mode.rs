@@ -1,56 +1,80 @@
-use egui::{CursorIcon, PointerButton, Pos2, Rect, Response};
+use egui::{PointerButton, Pos2, Rect, Response, Vec2};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EditingMode {
     Draw,
     Erase,
-    Move,
+    Move(Option<Drag>),
     Probe,
     Select,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Selection {
     Click(Option<Pos2>),
     Drag(Option<Rect>),
 }
 
-impl EditingMode {
-    pub fn hover_cursor_icon(self) -> CursorIcon {
-        // todo: custom icons
-        match self {
-            Self::Draw => CursorIcon::Default,
-            Self::Erase => CursorIcon::Default,
-            Self::Move => CursorIcon::Default,
-            Self::Probe => CursorIcon::Default,
-            Self::Select => CursorIcon::Default,
-        }
-    }
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Drag {
+    pub from: Pos2,
+    pub to:   Pos2,
+}
 
+impl Drag {
+    #[inline]
+    pub fn delta(self) -> Vec2 {
+        self.to - self.from
+    }
+}
+
+impl EditingMode {
     pub fn inserted(self, response: &Response) -> bool {
         match self {
-            Self::Move => response.double_clicked_by(PointerButton::Primary),
+            Self::Move(_) => response.double_clicked_by(PointerButton::Primary),
             Self::Draw => response.clicked_by(PointerButton::Primary) || response.dragged_by(PointerButton::Primary),
             _ => false,
         }
     }
 
-    pub fn moved(self, response: &Response) -> bool {
+    pub fn moving(&mut self, response: &Response) -> Option<Drag> {
         match self {
-            Self::Move => response.dragged_by(PointerButton::Primary),
-            _ => false,
+            Self::Move(drag) => response
+                .dragged_by(PointerButton::Primary)
+                .then(|| {
+                    *drag = response.ctx.input(|i| {
+                        i.pointer
+                            .press_origin()
+                            .and_then(|from| response.interact_pointer_pos().map(|to| Drag { from, to }))
+                    });
+                    *drag
+                })
+                .flatten(),
+            _ => None,
+        }
+    }
+
+    /// If the mode is `Move`, its inner value is cleared.
+    /// Must be called after [`Self::moving`] to get correct data in the return value.
+    pub fn dropped(&mut self, response: &Response) -> Option<Drag> {
+        match self {
+            Self::Move(drag) => response.drag_released_by(PointerButton::Primary).then_some(drag.take()).flatten(),
+            _ => None,
         }
     }
 
     pub fn selected(self, response: &Response) -> Option<Selection> {
         match self {
-            Self::Move => {
+            Self::Move(_) => {
                 response.clicked_by(PointerButton::Primary).then(|| Selection::Click(response.interact_pointer_pos()))
             }
             Self::Select => response.dragged_by(PointerButton::Primary).then(|| {
-                Selection::Drag(match response.ctx.input(|i| (i.pointer.press_origin(), i.pointer.interact_pos())) {
-                    (Some(origin), Some(current)) => Some(Rect::from_two_pos(origin, current)),
-                    _ => None,
-                })
+                let rect = response.ctx.input(|i| {
+                    i.pointer.press_origin().and_then(|origin| {
+                        response.interact_pointer_pos().map(|current| Rect::from_two_pos(origin, current))
+                    })
+                });
+                Selection::Drag(rect)
             }),
             _ => None,
         }
