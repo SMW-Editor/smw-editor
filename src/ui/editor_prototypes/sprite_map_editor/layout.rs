@@ -13,7 +13,7 @@ use smwe_widgets::{
 
 use crate::ui::{
     editing_mode::{EditingMode, Selection},
-    editor_prototypes::sprite_map_editor::UiSpriteMapEditor,
+    editor_prototypes::sprite_map_editor::{internals::tile_contains_point, UiSpriteMapEditor},
     tool::DockableEditorTool,
     EditorState,
 };
@@ -197,6 +197,7 @@ impl UiSpriteMapEditor {
             let scale_pp = self.scale / self.pixels_per_point;
             let zoom = self.zoom;
 
+            // Tiles
             ui.painter().add(PaintCallback {
                 rect:     canvas_rect,
                 callback: Arc::new(CallbackFn::new(move |_info, painter| {
@@ -215,6 +216,7 @@ impl UiSpriteMapEditor {
                 self.draw_grid(ui, canvas_rect);
             }
 
+            // Interaction
             if let Some(hover_pos) = response.hover_pos() {
                 let relative_pos = hover_pos - canvas_rect.left_top();
                 let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
@@ -225,10 +227,41 @@ impl UiSpriteMapEditor {
                 // Highlight hovered cell/tile
                 match self.editing_mode {
                     EditingMode::Move(_) => {
-                        // todo: highlight tile if present
+                        let scaling_factor = self.zoom / self.pixels_per_point;
+                        if self
+                            .selected_sprite_tile_indices
+                            .iter()
+                            .map(|&i| &self.sprite_tiles[i])
+                            .any(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
+                        {
+                            self.hovering_selected_tile = true;
+                        } else if let Some(hovered_tile) = self
+                            .sprite_tiles
+                            .iter()
+                            .find(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
+                        {
+                            self.highlight_tile_at(
+                                ui,
+                                ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_rect.left_top().to_vec2())
+                                    .to_pos2(),
+                                Color32::from_white_alpha(tweak!(100)),
+                            );
+                        }
                     }
                     EditingMode::Erase => {
-                        // todo: highlight tile if present
+                        let scaling_factor = self.zoom / self.pixels_per_point;
+                        if let Some(hovered_tile) = self
+                            .sprite_tiles
+                            .iter()
+                            .find(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
+                        {
+                            self.highlight_tile_at(
+                                ui,
+                                ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_rect.left_top().to_vec2())
+                                    .to_pos2(),
+                                Color32::from_rgba_premultiplied(tweak!(255), 0, 0, tweak!(10)),
+                            );
+                        }
                     }
                     EditingMode::Draw => {
                         self.highlight_tile_at(
@@ -240,7 +273,6 @@ impl UiSpriteMapEditor {
                     _ => {}
                 }
 
-                // Interaction
                 if self.editing_mode.inserted(&response) {
                     if self.last_inserted_tile != grid_cell_pos {
                         self.add_selected_tile_at(grid_cell_pos);
@@ -272,8 +304,19 @@ impl UiSpriteMapEditor {
                 }
 
                 if let Some(drag_data) = self.editing_mode.dropped(&response) {
-                    let snap_to_grid = ui.input(|i| i.modifiers.shift_only());
-                    self.move_selected_tiles_by(drag_data.delta() / self.zoom * self.pixels_per_point, snap_to_grid);
+                    if self.selected_sprite_tile_indices.iter().map(|&i| &self.sprite_tiles[i]).any(|tile| {
+                        tile_contains_point(
+                            tile,
+                            (drag_data.from - canvas_rect.left_top()).to_pos2(),
+                            self.zoom / self.pixels_per_point,
+                        )
+                    }) {
+                        let snap_to_grid = ui.input(|i| i.modifiers.shift_only());
+                        self.move_selected_tiles_by(
+                            drag_data.delta() / self.zoom * self.pixels_per_point,
+                            snap_to_grid,
+                        );
+                    }
                 }
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
@@ -293,6 +336,7 @@ impl UiSpriteMapEditor {
             }
 
             self.highlight_selected_tiles(ui, canvas_rect.left_top());
+            self.hovering_selected_tile = false;
         });
     }
 
@@ -309,25 +353,18 @@ impl UiSpriteMapEditor {
             self.highlight_tile_at(
                 ui,
                 canvas_pos + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
-                Color32::from_white_alpha(tweak!(40)),
+                Color32::from_white_alpha(if self.hovering_selected_tile { tweak!(100) } else { tweak!(40) }),
             );
         }
     }
 
     pub(super) fn draw_grid(&self, ui: &mut Ui, canvas_rect: Rect) {
         let spacing = self.zoom * self.scale / self.pixels_per_point;
+        let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
         for cell in 0..33 {
             let position = cell as f32 * spacing;
-            ui.painter().hline(
-                canvas_rect.min.x..=canvas_rect.max.x,
-                canvas_rect.min.y + position,
-                Stroke::new(1., Color32::from_white_alpha(70)),
-            );
-            ui.painter().vline(
-                canvas_rect.min.x + position,
-                canvas_rect.min.y..=canvas_rect.max.y,
-                Stroke::new(1., Color32::from_white_alpha(70)),
-            );
+            ui.painter().hline(canvas_rect.min.x..=canvas_rect.max.x, canvas_rect.min.y + position, stroke);
+            ui.painter().vline(canvas_rect.min.x + position, canvas_rect.min.y..=canvas_rect.max.y, stroke);
         }
     }
 }

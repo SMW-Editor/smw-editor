@@ -27,10 +27,11 @@ pub struct UiSpriteMapEditor {
     editing_mode:     EditingMode,
     always_show_grid: bool,
 
-    initialized:      bool,
-    scale:            f32,
-    zoom:             f32,
-    pixels_per_point: f32,
+    initialized:            bool,
+    scale:                  f32,
+    zoom:                   f32,
+    pixels_per_point:       f32,
+    hovering_selected_tile: bool,
 
     selected_vram_tile:           (u32, u32),
     sprite_tiles:                 Vec<Tile>,
@@ -56,6 +57,7 @@ impl UiSpriteMapEditor {
             scale: 8.,
             zoom: 2.,
             pixels_per_point: 0.,
+            hovering_selected_tile: false,
             selected_vram_tile: (0, 0),
             tile_palette,
             last_inserted_tile: pos2(-1., -1.),
