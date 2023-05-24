@@ -13,8 +13,8 @@ smwe-emu = { path = "../smwe-emu" }
 smwe-render = { path = "../smwe-render" }
 
 anyhow = "1.0"
-egui = "0.21"
-egui_glow = "0.21"
+egui = "0.22"
+egui_glow = "0.22"
 egui-phosphor = "0.1"
 glow = "0.12"
 inline_tweak = "1.0"

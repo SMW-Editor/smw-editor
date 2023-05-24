@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 smwe-emu = { path = "../smwe-emu" }
 
-emath = "0.21"
-epaint = "0.21"
+emath = "0.22"
+epaint = "0.22"
 glow = "0.12"
 itertools = "0.10"
