@@ -6,7 +6,11 @@ use paste::paste;
 use smwe_emu::{emu::CheckedMem, Cpu};
 use smwe_render::tile_renderer::Tile;
 
-use crate::ui::{editor_prototypes::sprite_map_editor::UiSpriteMapEditor, EditorState};
+use crate::ui::{
+    editing_mode::{Drag, Selection},
+    editor_prototypes::sprite_map_editor::UiSpriteMapEditor,
+    EditorState,
+};
 
 impl UiSpriteMapEditor {
     pub(super) fn update_cpu(&mut self, state: &mut EditorState) {
@@ -29,6 +33,59 @@ impl UiSpriteMapEditor {
             .lock()
             .expect("Cannot lock mutex on sprite renderer")
             .set_tiles(&self.gl, self.sprite_tiles.clone());
+    }
+
+    pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: Pos2) {
+        if self.last_inserted_tile != grid_cell_pos {
+            self.add_selected_tile_at(grid_cell_pos);
+            self.last_inserted_tile = grid_cell_pos;
+        }
+        self.selected_sprite_tile_indices.clear();
+    }
+
+    pub(super) fn handle_selection_drag(
+        &mut self, selection: Selection, clear_previous_selection: bool, canvas_top_left_pos: Pos2,
+    ) {
+        match selection {
+            Selection::Click(Some(origin)) => {
+                let pos = origin - canvas_top_left_pos;
+                self.select_tile_at(pos.to_pos2(), clear_previous_selection);
+            }
+            Selection::Drag(Some(selection_rect)) => {
+                self.select_tiles_in(
+                    selection_rect.translate(-canvas_top_left_pos.to_vec2()),
+                    clear_previous_selection,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    pub(super) fn handle_edition_drop_moved(&mut self, drag_data: Drag, snap_to_grid: bool, canvas_top_left_pos: Pos2) {
+        let tile_contains_pointer = |tile| {
+            tile_contains_point(
+                tile,
+                (drag_data.from - canvas_top_left_pos).to_pos2(),
+                self.zoom / self.pixels_per_point,
+            )
+        };
+        if self.selected_sprite_tile_indices.iter().map(|&i| &self.sprite_tiles[i]).any(tile_contains_pointer) {
+            self.move_selected_tiles_by(drag_data.delta() / self.zoom * self.pixels_per_point, snap_to_grid);
+        }
+    }
+
+    pub(super) fn handle_edition_moving(&mut self, drag_data: Drag, snap_to_grid: bool, canvas_top_left_pos: Pos2) {
+        // todo highlight moved tiles
+    }
+
+    pub(super) fn handle_edition_erase(&mut self, relative_pointer_pos: Pos2) {
+        self.delete_tiles_at(relative_pointer_pos);
+        self.selected_sprite_tile_indices.clear();
+    }
+
+    pub(super) fn handle_edition_probe(&mut self, relative_pointer_pos: Pos2) {
+        self.probe_tile_at(relative_pointer_pos);
+        self.selected_sprite_tile_indices.clear();
     }
 
     pub(super) fn move_selected_tiles_by(&mut self, mut offset: Vec2, snap_to_grid: bool) {
@@ -72,8 +129,8 @@ impl UiSpriteMapEditor {
         self.upload_tiles();
     }
 
-    pub(super) fn select_tile_at(&mut self, pos: Pos2, clear: bool) {
-        if clear {
+    pub(super) fn select_tile_at(&mut self, pos: Pos2, clear_previous_selection: bool) {
+        if clear_previous_selection {
             self.selected_sprite_tile_indices.clear();
         }
         if let Some((idx, _)) = self
@@ -87,8 +144,8 @@ impl UiSpriteMapEditor {
         }
     }
 
-    pub(super) fn select_tiles_in(&mut self, rect: Rect, clear: bool) {
-        if clear {
+    pub(super) fn select_tiles_in(&mut self, rect: Rect, clear_previous_selection: bool) {
+        if clear_previous_selection {
             self.selected_sprite_tile_indices.clear();
         }
         for (idx, _) in self

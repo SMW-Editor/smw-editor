@@ -218,126 +218,104 @@ impl UiSpriteMapEditor {
 
             // Interaction
             if let Some(hover_pos) = response.hover_pos() {
-                let relative_pos = hover_pos - canvas_rect.left_top();
-                let hovered_tile = (relative_pos / scale_pp / self.zoom).floor();
-                let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
-                let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
-                let grid_cell_pos = (hovered_tile * self.scale).to_pos2();
+                let canvas_top_left_pos = canvas_rect.left_top();
+                let relative_pointer_offset = hover_pos - canvas_rect.left_top();
+                let relative_pointer_pos = relative_pointer_offset.to_pos2();
+                let hovered_tile_offset = (relative_pointer_offset / scale_pp / self.zoom).floor();
+                let hovered_tile_offset = hovered_tile_offset.clamp(vec2(0., 0.), vec2(31., 31.));
+                let grid_cell_pos = (hovered_tile_offset * self.scale).to_pos2();
+                let holding_shift = ui.input(|i| i.modifiers.shift_only());
 
-                // Highlight hovered cell/tile
-                match self.editing_mode {
-                    EditingMode::Move(_) => {
-                        let scaling_factor = self.zoom / self.pixels_per_point;
-                        if self
-                            .selected_sprite_tile_indices
-                            .iter()
-                            .map(|&i| &self.sprite_tiles[i])
-                            .any(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
-                        {
-                            self.hovering_selected_tile = true;
-                        } else if let Some(hovered_tile) = self
-                            .sprite_tiles
-                            .iter()
-                            .find(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
-                        {
-                            self.highlight_tile_at(
-                                ui,
-                                ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_rect.left_top().to_vec2())
-                                    .to_pos2(),
-                                Color32::from_white_alpha(tweak!(100)),
-                            );
-                        }
-                    }
-                    EditingMode::Erase => {
-                        let scaling_factor = self.zoom / self.pixels_per_point;
-                        if let Some(hovered_tile) = self
-                            .sprite_tiles
-                            .iter()
-                            .find(|tile| tile_contains_point(tile, relative_pos.to_pos2(), scaling_factor))
-                        {
-                            self.highlight_tile_at(
-                                ui,
-                                ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_rect.left_top().to_vec2())
-                                    .to_pos2(),
-                                Color32::from_rgba_premultiplied(tweak!(255), 0, 0, tweak!(10)),
-                            );
-                        }
-                    }
-                    EditingMode::Draw => {
-                        self.highlight_tile_at(
-                            ui,
-                            canvas_rect.left_top() + hovered_tile_exact_offset,
-                            Color32::from_white_alpha(tweak!(100)),
-                        );
-                    }
-                    _ => {}
-                }
+                self.higlight_hovered_tiles(ui, relative_pointer_pos, canvas_rect.left_top());
 
                 if self.editing_mode.inserted(&response) {
-                    if self.last_inserted_tile != grid_cell_pos {
-                        self.add_selected_tile_at(grid_cell_pos);
-                        self.last_inserted_tile = grid_cell_pos;
-                    }
-                    self.selected_sprite_tile_indices.clear();
+                    self.handle_edition_insert(grid_cell_pos);
                 }
 
                 if let Some(selection) = self.editing_mode.selected(&response) {
-                    let should_clear = ui.input(|i| !i.modifiers.shift_only());
-                    match selection {
-                        Selection::Click(Some(origin)) => {
-                            let pos = origin - canvas_rect.left_top();
-                            self.select_tile_at(pos.to_pos2(), should_clear);
-                        }
-                        Selection::Drag(Some(selection_rect)) => {
-                            ui.painter().rect_stroke(
-                                selection_rect,
-                                Rounding::none(),
-                                Stroke::new(1., ui.visuals().selection.bg_fill),
-                            );
-                            self.select_tiles_in(
-                                selection_rect.translate(-canvas_rect.left_top().to_vec2()),
-                                should_clear,
-                            );
-                        }
-                        _ => {}
+                    if let Selection::Drag(Some(selection_rect)) = selection {
+                        ui.painter().rect_stroke(
+                            selection_rect,
+                            Rounding::none(),
+                            Stroke::new(1., ui.visuals().selection.bg_fill),
+                        );
                     }
+                    self.handle_selection_drag(selection, !holding_shift, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.dropped(&response) {
-                    if self.selected_sprite_tile_indices.iter().map(|&i| &self.sprite_tiles[i]).any(|tile| {
-                        tile_contains_point(
-                            tile,
-                            (drag_data.from - canvas_rect.left_top()).to_pos2(),
-                            self.zoom / self.pixels_per_point,
-                        )
-                    }) {
-                        let snap_to_grid = ui.input(|i| i.modifiers.shift_only());
-                        self.move_selected_tiles_by(
-                            drag_data.delta() / self.zoom * self.pixels_per_point,
-                            snap_to_grid,
-                        );
-                    }
+                    self.handle_edition_drop_moved(drag_data, holding_shift, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
-                    let snap_to_grid = ui.input(|i| i.modifiers.shift_only());
-                    // todo higlight moved tiles
+                    self.handle_edition_moving(drag_data, holding_shift, canvas_top_left_pos);
                 }
 
                 if self.editing_mode.erased(&response) {
-                    self.delete_tiles_at(relative_pos.to_pos2());
-                    self.selected_sprite_tile_indices.clear();
+                    self.handle_edition_erase(relative_pointer_pos);
                 }
 
                 if self.editing_mode.probed(&response) {
-                    self.probe_tile_at(relative_pos.to_pos2());
-                    self.selected_sprite_tile_indices.clear();
+                    self.handle_edition_probe(relative_pointer_pos);
                 }
             }
 
             self.highlight_selected_tiles(ui, canvas_rect.left_top());
             self.hovering_selected_tile = false;
         });
+    }
+
+    pub(super) fn higlight_hovered_tiles(&mut self, ui: &mut Ui, relative_pointer_pos: Pos2, canvas_left_top: Pos2) {
+        let scale_pp = self.scale / self.pixels_per_point;
+        let hovered_tile = (relative_pointer_pos.to_vec2() / scale_pp / self.zoom).floor();
+        let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
+        let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
+
+        match self.editing_mode {
+            EditingMode::Move(_) => {
+                let scaling_factor = self.zoom / self.pixels_per_point;
+                if self
+                    .selected_sprite_tile_indices
+                    .iter()
+                    .map(|&i| &self.sprite_tiles[i])
+                    .any(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
+                {
+                    self.hovering_selected_tile = true;
+                } else if let Some(hovered_tile) = self
+                    .sprite_tiles
+                    .iter()
+                    .find(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
+                {
+                    self.highlight_tile_at(
+                        ui,
+                        ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_left_top.to_vec2()).to_pos2(),
+                        Color32::from_white_alpha(tweak!(100)),
+                    );
+                }
+            }
+            EditingMode::Erase => {
+                let scaling_factor = self.zoom / self.pixels_per_point;
+                if let Some(hovered_tile) = self
+                    .sprite_tiles
+                    .iter()
+                    .find(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
+                {
+                    self.highlight_tile_at(
+                        ui,
+                        ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_left_top.to_vec2()).to_pos2(),
+                        Color32::from_rgba_premultiplied(tweak!(255), 0, 0, tweak!(10)),
+                    );
+                }
+            }
+            EditingMode::Draw => {
+                self.highlight_tile_at(
+                    ui,
+                    canvas_left_top + hovered_tile_exact_offset,
+                    Color32::from_white_alpha(tweak!(100)),
+                );
+            }
+            _ => {}
+        }
     }
 
     pub(super) fn highlight_tile_at(&self, ui: &mut Ui, pos: Pos2, color: impl Into<Color32>) {
