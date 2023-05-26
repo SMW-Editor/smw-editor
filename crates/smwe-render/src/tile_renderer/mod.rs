@@ -1,4 +1,4 @@
-use emath::{pos2, Pos2, Vec2};
+use emath::*;
 use glow::*;
 use itertools::Itertools;
 
@@ -101,12 +101,12 @@ impl TileRenderer {
             let u = gl.get_uniform_location(self.shader_program, "zoom");
             gl.uniform_1_f32(u.as_ref(), zoom);
 
-            gl.bind_buffer_base(ARRAY_BUFFER, 0, Some(gfx_bufs.palette_buf));
+            gl.bind_buffer_base(UNIFORM_BUFFER, 0, Some(gfx_bufs.palette_buf));
             let palette_block =
                 gl.get_uniform_block_index(self.shader_program, "Color").expect("Failed to get 'Color' block");
             gl.uniform_block_binding(self.shader_program, palette_block, 0);
 
-            gl.bind_buffer_base(ARRAY_BUFFER, 1, Some(gfx_bufs.vram_buf));
+            gl.bind_buffer_base(UNIFORM_BUFFER, 1, Some(gfx_bufs.vram_buf));
             let vram_block =
                 gl.get_uniform_block_index(self.shader_program, "Graphics").expect("Failed to get 'Graphics' block");
             gl.uniform_block_binding(self.shader_program, vram_block, 1);
