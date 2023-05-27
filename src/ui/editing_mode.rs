@@ -21,6 +21,11 @@ pub struct Drag {
     pub to:   Pos2,
 }
 
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+pub struct SnapToGrid {
+    pub cell_origin: Vec2,
+}
+
 impl Drag {
     #[inline]
     pub fn delta(self) -> Vec2 {

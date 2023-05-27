@@ -32,6 +32,8 @@ pub struct UiSpriteMapEditor {
     zoom:                   f32,
     pixels_per_point:       f32,
     hovering_selected_tile: bool,
+    selection_bounds:       Option<Rect>,
+    selection_offset:       Option<Vec2>,
 
     selected_vram_tile:           (u32, u32),
     sprite_tiles:                 Vec<Tile>,
@@ -58,6 +60,8 @@ impl UiSpriteMapEditor {
             zoom: 2.,
             pixels_per_point: 0.,
             hovering_selected_tile: false,
+            selection_bounds: None,
+            selection_offset: None,
             selected_vram_tile: (0, 0),
             tile_palette,
             last_inserted_tile: pos2(-1., -1.),

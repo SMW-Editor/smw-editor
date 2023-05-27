@@ -12,7 +12,7 @@ use smwe_widgets::{
 };
 
 use crate::ui::{
-    editing_mode::{EditingMode, Selection},
+    editing_mode::{EditingMode, Selection, SnapToGrid},
     editor_prototypes::sprite_map_editor::{internals::tile_contains_point, UiSpriteMapEditor},
     tool::DockableEditorTool,
     EditorState,
@@ -54,12 +54,12 @@ impl UiSpriteMapEditor {
 
             // Select all
             if input.modifiers.command_only() && input.key_pressed(Key::A) {
-                self.selected_sprite_tile_indices = (0..self.sprite_tiles.len()).collect();
+                self.mark_tiles_as_selected(0..self.sprite_tiles.len());
             }
 
             // Unselect all
             if input.key_pressed(Key::Escape) {
-                self.selected_sprite_tile_indices.clear();
+                self.unselect_all_tiles();
             }
 
             // Delete
@@ -67,18 +67,25 @@ impl UiSpriteMapEditor {
                 for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
                     self.sprite_tiles.remove(idx);
                 }
+                self.selection_bounds = None;
                 self.upload_tiles();
             }
 
             // Move selection
-            if input.key_pressed(Key::ArrowUp) {
-                self.move_selected_tiles_by(vec2(0., -move_distance), input.modifiers.shift_only());
-            } else if input.key_pressed(Key::ArrowDown) {
-                self.move_selected_tiles_by(vec2(0., move_distance), input.modifiers.shift_only());
-            } else if input.key_pressed(Key::ArrowLeft) {
-                self.move_selected_tiles_by(vec2(-move_distance, 0.), input.modifiers.shift_only());
-            } else if input.key_pressed(Key::ArrowRight) {
-                self.move_selected_tiles_by(vec2(move_distance, 0.), input.modifiers.shift_only());
+            duplicate! {
+                [
+                    key          offset;
+                    [ArrowUp]    [vec2(0., -move_distance)];
+                    [ArrowDown]  [vec2(0.,  move_distance)];
+                    [ArrowLeft]  [vec2(-move_distance, 0.)];
+                    [ArrowRight] [vec2( move_distance, 0.)];
+                ]
+                if input.key_pressed(Key::key) {
+                    self.move_selected_tiles_by(
+                        offset,
+                        input.modifiers.shift_only().then_some(SnapToGrid::default()),
+                    );
+                }
             }
         });
     }
@@ -230,15 +237,29 @@ impl UiSpriteMapEditor {
                 self.draw_grid(ui, canvas_rect);
             }
 
+            // DEBUG: show selection bounds
+            if ui.input(|i| i.key_down(Key::B)) {
+                if let Some(mut bounds) = self.selection_bounds {
+                    let scaling = self.zoom / self.pixels_per_point;
+                    bounds.min = canvas_rect.left_top() + (bounds.min.to_vec2() * scaling);
+                    bounds.max = canvas_rect.left_top() + ((bounds.max.to_vec2() + Vec2::splat(self.scale)) * scaling);
+                    ui.painter().rect_stroke(bounds, Rounding::none(), Stroke::new(2., Color32::BLUE));
+                }
+            }
+
             // Interaction
             if let Some(hover_pos) = response.hover_pos() {
                 let canvas_top_left_pos = canvas_rect.left_top();
+
                 let relative_pointer_offset = hover_pos - canvas_rect.left_top();
                 let relative_pointer_pos = relative_pointer_offset.to_pos2();
+
                 let hovered_tile_offset = (relative_pointer_offset / scale_pp / self.zoom).floor();
                 let hovered_tile_offset = hovered_tile_offset.clamp(vec2(0., 0.), vec2(31., 31.));
                 let grid_cell_pos = (hovered_tile_offset * self.scale).to_pos2();
+
                 let holding_shift = ui.input(|i| i.modifiers.shift_only());
+                let holding_ctrl = ui.input(|i| i.modifiers.command_only());
 
                 self.higlight_hovered_tiles(ui, relative_pointer_pos, canvas_rect.left_top());
 
@@ -254,7 +275,7 @@ impl UiSpriteMapEditor {
                             Stroke::new(1., ui.visuals().selection.bg_fill),
                         );
                     }
-                    self.handle_selection_drag(selection, !holding_shift, canvas_top_left_pos);
+                    self.handle_selection_plot(selection, !holding_ctrl, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.dropped(&response) {
@@ -262,7 +283,7 @@ impl UiSpriteMapEditor {
                 }
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
-                    self.handle_edition_moving(drag_data, holding_shift, canvas_top_left_pos);
+                    self.handle_edition_dragging(drag_data, holding_shift, canvas_top_left_pos);
                 }
 
                 if self.editing_mode.erased(&response) {
@@ -280,14 +301,9 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn higlight_hovered_tiles(&mut self, ui: &mut Ui, relative_pointer_pos: Pos2, canvas_left_top: Pos2) {
-        let scale_pp = self.scale / self.pixels_per_point;
-        let hovered_tile = (relative_pointer_pos.to_vec2() / scale_pp / self.zoom).floor();
-        let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
-        let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
-
+        let scaling_factor = self.zoom / self.pixels_per_point;
         match self.editing_mode {
             EditingMode::Move(_) => {
-                let scaling_factor = self.zoom / self.pixels_per_point;
                 if self
                     .selected_sprite_tile_indices
                     .iter()
@@ -300,15 +316,11 @@ impl UiSpriteMapEditor {
                     .iter()
                     .find(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
                 {
-                    self.highlight_tile_at(
-                        ui,
-                        ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_left_top.to_vec2()).to_pos2(),
-                        Color32::from_white_alpha(tweak!(100)),
-                    );
+                    let exact_tile_pos = canvas_left_top + (hovered_tile.pos().to_vec2() * scaling_factor);
+                    self.highlight_tile_at(ui, exact_tile_pos, Color32::from_white_alpha(tweak!(100)));
                 }
             }
             EditingMode::Erase => {
-                let scaling_factor = self.zoom / self.pixels_per_point;
                 if let Some(hovered_tile) = self
                     .sprite_tiles
                     .iter()
@@ -322,6 +334,10 @@ impl UiSpriteMapEditor {
                 }
             }
             EditingMode::Draw => {
+                let scale_pp = self.scale / self.pixels_per_point;
+                let hovered_tile = (relative_pointer_pos.to_vec2() / scale_pp / self.zoom).floor();
+                let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
+                let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
                 self.highlight_tile_at(
                     ui,
                     canvas_left_top + hovered_tile_exact_offset,
@@ -340,11 +356,12 @@ impl UiSpriteMapEditor {
         );
     }
 
-    pub(super) fn highlight_selected_tiles(&self, ui: &mut Ui, canvas_pos: Pos2) {
+    pub(super) fn highlight_selected_tiles(&mut self, ui: &mut Ui, canvas_pos: Pos2) {
+        let selection_offset = self.selection_offset.take().unwrap_or_default();
         for tile in self.selected_sprite_tile_indices.iter().map(|&idx| &self.sprite_tiles[idx]) {
             self.highlight_tile_at(
                 ui,
-                canvas_pos + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
+                canvas_pos + selection_offset + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
                 Color32::from_white_alpha(if self.hovering_selected_tile { tweak!(100) } else { tweak!(40) }),
             );
         }

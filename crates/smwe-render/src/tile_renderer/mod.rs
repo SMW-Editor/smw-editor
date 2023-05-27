@@ -149,8 +149,8 @@ impl Tile {
         self.0[1] = (self.0[1] as i32 + offset.y as i32) as u32;
     }
 
-    pub fn snap_to_grid(&mut self, cell_size: u32) {
-        self.0[0] = self.0[0] / cell_size * cell_size;
-        self.0[1] = self.0[1] / cell_size * cell_size;
+    pub fn snap_to_grid(&mut self, cell_size: u32, cell_origin: Vec2) {
+        self.0[0] = (self.0[0] as f32 + cell_origin.x.floor()) as u32 / cell_size * cell_size;
+        self.0[1] = (self.0[1] as f32 + cell_origin.y.floor()) as u32 / cell_size * cell_size;
     }
 }
