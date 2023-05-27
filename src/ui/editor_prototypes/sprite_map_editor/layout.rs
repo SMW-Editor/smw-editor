@@ -52,12 +52,26 @@ impl UiSpriteMapEditor {
         ui.input(|input| {
             let move_distance = if input.modifiers.shift_only() { self.scale } else { 1. };
 
+            // Select all
+            if input.modifiers.command_only() && input.key_pressed(Key::A) {
+                self.selected_sprite_tile_indices = (0..self.sprite_tiles.len()).collect();
+            }
+
+            // Unselect all
+            if input.key_pressed(Key::Escape) {
+                self.selected_sprite_tile_indices.clear();
+            }
+
+            // Delete
             if input.key_pressed(Key::Delete) {
                 for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
                     self.sprite_tiles.remove(idx);
                 }
                 self.upload_tiles();
-            } else if input.key_pressed(Key::ArrowUp) {
+            }
+
+            // Move selection
+            if input.key_pressed(Key::ArrowUp) {
                 self.move_selected_tiles_by(vec2(0., -move_distance), input.modifiers.shift_only());
             } else if input.key_pressed(Key::ArrowDown) {
                 self.move_selected_tiles_by(vec2(0., move_distance), input.modifiers.shift_only());
