@@ -32,10 +32,10 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn any_tile_contains_pointer(&mut self, pointer_pos: Pos2, canvas_top_left_pos: Pos2) -> bool {
-        let tile_contains_pointer = |tile| {
-            tile_contains_point(tile, (pointer_pos - canvas_top_left_pos).to_pos2(), self.zoom / self.pixels_per_point)
-        };
-        self.selected_sprite_tile_indices.iter().map(|&i| &self.sprite_tiles[i]).any(tile_contains_pointer)
+        let point = (pointer_pos - canvas_top_left_pos).to_pos2();
+        let scale = self.zoom / self.pixels_per_point;
+        let tile_contains_pointer = |tile| tile_contains_point(tile, point, scale);
+        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(tile_contains_pointer)
     }
 
     pub(super) fn move_selected_tiles_by(&mut self, mut move_offset: Vec2, snap_to_grid: Option<SnapToGrid>) {
@@ -44,13 +44,13 @@ impl UiSpriteMapEditor {
         }
 
         let bounds = self.selection_bounds.expect("unset even though some tiles are selected");
-        move_offset.x = move_offset.x.clamp(-bounds.min.x, (31. * self.scale) - bounds.max.x);
-        move_offset.y = move_offset.y.clamp(-bounds.min.y, (31. * self.scale) - bounds.max.y);
+        move_offset.x = move_offset.x.clamp(-bounds.min.x, (31. * self.tile_size_px) - bounds.max.x);
+        move_offset.y = move_offset.y.clamp(-bounds.min.y, (31. * self.tile_size_px) - bounds.max.y);
 
         for &idx in self.selected_sprite_tile_indices.iter() {
             self.sprite_tiles[idx].move_by(move_offset);
             if let Some(snap_to_grid) = snap_to_grid {
-                self.sprite_tiles[idx].snap_to_grid(self.scale as u32, snap_to_grid.cell_origin);
+                self.sprite_tiles[idx].snap_to_grid(self.tile_size_px as u32, snap_to_grid.cell_origin);
             }
         }
 
@@ -77,7 +77,7 @@ impl UiSpriteMapEditor {
             .iter()
             .enumerate()
             .rev()
-            .find(|(_, tile)| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
+            .find(|(_, &tile)| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
         {
             self.selected_sprite_tile_indices.insert(idx);
         }
@@ -93,7 +93,7 @@ impl UiSpriteMapEditor {
             .sprite_tiles
             .iter()
             .enumerate()
-            .filter(|(_, tile)| tile_intersects_rect(tile, rect, self.zoom / self.pixels_per_point))
+            .filter(|(_, &tile)| tile_intersects_rect(tile, rect, self.zoom / self.pixels_per_point))
             .map(|(i, _)| i)
             .collect_vec();
         self.mark_tiles_as_selected(indices.into_iter());
@@ -131,7 +131,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn delete_tiles_at(&mut self, pos: Pos2) {
-        self.sprite_tiles.retain(|tile| !tile_contains_point(tile, pos, self.zoom / self.pixels_per_point));
+        self.sprite_tiles.retain(|&tile| !tile_contains_point(tile, pos, self.zoom / self.pixels_per_point));
         self.upload_tiles();
     }
 
@@ -140,7 +140,7 @@ impl UiSpriteMapEditor {
             .sprite_tiles
             .iter()
             .rev()
-            .find(|tile| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
+            .find(|&&tile| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
         {
             let (y, x) = tile.tile_num().div_rem(&16);
             self.selected_vram_tile = (x, y - 96);

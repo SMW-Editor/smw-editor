@@ -50,7 +50,7 @@ impl DockableEditorTool for UiSpriteMapEditor {
 impl UiSpriteMapEditor {
     pub(super) fn handle_keyboard(&mut self, ui: &mut Ui, _state: &mut EditorState) {
         ui.input(|input| {
-            let move_distance = if input.modifiers.shift_only() { self.scale } else { 1. };
+            let move_distance = if input.modifiers.shift_only() { self.tile_size_px } else { 1. };
 
             // Select all
             if input.modifiers.command_only() && input.key_pressed(Key::A) {
@@ -215,11 +215,11 @@ impl UiSpriteMapEditor {
         Frame::canvas(ui.style()).show(ui, |ui| {
             let sprite_renderer = Arc::clone(&self.sprite_renderer);
             let gfx_bufs = self.gfx_bufs;
-            let editing_area_size = tweak!(256.) * self.zoom;
+            let editing_area_size = tweak!(32.) * self.tile_size_px * self.zoom;
             let (canvas_rect, response) =
                 ui.allocate_exact_size(Vec2::splat(editing_area_size / self.pixels_per_point), Sense::click_and_drag());
             let screen_size = canvas_rect.size() * self.pixels_per_point;
-            let scale_pp = self.scale / self.pixels_per_point;
+            let scale_pp = self.tile_size_px / self.pixels_per_point;
             let zoom = self.zoom;
 
             // Tiles
@@ -246,7 +246,8 @@ impl UiSpriteMapEditor {
                 if let Some(mut bounds) = self.selection_bounds {
                     let scaling = self.zoom / self.pixels_per_point;
                     bounds.min = canvas_rect.left_top() + (bounds.min.to_vec2() * scaling);
-                    bounds.max = canvas_rect.left_top() + ((bounds.max.to_vec2() + Vec2::splat(self.scale)) * scaling);
+                    bounds.max =
+                        canvas_rect.left_top() + ((bounds.max.to_vec2() + Vec2::splat(self.tile_size_px)) * scaling);
                     ui.painter().rect_stroke(bounds, Rounding::none(), Stroke::new(2., Color32::BLUE));
                 }
             }
@@ -260,7 +261,7 @@ impl UiSpriteMapEditor {
 
                 let hovered_tile_offset = (relative_pointer_offset / scale_pp / self.zoom).floor();
                 let hovered_tile_offset = hovered_tile_offset.clamp(vec2(0., 0.), vec2(31., 31.));
-                let grid_cell_pos = (hovered_tile_offset * self.scale).to_pos2();
+                let grid_cell_pos = (hovered_tile_offset * self.tile_size_px).to_pos2();
 
                 let holding_shift = ui.input(|i| i.modifiers.shift_only());
                 let holding_ctrl = ui.input(|i| i.modifiers.command_only());
@@ -311,14 +312,14 @@ impl UiSpriteMapEditor {
                 if self
                     .selected_sprite_tile_indices
                     .iter()
-                    .map(|&i| &self.sprite_tiles[i])
+                    .map(|&i| self.sprite_tiles[i])
                     .any(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
                 {
                     self.hovering_selected_tile = true;
                 } else if let Some(hovered_tile) = self
                     .sprite_tiles
                     .iter()
-                    .find(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
+                    .find(|&&tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
                 {
                     let exact_tile_pos = canvas_left_top + (hovered_tile.pos().to_vec2() * scaling_factor);
                     self.highlight_tile_at(ui, exact_tile_pos, Color32::from_white_alpha(tweak!(100)));
@@ -328,7 +329,7 @@ impl UiSpriteMapEditor {
                 if let Some(hovered_tile) = self
                     .sprite_tiles
                     .iter()
-                    .find(|tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
+                    .find(|&&tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
                 {
                     self.highlight_tile_at(
                         ui,
@@ -338,7 +339,7 @@ impl UiSpriteMapEditor {
                 }
             }
             EditingMode::Draw => {
-                let scale_pp = self.scale / self.pixels_per_point;
+                let scale_pp = self.tile_size_px / self.pixels_per_point;
                 let hovered_tile = (relative_pointer_pos.to_vec2() / scale_pp / self.zoom).floor();
                 let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
                 let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
@@ -354,7 +355,7 @@ impl UiSpriteMapEditor {
 
     pub(super) fn highlight_tile_at(&self, ui: &mut Ui, pos: Pos2, color: impl Into<Color32>) {
         ui.painter().rect_filled(
-            Rect::from_min_size(pos, Vec2::splat(self.scale * self.zoom / self.pixels_per_point)),
+            Rect::from_min_size(pos, Vec2::splat(self.tile_size_px * self.zoom / self.pixels_per_point)),
             Rounding::none(),
             color,
         );
@@ -372,7 +373,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn draw_grid(&self, ui: &mut Ui, canvas_rect: Rect) {
-        let spacing = self.zoom * self.scale / self.pixels_per_point;
+        let spacing = self.zoom * self.tile_size_px / self.pixels_per_point;
         let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
         for cell in 0..33 {
             let position = cell as f32 * spacing;

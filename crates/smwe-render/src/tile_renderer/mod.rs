@@ -150,7 +150,18 @@ impl Tile {
     }
 
     pub fn snap_to_grid(&mut self, cell_size: u32, cell_origin: Vec2) {
-        self.0[0] = (self.0[0] as f32 + cell_origin.x.floor()) as u32 / cell_size * cell_size;
-        self.0[1] = (self.0[1] as f32 + cell_origin.y.floor()) as u32 / cell_size * cell_size;
+        let cell_size = cell_size as f32;
+        self.0[0] = {
+            let origin_pos = self.0[0] as f32 + cell_origin.x;
+            let unscaled = origin_pos / cell_size;
+            let cell_coord = unscaled.floor();
+            (cell_coord * cell_size) as u32
+        };
+        self.0[1] = {
+            let origin_pos = self.0[1] as f32 + cell_origin.y;
+            let unscaled = origin_pos / cell_size;
+            let cell_coord = unscaled.floor();
+            (cell_coord * cell_size) as u32
+        };
     }
 }
