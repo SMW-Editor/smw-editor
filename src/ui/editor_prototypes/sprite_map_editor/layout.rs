@@ -13,7 +13,7 @@ use smwe_widgets::{
 
 use crate::ui::{
     editing_mode::{EditingMode, Selection, SnapToGrid},
-    editor_prototypes::sprite_map_editor::{internals::tile_contains_point, UiSpriteMapEditor},
+    editor_prototypes::sprite_map_editor::{math::tile_contains_point, UiSpriteMapEditor},
     tool::DockableEditorTool,
     EditorState,
 };
@@ -205,6 +205,10 @@ impl UiSpriteMapEditor {
                 );
             })),
         });
+
+        // Debug settings
+        ui.label("Debug");
+        ui.checkbox(&mut self.debug_selection_bounds, "Show selection bounds");
     }
 
     pub(super) fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
@@ -238,7 +242,7 @@ impl UiSpriteMapEditor {
             }
 
             // DEBUG: show selection bounds
-            if ui.input(|i| i.key_down(Key::B)) {
+            if self.debug_selection_bounds {
                 if let Some(mut bounds) = self.selection_bounds {
                     let scaling = self.zoom / self.pixels_per_point;
                     bounds.min = canvas_rect.left_top() + (bounds.min.to_vec2() * scaling);

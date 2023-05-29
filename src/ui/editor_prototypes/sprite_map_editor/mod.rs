@@ -1,5 +1,7 @@
+mod editing;
 mod internals;
 mod layout;
+mod math;
 
 use std::{
     collections::HashSet,
@@ -26,6 +28,8 @@ pub struct UiSpriteMapEditor {
     level_num:        u16,
     editing_mode:     EditingMode,
     always_show_grid: bool,
+
+    debug_selection_bounds: bool,
 
     initialized:            bool,
     scale:                  f32,
@@ -55,6 +59,7 @@ impl UiSpriteMapEditor {
             level_num: 0,
             editing_mode: EditingMode::Move(None),
             always_show_grid: false,
+            debug_selection_bounds: false,
             initialized: false,
             scale: 8.,
             zoom: 2.,
