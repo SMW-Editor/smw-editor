@@ -13,8 +13,8 @@ use smwe_render::{
 #[derive(Copy, Clone, Debug)]
 pub enum ViewedVramTiles {
     All,
-    SpritesOnly,
     BackgroundOnly,
+    SpritesOnly,
 }
 
 #[derive(Debug)]

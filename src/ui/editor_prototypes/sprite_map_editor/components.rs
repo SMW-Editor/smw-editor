@@ -5,24 +5,25 @@ use egui::*;
 use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use inline_tweak::tweak;
-use smwe_render::{palette_renderer::PaletteUniforms, tile_renderer::TileUniforms};
-use smwe_widgets::vram_view::*;
+use smwe_render::tile_renderer::TileUniforms;
+use smwe_widgets::{palette_view::PaletteView, vram_view::*};
 
 use super::UiSpriteMapEditor;
 use crate::ui::editing_mode::*;
 
 impl UiSpriteMapEditor {
     pub(super) fn tile_selector(&mut self, ui: &mut Ui) {
-        let vram_renderer = Arc::clone(&self.vram_renderer);
-        let gfx_bufs = self.gfx_bufs;
-
         ui.strong("VRAM");
-        ui.add(
-            VramView::new(Arc::clone(&vram_renderer), gfx_bufs)
-                .viewed_tiles(ViewedVramTiles::SpritesOnly)
-                .selection(&mut self.selected_vram_tile)
-                .zoom(2.),
-        );
+        Frame::canvas(ui.style()).show(ui, |ui| {
+            let vram_renderer = Arc::clone(&self.vram_renderer);
+            let gfx_bufs = self.gfx_bufs;
+            ui.add(
+                VramView::new(vram_renderer, gfx_bufs)
+                    .viewed_tiles(ViewedVramTiles::SpritesOnly)
+                    .selection(&mut self.selected_vram_tile)
+                    .zoom(2.),
+            );
+        });
     }
 
     pub(super) fn tile_selection_preview(&mut self, ui: &mut Ui) {
@@ -51,18 +52,9 @@ impl UiSpriteMapEditor {
     pub(super) fn palette_row_selector(&mut self, ui: &mut Ui) {
         ui.strong("Palette");
         Frame::canvas(ui.style()).show(ui, |ui| {
-            let palette_renderer = Arc::clone(&self.palette_renderer);
-            let uniforms = PaletteUniforms { palette_buf: self.gfx_bufs.palette_buf };
-            let (rect, _response) = ui.allocate_exact_size(Vec2::splat(tweak!(230.)), Sense::click());
-            ui.painter().add(PaintCallback {
-                rect,
-                callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    palette_renderer
-                        .lock()
-                        .expect("Cannot lock mutex on palette renderer")
-                        .paint(painter.gl(), &uniforms);
-                })),
-            });
+            let size = Vec2::splat(tweak!(230.));
+            let palette_view = PaletteView::new(Arc::clone(&self.palette_renderer), self.gfx_bufs.palette_buf, size);
+            ui.add(palette_view);
         });
     }
 
