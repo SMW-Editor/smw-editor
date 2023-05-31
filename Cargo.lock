@@ -2384,6 +2384,7 @@ dependencies = [
  "epaint",
  "glow",
  "itertools",
+ "log",
  "smwe-emu",
 ]
 

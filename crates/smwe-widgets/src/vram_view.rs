@@ -7,7 +7,7 @@ use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_render::{
     gfx_buffers::GfxBuffers,
-    tile_renderer::{Tile, TileRenderer},
+    tile_renderer::{Tile, TileRenderer, TileUniforms},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -90,13 +90,12 @@ impl Widget for VramView<'_> {
         ui.painter().add(PaintCallback {
             rect,
             callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                renderer.lock().expect("Cannot lock mutex on VRAM renderer").paint(
-                    painter.gl(),
+                renderer.lock().expect("Cannot lock mutex on VRAM renderer").paint(painter.gl(), &TileUniforms {
                     gfx_bufs,
                     screen_size,
                     offset,
                     zoom,
-                );
+                });
             })),
         });
 

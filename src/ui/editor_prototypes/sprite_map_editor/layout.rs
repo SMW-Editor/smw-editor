@@ -6,6 +6,7 @@ use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use inline_tweak::tweak;
 use itertools::Itertools;
+use smwe_render::tile_renderer::TileUniforms;
 use smwe_widgets::{
     value_switcher::{ValueSwitcher, ValueSwitcherButtons},
     vram_view::{ViewedVramTiles, VramView},
@@ -196,19 +197,17 @@ impl UiSpriteMapEditor {
         ui.painter().add(PaintCallback {
             rect,
             callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                vram_renderer.lock().expect("Cannot lock mutex on selected tile view's tile renderer").paint(
-                    painter.gl(),
-                    gfx_bufs,
-                    screen_size,
-                    offset,
-                    zoom,
-                );
+                vram_renderer
+                    .lock()
+                    .expect("Cannot lock mutex on selected tile view's tile renderer")
+                    .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset, zoom });
             })),
         });
 
         // Debug settings
-        ui.label("Debug");
-        ui.checkbox(&mut self.debug_selection_bounds, "Show selection bounds");
+        ui.collapsing("Debug", |ui| {
+            ui.checkbox(&mut self.debug_selection_bounds, "Show selection bounds");
+        });
     }
 
     pub(super) fn central_panel(&mut self, ui: &mut Ui, _state: &mut EditorState) {
@@ -226,13 +225,10 @@ impl UiSpriteMapEditor {
             ui.painter().add(PaintCallback {
                 rect:     canvas_rect,
                 callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    sprite_renderer.lock().expect("Cannot lock mutex on sprite renderer").paint(
-                        painter.gl(),
-                        gfx_bufs,
-                        screen_size,
-                        Vec2::ZERO,
-                        zoom,
-                    );
+                    sprite_renderer
+                        .lock()
+                        .expect("Cannot lock mutex on sprite renderer")
+                        .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset: Vec2::ZERO, zoom });
                 })),
             });
 

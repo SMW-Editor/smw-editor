@@ -3,9 +3,10 @@ use glow::*;
 use smwe_emu::Cpu;
 use smwe_render::{
     gfx_buffers::GfxBuffers,
-    tile_renderer::{Tile, TileRenderer},
+    tile_renderer::{Tile, TileRenderer, TileUniforms},
 };
 
+#[derive(Debug)]
 pub(super) struct LevelRenderer {
     layer1:   TileRenderer,
     layer2:   TileRenderer,
@@ -36,9 +37,10 @@ impl LevelRenderer {
         if self.destroyed {
             return;
         }
-        self.layer2.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
-        self.layer1.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
-        self.sprites.paint(gl, self.gfx_bufs, screen_size, self.offset, zoom);
+        let uniforms = TileUniforms { gfx_bufs: self.gfx_bufs, screen_size, offset: self.offset, zoom };
+        self.layer2.paint(gl, &uniforms);
+        self.layer1.paint(gl, &uniforms);
+        self.sprites.paint(gl, &uniforms);
     }
 
     pub(super) fn upload_gfx(&self, gl: &Context, data: &[u8]) {

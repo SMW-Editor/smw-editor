@@ -56,10 +56,13 @@ impl UiSpriteMapEditor {
             vram_renderer: Arc::new(Mutex::new(vram_renderer)),
             sprite_renderer: Arc::new(Mutex::new(sprite_renderer)),
             gfx_bufs,
+
             level_num: 0,
             editing_mode: EditingMode::Move(None),
             always_show_grid: false,
+
             debug_selection_bounds: false,
+
             initialized: false,
             tile_size_px: 8.,
             zoom: 3.,
@@ -67,6 +70,7 @@ impl UiSpriteMapEditor {
             hovering_selected_tile: false,
             selection_bounds: None,
             selection_offset: None,
+
             selected_vram_tile: (0, 0),
             tile_palette,
             last_inserted_tile: pos2(-1., -1.),
