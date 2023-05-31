@@ -146,4 +146,15 @@ impl UiSpriteMapEditor {
             self.selected_vram_tile = (x, y - 96);
         };
     }
+
+    pub(super) fn update_tile_palette(&mut self) {
+        for tile in self.tile_palette.iter_mut() {
+            tile.0[3] &= 0xC0FF;
+            tile.0[3] |= (self.selected_palette + 8) << 8;
+        }
+        self.vram_renderer
+            .lock()
+            .expect("Cannot lock mutex on VRAM renderer")
+            .set_tiles(&self.gl, self.tile_palette.clone());
+    }
 }

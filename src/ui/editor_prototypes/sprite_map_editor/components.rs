@@ -7,7 +7,7 @@ use egui_phosphor as icons;
 use inline_tweak::tweak;
 use smwe_render::tile_renderer::TileUniforms;
 use smwe_widgets::{
-    palette_view::{PaletteView, ViewedPaletteRows},
+    palette_view::{PaletteView, SelectionType, ViewedPalettes},
     vram_view::*,
 };
 
@@ -57,8 +57,11 @@ impl UiSpriteMapEditor {
         Frame::canvas(ui.style()).show(ui, |ui| {
             let size = vec2(tweak!(230.), tweak!(115.));
             let palette_view = PaletteView::new(Arc::clone(&self.palette_renderer), self.gfx_bufs.palette_buf, size)
-                .viewed_rows(ViewedPaletteRows::SpritesOnly);
-            ui.add(palette_view);
+                .viewed_rows(ViewedPalettes::SpritesOnly)
+                .selection(SelectionType::Row(&mut self.selected_palette));
+            if ui.add(palette_view).changed() {
+                self.update_tile_palette();
+            }
         });
     }
 

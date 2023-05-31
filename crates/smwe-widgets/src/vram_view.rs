@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{vec2, Color32, PaintCallback, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2, Widget};
+use egui::{vec2, Color32, PaintCallback, PointerButton, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2, Widget};
 use egui_glow::CallbackFn;
 use glow::Context;
 use inline_tweak::tweak;
@@ -113,7 +113,7 @@ impl Widget for VramView<'_> {
                     Color32::from_white_alpha(tweak!(100)),
                 );
 
-                if response.clicked() {
+                if response.clicked_by(PointerButton::Primary) {
                     *selection = (hovered_tile.x as _, hovered_tile.y as _);
                 }
             }
