@@ -8,5 +8,5 @@ void main() {
     int x = vertex_index & 2;
     int y = vertex_index & 1;
     v_tex_coords = vec2(x, y);
-    gl_Position = vec4((x * 2) - 1, (y * 2) - 1, 0, 1);
+    gl_Position = vec4((2 * x) - 1, 1 - (2 * y), 0, 1);
 }

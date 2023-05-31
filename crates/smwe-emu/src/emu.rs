@@ -242,7 +242,7 @@ pub fn exec_sprite_id(cpu: &mut Cpu<CheckedMem>, id: u8) -> u64 {
     cpu.mem.store(0xD8, 0x80);
     cpu.mem.store(0xE4, 0x80);
     for i in 0..12 {
-        cpu.mem.store(0x14C8+i, 0);
+        cpu.mem.store(0x14C8 + i, 0);
     }
     cpu.mem.store(0x14C8, 1);
     cpu.y = 0;
@@ -271,7 +271,10 @@ pub fn exec_sprite_id(cpu: &mut Cpu<CheckedMem>, id: u8) -> u64 {
         if cpu.pc == addr as u16 {
             break;
         }
-        if cy > 10000000 { println!("took too long"); break }
+        if cy > 10000000 {
+            println!("took too long");
+            break;
+        }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());

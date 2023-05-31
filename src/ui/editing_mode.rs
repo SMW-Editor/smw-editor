@@ -36,7 +36,7 @@ impl Drag {
 impl EditingMode {
     pub fn inserted(self, response: &Response) -> bool {
         match self {
-            Self::Move(_) => response.double_clicked_by(PointerButton::Primary),
+            Self::Move(_) => response.clicked_by(PointerButton::Secondary),
             Self::Draw => response.clicked_by(PointerButton::Primary) || response.dragged_by(PointerButton::Primary),
             _ => false,
         }

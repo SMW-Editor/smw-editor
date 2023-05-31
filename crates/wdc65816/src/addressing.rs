@@ -1,8 +1,8 @@
 //! Contains addressing mode definitions
 
-use super::{Cpu, Mem};
-
 use std::fmt;
+
+use super::{Cpu, Mem};
 
 /// As a safety measure, the load and store methods take the mode by value and consume it. Using
 /// the same object twice requires an explicit `.clone()` (`Copy` isn't implemented).
@@ -112,6 +112,7 @@ impl AddressingMode {
             }
         }
     }
+
     pub fn loadw<M: Mem>(self, cpu: &mut Cpu<M>) -> u16 {
         match self {
             AddressingMode::Immediate(val) => val,
@@ -127,6 +128,7 @@ impl AddressingMode {
         let (bank, addr) = self.address(cpu);
         cpu.storeb(bank, addr, value);
     }
+
     pub fn storew<M: Mem>(self, cpu: &mut Cpu<M>, value: u16) {
         let (bank, addr) = self.address(cpu);
         cpu.storew(bank, addr, value);
@@ -142,14 +144,12 @@ impl AddressingMode {
         // FIXME Use next bank on some address overflows
 
         match *self {
-            Absolute(addr) => {
-                (cpu.dbr, addr)
-            }
-            AbsoluteLong(bank, addr) => {
-                (bank, addr)
-            }
+            Absolute(addr) => (cpu.dbr, addr),
+            AbsoluteLong(bank, addr) => (bank, addr),
             AbsLongIndexedX(bank, addr) => {
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
                 let a = ((bank as u32) << 16) | addr as u32;
                 let mut eff_addr = a + cpu.x as u32;
                 //assert!(eff_addr & 0xff000000 == 0, "address overflow");
@@ -159,11 +159,15 @@ impl AddressingMode {
                 (bank as u8, addr)
             }
             AbsIndexedX(offset) => {
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
                 (cpu.dbr, offset + cpu.x)
             }
             AbsIndexedY(offset) => {
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
                 (cpu.dbr, offset + cpu.y)
             }
             AbsIndexedIndirect(addr_ptr) => {
@@ -180,36 +184,48 @@ impl AddressingMode {
                 let bank = cpu.loadb(0, addr_ptr + 2);
                 (bank, addr)
             }
-            Rel(rel) => {
-                (cpu.pbr, (cpu.pc as i16).wrapping_add(rel as i16) as u16)
-            }
-            RelLong(rel_long) => {
-                (cpu.pbr, (cpu.pc as i16).wrapping_add(rel_long) as u16)
-            }
+            Rel(rel) => (cpu.pbr, (cpu.pc as i16).wrapping_add(rel as i16) as u16),
+            RelLong(rel_long) => (cpu.pbr, (cpu.pc as i16).wrapping_add(rel_long) as u16),
             Direct(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
                 (0, cpu.d.wrapping_add(offset as u16))
             }
             DirectIndexedX(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
                 (0, cpu.d.wrapping_add(offset as u16).wrapping_add(cpu.x))
             }
             DirectIndexedY(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
                 (0, cpu.d.wrapping_add(offset as u16).wrapping_add(cpu.y))
             }
             DirectIndexedIndirect(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
                 let addr_ptr = cpu.d.wrapping_add(offset as u16).wrapping_add(cpu.x);
                 let lo = cpu.loadb(0, addr_ptr) as u16;
                 let hi = cpu.loadb(0, addr_ptr + 1) as u16;
                 (cpu.dbr, (hi << 8) | lo)
             }
             DirectIndirectIndexed(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
 
                 let addr_ptr = cpu.d.wrapping_add(offset as u16);
                 let lo = cpu.loadb(0, addr_ptr) as u32;
@@ -223,14 +239,18 @@ impl AddressingMode {
                 (bank, addr)
             }
             DirectIndirect(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
                 let addr_ptr = cpu.d.wrapping_add(offset as u16);
                 let lo = cpu.loadb(0, addr_ptr) as u16;
                 let hi = cpu.loadb(0, addr_ptr + 1) as u16;
                 (cpu.dbr, (hi << 8) | lo)
             }
             DirectIndirectLong(offset) => {
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
                 let addr_ptr = cpu.d.wrapping_add(offset as u16);
                 let lo = cpu.loadb(0, addr_ptr) as u16;
                 let hi = cpu.loadb(0, addr_ptr + 1) as u16;
@@ -241,8 +261,12 @@ impl AddressingMode {
                 // "The 24-bit base address is pointed to by the sum of the second byte of the
                 // instruction and the Direct Register. The effective address is this 24-bit base
                 // address plus the Y Index Register."
-                if cpu.d & 0xff != 0 { cpu.cy += 1 }
-                if !cpu.p.small_index() { cpu.cy += 1 }
+                if cpu.d & 0xff != 0 {
+                    cpu.cy += 1
+                }
+                if !cpu.p.small_index() {
+                    cpu.cy += 1
+                }
 
                 let addr_ptr = cpu.d.wrapping_add(offset as u16);
                 let lo = cpu.loadb(0, addr_ptr) as u32;
@@ -260,9 +284,10 @@ impl AddressingMode {
                 let addr = cpu.s + offset as u16;
                 (0, addr)
             }
-            Immediate(_) | Immediate8(_) =>
-                panic!("attempted to take the address of an immediate value (attempted store to \
-                    immediate?)")
+            Immediate(_) | Immediate8(_) => panic!(
+                "attempted to take the address of an immediate value (attempted store to \
+                    immediate?)"
+            ),
         }
     }
 }
@@ -272,27 +297,27 @@ impl fmt::Display for AddressingMode {
         use self::AddressingMode::*;
 
         match *self {
-            Immediate(val) =>                write!(f, "#${:04X}", val),
-            Immediate8(val) =>               write!(f, "#${:02X}", val),
-            Absolute(addr) =>                write!(f, "${:04X}", addr),
-            AbsoluteLong(bank, addr) =>      write!(f, "${:02X}:{:04X}", bank, addr),
-            AbsLongIndexedX(bank, addr) =>   write!(f, "${:02X}:{:04X},x", bank, addr),
-            AbsIndexedX(offset) =>           write!(f, "${:04X},x", offset),
-            AbsIndexedY(offset) =>           write!(f, "${:04X},y", offset),
-            AbsIndexedIndirect(addr) =>      write!(f, "(${:04X},x)", addr),
-            AbsoluteIndirect(addr) =>        write!(f, "(${:04X})", addr),
-            AbsoluteIndirectLong(addr) =>    write!(f, "[${:04X}]", addr),
-            Rel(rel) =>                      write!(f, "{:+}", rel),
-            RelLong(rel_long) =>             write!(f, "{:+}", rel_long),
-            Direct(offset) =>                write!(f, "${:02X}", offset),
-            DirectIndexedX(offset) =>        write!(f, "${:02X},x", offset),
-            DirectIndexedY(offset) =>        write!(f, "${:02X},y", offset),
+            Immediate(val) => write!(f, "#${:04X}", val),
+            Immediate8(val) => write!(f, "#${:02X}", val),
+            Absolute(addr) => write!(f, "${:04X}", addr),
+            AbsoluteLong(bank, addr) => write!(f, "${:02X}:{:04X}", bank, addr),
+            AbsLongIndexedX(bank, addr) => write!(f, "${:02X}:{:04X},x", bank, addr),
+            AbsIndexedX(offset) => write!(f, "${:04X},x", offset),
+            AbsIndexedY(offset) => write!(f, "${:04X},y", offset),
+            AbsIndexedIndirect(addr) => write!(f, "(${:04X},x)", addr),
+            AbsoluteIndirect(addr) => write!(f, "(${:04X})", addr),
+            AbsoluteIndirectLong(addr) => write!(f, "[${:04X}]", addr),
+            Rel(rel) => write!(f, "{:+}", rel),
+            RelLong(rel_long) => write!(f, "{:+}", rel_long),
+            Direct(offset) => write!(f, "${:02X}", offset),
+            DirectIndexedX(offset) => write!(f, "${:02X},x", offset),
+            DirectIndexedY(offset) => write!(f, "${:02X},y", offset),
             DirectIndexedIndirect(offset) => write!(f, "(${:02X},x)", offset),
             DirectIndirectIndexed(offset) => write!(f, "(${:02X}),y", offset),
-            DirectIndirect(offset) =>        write!(f, "(${:02X})", offset),
-            DirectIndirectLong(offset) =>    write!(f, "[${:02X}]", offset),
+            DirectIndirect(offset) => write!(f, "(${:02X})", offset),
+            DirectIndirectLong(offset) => write!(f, "[${:02X}]", offset),
             DirectIndirectLongIdx(offset) => write!(f, "[${:02X}],y", offset),
-            StackRel(offset) =>              write!(f, "${:02X},s", offset),
+            StackRel(offset) => write!(f, "${:02X},s", offset),
         }
     }
 }

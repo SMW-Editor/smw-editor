@@ -35,7 +35,7 @@ impl TileRenderer {
         };
         let vertex_attribute =
             GlVertexAttribute { index: 0, size: 4, data_type: INT, stride: 0, offset: 0 };
-        let renderer = BasicRenderer::new(gl, shader_sources, vertex_attribute);
+        let renderer = BasicRenderer::new(gl, shader_sources, vertex_attribute, POINTS);
         Self { renderer }
     }
 

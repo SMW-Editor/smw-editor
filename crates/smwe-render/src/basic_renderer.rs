@@ -7,6 +7,7 @@ pub struct BasicRenderer {
     vao:            VertexArray,
     vbo:            Buffer,
     vertex_count:   usize,
+    primitive_type: u32,
     destroyed:      bool,
 }
 
@@ -33,7 +34,9 @@ pub trait BindUniforms {
 }
 
 impl BasicRenderer {
-    pub fn new(gl: &Context, shader_sources: ShaderSources, vertex_attribute: GlVertexAttribute) -> Self {
+    pub fn new(
+        gl: &Context, shader_sources: ShaderSources, vertex_attribute: GlVertexAttribute, primitive_type: u32,
+    ) -> Self {
         let shader_program = unsafe { gl.create_program().expect("Failed to create shader program") };
 
         let mut shader_infos =
@@ -87,7 +90,7 @@ impl BasicRenderer {
             buf
         };
 
-        Self { shader_program, vao, vbo, vertex_count: 0, destroyed: false }
+        Self { shader_program, vao, vbo, vertex_count: 0, primitive_type, destroyed: false }
     }
 
     pub fn destroy(&mut self, gl: &Context) {
@@ -113,7 +116,7 @@ impl BasicRenderer {
             uniforms.bind_uniforms(gl, self.shader_program);
             gl.bind_vertex_array(Some(self.vao));
             gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
-            gl.draw_arrays(POINTS, 0, self.vertex_count as i32);
+            gl.draw_arrays(self.primitive_type, 0, self.vertex_count as i32);
         }
     }
 

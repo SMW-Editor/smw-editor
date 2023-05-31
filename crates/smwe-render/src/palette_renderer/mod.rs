@@ -12,7 +12,7 @@ pub struct PaletteRenderer {
 
 #[derive(Debug)]
 pub struct PaletteUniforms {
-    palette_buf: Buffer,
+    pub palette_buf: Buffer,
 }
 
 impl PaletteRenderer {
@@ -24,9 +24,9 @@ impl PaletteRenderer {
         };
         let vertex_attribute =
             GlVertexAttribute { index: 0, size: 1, data_type: INT, stride: 0, offset: 0 };
-        let mut renderer = BasicRenderer::new(gl, shader_sources, vertex_attribute);
+        let mut renderer = BasicRenderer::new(gl, shader_sources, vertex_attribute, TRIANGLE_STRIP);
 
-        let vertices = vec![0b00, 0b10, 0b11, 0b01];
+        let vertices = vec![0b00, 0b10, 0b01, 0b11];
         renderer.set_vertices(gl, vertices);
 
         Self { renderer }
@@ -36,8 +36,8 @@ impl PaletteRenderer {
         self.renderer.destroy(gl);
     }
 
-    pub fn paint(&self, gl: &Context, uniforms: PaletteUniforms) {
-        self.renderer.paint(gl, &uniforms);
+    pub fn paint(&self, gl: &Context, uniforms: &PaletteUniforms) {
+        self.renderer.paint(gl, uniforms);
     }
 }
 

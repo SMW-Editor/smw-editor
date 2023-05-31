@@ -1,4 +1,6 @@
+mod components;
 mod editing;
+mod highlighting;
 mod internals;
 mod layout;
 mod math;
@@ -12,6 +14,7 @@ use egui::*;
 use glow::Context;
 use smwe_render::{
     gfx_buffers::GfxBuffers,
+    palette_renderer::PaletteRenderer,
     tile_renderer::{Tile, TileRenderer},
 };
 use smwe_widgets::vram_view::VramView;
@@ -19,11 +22,12 @@ use smwe_widgets::vram_view::VramView;
 use crate::ui::editing_mode::EditingMode;
 
 pub struct UiSpriteMapEditor {
-    gl:              Arc<Context>,
-    tile_palette:    Vec<Tile>,
-    vram_renderer:   Arc<Mutex<TileRenderer>>,
-    sprite_renderer: Arc<Mutex<TileRenderer>>,
-    gfx_bufs:        GfxBuffers,
+    gl:               Arc<Context>,
+    tile_palette:     Vec<Tile>,
+    vram_renderer:    Arc<Mutex<TileRenderer>>,
+    sprite_renderer:  Arc<Mutex<TileRenderer>>,
+    palette_renderer: Arc<Mutex<PaletteRenderer>>,
+    gfx_bufs:         GfxBuffers,
 
     level_num:        u16,
     editing_mode:     EditingMode,
@@ -49,12 +53,14 @@ impl UiSpriteMapEditor {
     pub fn new(gl: Arc<Context>) -> Self {
         let (vram_renderer, tile_palette) = VramView::new_renderer(&gl);
         let sprite_renderer = TileRenderer::new(&gl);
+        let palette_renderer = PaletteRenderer::new(&gl);
         let gfx_bufs = GfxBuffers::new(&gl);
         Self {
             gl,
             sprite_tiles: Vec::new(),
             vram_renderer: Arc::new(Mutex::new(vram_renderer)),
             sprite_renderer: Arc::new(Mutex::new(sprite_renderer)),
+            palette_renderer: Arc::new(Mutex::new(palette_renderer)),
             gfx_bufs,
 
             level_num: 0,
@@ -80,5 +86,7 @@ impl UiSpriteMapEditor {
 
     fn destroy(&self) {
         self.vram_renderer.lock().expect("Cannot lock mutex on VRAM renderer").destroy(&self.gl);
+        self.sprite_renderer.lock().expect("Cannot lock mutex on sprite renderer").destroy(&self.gl);
+        self.palette_renderer.lock().expect("Cannot lock mutex on palette renderer").destroy(&self.gl);
     }
 }
