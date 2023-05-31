@@ -12,7 +12,8 @@ pub struct PaletteRenderer {
 
 #[derive(Debug)]
 pub struct PaletteUniforms {
-    pub palette_buf: Buffer,
+    pub palette_buf:     Buffer,
+    pub viewed_palettes: u32,
 }
 
 impl PaletteRenderer {
@@ -43,6 +44,9 @@ impl PaletteRenderer {
 
 impl BindUniforms for PaletteUniforms {
     unsafe fn bind_uniforms(&self, gl: &Context, shader_program: Program) {
+        let u = gl.get_uniform_location(shader_program, "u_viewed_palettes");
+        gl.uniform_1_u32(u.as_ref(), self.viewed_palettes);
+
         gl.bind_buffer_base(UNIFORM_BUFFER, 0, Some(self.palette_buf));
         let palette_block =
             gl.get_uniform_block_index(shader_program, "Color").expect("Failed to get uniform block 'Color'");
