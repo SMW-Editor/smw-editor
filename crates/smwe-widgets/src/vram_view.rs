@@ -54,10 +54,10 @@ impl<'a> VramView<'a> {
                 let pos_y = (t / 16) * scale;
                 let (tile, pal) = if t < 16 * 32 {
                     // background tiles
-                    (t & 0x3FF, (t >> 10) & 0x7)
+                    (t & 0x3FF, 0)
                 } else {
                     // sprite tiles
-                    ((t & 0x1FF) + 0x600, ((t >> 9) & 0x7) + 8)
+                    ((t & 0x1FF) + 0x600, 8)
                 };
                 let params = scale | (pal << 8) | (t & 0xC000);
                 Tile([pos_x, pos_y, tile, params])
