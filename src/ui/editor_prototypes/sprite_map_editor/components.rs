@@ -97,12 +97,6 @@ impl UiSpriteMapEditor {
                     [EditingMode::Select]
                     [EditingMode::Select];
 
-                    [icons::PENCIL]
-                    ["Draw mode"]
-                    ["Insert tiles while left mouse button is pressed."]
-                    [EditingMode::Draw]
-                    [EditingMode::Draw];
-
                     [icons::ERASER]
                     ["Erase mode"]
                     ["Delete tiles while left mouse button is pressed."]
@@ -193,7 +187,7 @@ impl UiSpriteMapEditor {
                 let holding_shift = ui.input(|i| i.modifiers.shift_only());
                 let holding_ctrl = ui.input(|i| i.modifiers.command_only());
 
-                self.higlight_hovered_tiles(ui, relative_pointer_pos, canvas_rect.left_top());
+                let mut should_highlight_hovered = true;
 
                 if self.editing_mode.inserted(&response) {
                     self.handle_edition_insert(grid_cell_pos);
@@ -216,6 +210,7 @@ impl UiSpriteMapEditor {
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
                     self.handle_edition_dragging(drag_data, holding_shift, canvas_top_left_pos);
+                    should_highlight_hovered = false;
                 }
 
                 if self.editing_mode.erased(&response) {
@@ -224,6 +219,10 @@ impl UiSpriteMapEditor {
 
                 if self.editing_mode.probed(&response) {
                     self.handle_edition_probe(relative_pointer_pos);
+                }
+
+                if should_highlight_hovered {
+                    self.higlight_hovered_tiles(ui, relative_pointer_pos, canvas_rect.left_top());
                 }
             }
 

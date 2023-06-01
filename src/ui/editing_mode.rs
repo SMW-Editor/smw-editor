@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use egui::{PointerButton, Pos2, Rect, Response, Vec2};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

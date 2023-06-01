@@ -1,4 +1,5 @@
 use egui::*;
+use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::{math::tile_contains_point, UiSpriteMapEditor};
 use crate::ui::{
@@ -27,7 +28,23 @@ impl UiSpriteMapEditor {
                     self.highlight_tile_at(
                         ui,
                         exact_tile_pos,
-                        CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hover_highlight_color),
+                        CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hovered_tile_highlight_color),
+                        1.,
+                    );
+                } else {
+                    let (selection_scale, max_selected_tile) = match self.vram_selection_mode {
+                        VramSelectionMode::SingleTile => (1., vec2(31., 31.)),
+                        VramSelectionMode::TwoByTwoTiles => (2., vec2(30., 30.)),
+                    };
+                    let tile_size_scaled = self.tile_size_px / self.pixels_per_point;
+                    let hovered_tile = (relative_pointer_pos.to_vec2() / tile_size_scaled / self.zoom).floor();
+                    let hovered_tile = hovered_tile.clamp(vec2(0., 0.), max_selected_tile);
+                    let hovered_tile_exact_offset = hovered_tile * tile_size_scaled * self.zoom;
+                    self.highlight_tile_at(
+                        ui,
+                        canvas_left_top + hovered_tile_exact_offset,
+                        CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hovered_void_highlight_color),
+                        selection_scale,
                     );
                 }
             }
@@ -41,27 +58,17 @@ impl UiSpriteMapEditor {
                         ui,
                         ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_left_top.to_vec2()).to_pos2(),
                         CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.delete_highlight_color),
+                        1.,
                     );
                 }
-            }
-            EditingMode::Draw => {
-                let scale_pp = self.tile_size_px / self.pixels_per_point;
-                let hovered_tile = (relative_pointer_pos.to_vec2() / scale_pp / self.zoom).floor();
-                let hovered_tile = hovered_tile.clamp(vec2(0., 0.), vec2(31., 31.));
-                let hovered_tile_exact_offset = hovered_tile * scale_pp * self.zoom;
-                self.highlight_tile_at(
-                    ui,
-                    canvas_left_top + hovered_tile_exact_offset,
-                    CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hover_highlight_color),
-                );
             }
             _ => {}
         }
     }
 
-    pub(super) fn highlight_tile_at(&self, ui: &mut Ui, pos: Pos2, color: impl Into<Color32>) {
+    pub(super) fn highlight_tile_at(&self, ui: &mut Ui, pos: Pos2, color: impl Into<Color32>, scale: f32) {
         ui.painter().rect_filled(
-            Rect::from_min_size(pos, Vec2::splat(self.tile_size_px * self.zoom / self.pixels_per_point)),
+            Rect::from_min_size(pos, Vec2::splat(self.tile_size_px * scale * self.zoom / self.pixels_per_point)),
             Rounding::none(),
             color,
         );
@@ -75,11 +82,12 @@ impl UiSpriteMapEditor {
                 canvas_pos + selection_offset + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
                 CellSelectorStyle::get_from_egui(ui.ctx(), |style| {
                     if self.hovering_selected_tile {
-                        style.hover_highlight_color
+                        style.hovered_tile_highlight_color
                     } else {
                         style.selection_highlight_color
                     }
                 }),
+                1.,
             );
         }
     }
