@@ -1,20 +1,15 @@
 use egui::{Ui, WidgetText};
 use egui_dock::TabViewer;
 
-use crate::ui::{
-    tool::{DockableEditorTool, DockableEditorToolEnum},
-    EditorState,
-};
+use crate::ui::tool::{DockableEditorTool, DockableEditorToolEnum};
 
-pub struct EditorToolTabViewer<'v> {
-    pub state: &'v mut EditorState,
-}
+pub struct EditorToolTabViewer;
 
-impl TabViewer for EditorToolTabViewer<'_> {
+impl TabViewer for EditorToolTabViewer {
     type Tab = DockableEditorToolEnum;
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
-        tab.update(ui, self.state);
+        tab.update(ui);
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {

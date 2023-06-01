@@ -1,6 +1,6 @@
 #![allow(clippy::identity_op)]
 
-use std::{collections::HashSet, rc::Rc};
+use std::{collections::HashSet, sync::Arc};
 
 use wdc65816::{Cpu, Mem};
 
@@ -8,7 +8,7 @@ use crate::rom::Rom;
 
 #[derive(Debug, Clone)]
 pub struct CheckedMem {
-    pub cart:       Rc<Rom>,
+    pub cart:       Arc<Rom>,
     pub wram:       Vec<u8>,
     pub regs:       Vec<u8>,
     pub vram:       Vec<u8>,
@@ -21,7 +21,7 @@ pub struct CheckedMem {
 }
 
 impl CheckedMem {
-    pub fn new(rom: Rc<Rom>) -> Self {
+    pub fn new(rom: Arc<Rom>) -> Self {
         Self {
             cart:       rom,
             wram:       Vec::from([0; 0x20000]),

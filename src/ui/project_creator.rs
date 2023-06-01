@@ -1,10 +1,13 @@
-use std::{cell::RefCell, path::Path, sync::Arc};
+use std::path::Path;
 
 use eframe::egui::{Button, Ui, Window};
+use egui::Id;
 use rfd::FileDialog;
-use smwe_project::Project;
 
-use crate::ui::{color, EditorState};
+use crate::{
+    project::Project,
+    ui::style::{EditorStyle, ErrorStyle},
+};
 
 #[derive(Debug)]
 pub struct UiProjectCreator {
@@ -33,7 +36,7 @@ impl Default for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn update(&mut self, ui: &mut Ui, project: &mut EditorState) -> bool {
+    pub fn update(&mut self, ui: &mut Ui) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
@@ -42,7 +45,7 @@ impl UiProjectCreator {
             |ui| {
                 self.input_project_title(ui);
                 self.input_rom_file_path(ui);
-                self.create_or_cancel(project, ui, &mut created_or_cancelled);
+                self.create_or_cancel(ui, &mut created_or_cancelled);
             },
         );
 
@@ -59,7 +62,7 @@ impl UiProjectCreator {
             self.handle_project_title();
         }
         if !self.err_project_title.is_empty() {
-            ui.colored_label(color::TEXT_ERROR, &self.err_project_title);
+            ui.colored_label(ErrorStyle::get_from_egui(ui.ctx(), |style| style.text_color), &self.err_project_title);
         }
     }
 
@@ -82,7 +85,7 @@ impl UiProjectCreator {
             }
         });
         if !self.err_base_rom_path.is_empty() {
-            ui.colored_label(color::TEXT_ERROR, &self.err_base_rom_path);
+            ui.colored_label(ErrorStyle::get_from_egui(ui.ctx(), |style| style.text_color), &self.err_base_rom_path);
         }
     }
 
@@ -108,11 +111,11 @@ impl UiProjectCreator {
         }
     }
 
-    fn create_or_cancel(&mut self, project: &mut EditorState, ui: &mut Ui, created_or_cancelled: &mut bool) {
+    fn create_or_cancel(&mut self, ui: &mut Ui, created_or_cancelled: &mut bool) {
         ui.horizontal(|ui| {
             if ui.add_enabled(self.no_creation_errors(), Button::new("Create").small()).clicked() {
                 log::info!("Attempting to create a new project");
-                self.handle_project_creation(project, created_or_cancelled);
+                self.handle_project_creation(ui, created_or_cancelled);
             }
             if ui.small_button("Cancel").clicked() {
                 log::info!("Cancelled project creation");
@@ -120,15 +123,18 @@ impl UiProjectCreator {
             }
         });
         if !self.err_project_creation.is_empty() {
-            ui.colored_label(color::TEXT_ERROR, &self.err_project_creation);
+            ui.colored_label(ErrorStyle::get_from_egui(ui.ctx(), |style| style.text_color), &self.err_project_creation);
         }
     }
 
-    fn handle_project_creation(&mut self, state: &mut EditorState, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, ui: &mut Ui, created_or_cancelled: &mut bool) {
         match Project::new(&self.base_rom_path) {
             Ok(project) => {
                 log::info!("Success creating a new project");
-                state.project = Some(Arc::new(RefCell::new(project)));
+                ui.data_mut(|data| {
+                    data.insert_temp(Id::new("project_title"), project.title);
+                    data.insert_temp(Id::new("rom"), project.rom);
+                });
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
             }

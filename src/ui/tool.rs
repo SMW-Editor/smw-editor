@@ -1,42 +1,29 @@
+#![allow(clippy::enum_variant_names)]
+
 use eframe::egui::Ui;
 use egui::WidgetText;
 use enum_dispatch::enum_dispatch;
 
 use crate::ui::{
-    dev_utils::{
-        address_converter::UiAddressConverter,
-        disassembler::UiDisassembler,
-        gfx_viewer::UiGfxViewer,
-        palette_viewer::UiPaletteViewer,
-        rom_info::UiRomInfo,
-        tiles16x16::UiTiles16x16,
-    },
+    dev_utils::address_converter::UiAddressConverter,
     editor_prototypes::{
         block_editor::UiBlockEditor,
-        code_editor::UiCodeEditor,
         level_editor::UiLevelEditor,
         sprite_map_editor::UiSpriteMapEditor,
     },
-    EditorState,
 };
 
 #[enum_dispatch]
 pub enum DockableEditorToolEnum {
     UiAddressConverter,
     UiBlockEditor,
-    UiCodeEditor,
-    UiDisassembler,
-    UiGfxViewer,
-    UiPaletteViewer,
-    UiRomInfo,
-    UiTiles16x16,
     UiLevelEditor,
     UiSpriteMapEditor,
 }
 
 #[enum_dispatch(DockableEditorToolEnum)]
 pub trait DockableEditorTool {
-    fn update(&mut self, ui: &mut Ui, state: &mut EditorState);
+    fn update(&mut self, ui: &mut Ui);
     fn title(&self) -> WidgetText;
     fn on_closed(&mut self) {}
 }

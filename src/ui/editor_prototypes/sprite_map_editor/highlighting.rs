@@ -1,8 +1,10 @@
 use egui::*;
-use inline_tweak::tweak;
 
 use super::{math::tile_contains_point, UiSpriteMapEditor};
-use crate::ui::editing_mode::*;
+use crate::ui::{
+    editing_mode::*,
+    style::{CellSelectorStyle, EditorStyle},
+};
 
 impl UiSpriteMapEditor {
     pub(super) fn higlight_hovered_tiles(&mut self, ui: &mut Ui, relative_pointer_pos: Pos2, canvas_left_top: Pos2) {
@@ -22,7 +24,11 @@ impl UiSpriteMapEditor {
                     .find(|&&tile| tile_contains_point(tile, relative_pointer_pos, scaling_factor))
                 {
                     let exact_tile_pos = canvas_left_top + (hovered_tile.pos().to_vec2() * scaling_factor);
-                    self.highlight_tile_at(ui, exact_tile_pos, Color32::from_white_alpha(tweak!(100)));
+                    self.highlight_tile_at(
+                        ui,
+                        exact_tile_pos,
+                        CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hover_highlight_color),
+                    );
                 }
             }
             EditingMode::Erase => {
@@ -34,7 +40,7 @@ impl UiSpriteMapEditor {
                     self.highlight_tile_at(
                         ui,
                         ((hovered_tile.pos().to_vec2() * scaling_factor) + canvas_left_top.to_vec2()).to_pos2(),
-                        Color32::from_rgba_premultiplied(tweak!(255), 0, 0, tweak!(10)),
+                        CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.delete_highlight_color),
                     );
                 }
             }
@@ -46,7 +52,7 @@ impl UiSpriteMapEditor {
                 self.highlight_tile_at(
                     ui,
                     canvas_left_top + hovered_tile_exact_offset,
-                    Color32::from_white_alpha(tweak!(100)),
+                    CellSelectorStyle::get_from_egui(ui.ctx(), |style| style.hover_highlight_color),
                 );
             }
             _ => {}
@@ -67,7 +73,13 @@ impl UiSpriteMapEditor {
             self.highlight_tile_at(
                 ui,
                 canvas_pos + selection_offset + tile.pos().to_vec2() / self.pixels_per_point * self.zoom,
-                Color32::from_white_alpha(if self.hovering_selected_tile { tweak!(100) } else { tweak!(40) }),
+                CellSelectorStyle::get_from_egui(ui.ctx(), |style| {
+                    if self.hovering_selected_tile {
+                        style.hover_highlight_color
+                    } else {
+                        style.selection_highlight_color
+                    }
+                }),
             );
         }
     }

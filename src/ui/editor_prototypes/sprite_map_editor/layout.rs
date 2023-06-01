@@ -8,22 +8,21 @@ use crate::ui::{
     editing_mode::SnapToGrid,
     editor_prototypes::sprite_map_editor::UiSpriteMapEditor,
     tool::DockableEditorTool,
-    EditorState,
 };
 
 impl DockableEditorTool for UiSpriteMapEditor {
-    fn update(&mut self, ui: &mut Ui, state: &mut EditorState) {
+    fn update(&mut self, ui: &mut Ui) {
         if !self.initialized {
-            self.update_cpu(state);
-            self.update_renderers(state);
+            self.update_cpu();
+            self.update_renderers();
             self.pixels_per_point = ui.ctx().pixels_per_point();
             self.initialized = true;
         }
 
-        self.handle_keyboard(ui, state);
+        self.handle_keyboard(ui);
 
         SidePanel::left("sprite_map_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
-        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui, state));
+        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui));
     }
 
     fn title(&self) -> WidgetText {
@@ -36,7 +35,7 @@ impl DockableEditorTool for UiSpriteMapEditor {
 }
 
 impl UiSpriteMapEditor {
-    pub(super) fn handle_keyboard(&mut self, ui: &mut Ui, _state: &mut EditorState) {
+    pub(super) fn handle_keyboard(&mut self, ui: &mut Ui) {
         ui.input(|input| {
             let move_distance = if input.modifiers.shift_only() { self.tile_size_px } else { 1. };
 
@@ -88,20 +87,20 @@ impl UiSpriteMapEditor {
         self.debug_toggles(ui);
     }
 
-    pub(super) fn central_panel(&mut self, ui: &mut Ui, state: &mut EditorState) {
-        self.top_menu(ui, state);
+    pub(super) fn central_panel(&mut self, ui: &mut Ui) {
+        self.top_menu(ui);
         self.editing_area(ui);
     }
 
-    pub(super) fn top_menu(&mut self, ui: &mut Ui, state: &mut EditorState) {
+    pub(super) fn top_menu(&mut self, ui: &mut Ui) {
         Frame::menu(ui.style()).show(ui, |ui| {
             ui.horizontal(|ui| {
                 let level_switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::MinusPlus)
                     .range(0..=0x1FF)
                     .hexadecimal(3, false, true);
                 if ui.add(level_switcher).changed() {
-                    self.update_cpu(state);
-                    self.update_renderers(state);
+                    self.update_cpu();
+                    self.update_renderers();
                 }
                 ui.separator();
 

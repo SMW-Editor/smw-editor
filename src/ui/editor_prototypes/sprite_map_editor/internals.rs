@@ -3,25 +3,19 @@ use egui::emath::*;
 use itertools::Itertools;
 use num::Integer;
 use paste::paste;
-use smwe_emu::{emu::CheckedMem, Cpu};
 
 use super::{math::*, UiSpriteMapEditor};
-use crate::ui::{editing_mode::SnapToGrid, EditorState};
+use crate::ui::editing_mode::SnapToGrid;
 
 impl UiSpriteMapEditor {
-    pub(super) fn update_cpu(&mut self, state: &mut EditorState) {
-        let project = state.project.as_ref().unwrap().borrow();
-        let mut cpu = Cpu::new(CheckedMem::new(project.rom.clone()));
-        drop(project);
-        smwe_emu::emu::decompress_sublevel(&mut cpu, self.level_num);
+    pub(super) fn update_cpu(&mut self) {
+        smwe_emu::emu::decompress_sublevel(&mut self.cpu, self.level_num);
         println!("Updated CPU");
-        state.cpu = Some(cpu);
     }
 
-    pub(super) fn update_renderers(&mut self, state: &mut EditorState) {
-        let cpu = state.cpu.as_mut().unwrap();
-        self.gfx_bufs.upload_palette(&self.gl, &cpu.mem.cgram);
-        self.gfx_bufs.upload_vram(&self.gl, &cpu.mem.vram);
+    pub(super) fn update_renderers(&mut self) {
+        self.gfx_bufs.upload_palette(&self.gl, &self.cpu.mem.cgram);
+        self.gfx_bufs.upload_vram(&self.gl, &self.cpu.mem.vram);
     }
 
     pub(super) fn upload_tiles(&self) {

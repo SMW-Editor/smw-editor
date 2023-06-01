@@ -1,11 +1,14 @@
+mod project;
 mod ui;
 
 use std::{cell::RefCell, env, sync::Arc};
 
 use eframe::{NativeOptions, Renderer};
-use smwe_project::{Project, ProjectRef};
 
-use crate::ui::UiMainWindow;
+use crate::{
+    project::{Project, ProjectRef},
+    ui::UiMainWindow,
+};
 
 fn main() -> eframe::Result<()> {
     log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize log4rs");

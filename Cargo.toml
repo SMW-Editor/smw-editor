@@ -2,7 +2,6 @@
 
 members = [
     "crates/smwe-emu",
-    "crates/smwe-project",
     "crates/smwe-render",
     "crates/smwe-rom",
     "crates/smwe-widgets",
@@ -20,7 +19,6 @@ rust-version = "1.65"
 
 [dependencies]
 smwe-emu = { path = "crates/smwe-emu" }
-smwe-project = { path = "crates/smwe-project" }
 smwe-render = { path = "crates/smwe-render" }
 smwe-rom = { path = "crates/smwe-rom" }
 smwe-widgets = { path = "crates/smwe-widgets" }
@@ -29,7 +27,7 @@ wdc65816 = { path = "crates/wdc65816" }
 anyhow = "1.0"
 duplicate = "1.0"
 eframe = "0.22"
-egui = "0.22"
+egui = { version = "0.22", features = ["serde"] }
 egui_dock = "0.6"
 egui_extras = "0.22"
 egui_glow = "0.22"
@@ -44,4 +42,5 @@ num = "0.4"
 num_enum = "0.6"
 paste = "1.0"
 rfd = "0.11"
+serde = "1.0"
 thiserror = "1.0"
