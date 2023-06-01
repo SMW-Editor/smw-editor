@@ -17,12 +17,18 @@ pub enum ViewedVramTiles {
     SpritesOnly,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum VramSelectionMode {
+    SingleTile,
+    TwoByTwoTiles,
+}
+
 #[derive(Debug)]
 pub struct VramView<'a> {
     renderer:     Arc<Mutex<TileRenderer>>,
     gfx_bufs:     GfxBuffers,
     viewed_tiles: ViewedVramTiles,
-    selection:    Option<&'a mut (u32, u32)>,
+    selection:    Option<(VramSelectionMode, &'a mut (u32, u32))>,
     zoom:         f32,
 }
 
@@ -36,8 +42,8 @@ impl<'a> VramView<'a> {
         self
     }
 
-    pub fn selection(mut self, selection: &'a mut (u32, u32)) -> Self {
-        self.selection = Some(selection);
+    pub fn selection(mut self, mode: VramSelectionMode, selection: &'a mut (u32, u32)) -> Self {
+        self.selection = Some((mode, selection));
         self
     }
 
@@ -100,12 +106,17 @@ impl Widget for VramView<'_> {
         });
 
         // Hover/select tile
-        if let Some(selection) = selection {
-            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(scale * zoom));
+        if let Some((mode, selection)) = selection {
+            let (selection_size, max_selected_tile) = match mode {
+                VramSelectionMode::SingleTile => (scale, vec2(15., 31.)),
+                VramSelectionMode::TwoByTwoTiles => (2. * scale, vec2(14., 30.)),
+            };
+
+            let selection_rect = Rect::from_min_size(rect.left_top(), Vec2::splat(selection_size * zoom));
 
             if let Some(hover_pos) = response.hover_pos() {
                 let relative_pos = hover_pos - rect.left_top();
-                let hovered_tile = (relative_pos / scale / zoom).floor().clamp(vec2(0., 0.), vec2(15., 31.));
+                let hovered_tile = (relative_pos / scale / zoom).floor().clamp(vec2(0., 0.), max_selected_tile);
 
                 ui.painter().rect_filled(
                     selection_rect.translate(hovered_tile * scale * zoom),

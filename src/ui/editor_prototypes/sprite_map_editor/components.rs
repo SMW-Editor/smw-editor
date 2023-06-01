@@ -16,14 +16,18 @@ use crate::ui::editing_mode::*;
 
 impl UiSpriteMapEditor {
     pub(super) fn tile_selector(&mut self, ui: &mut Ui) {
-        ui.strong("VRAM");
+        ui.horizontal(|ui| {
+            ui.strong("VRAM");
+            ui.radio_value(&mut self.vram_selection_mode, VramSelectionMode::SingleTile, "8x8");
+            ui.radio_value(&mut self.vram_selection_mode, VramSelectionMode::TwoByTwoTiles, "16x16");
+        });
         Frame::canvas(ui.style()).show(ui, |ui| {
             let vram_renderer = Arc::clone(&self.vram_renderer);
             let gfx_bufs = self.gfx_bufs;
             ui.add(
                 VramView::new(vram_renderer, gfx_bufs)
                     .viewed_tiles(ViewedVramTiles::SpritesOnly)
-                    .selection(&mut self.selected_vram_tile)
+                    .selection(self.vram_selection_mode, &mut self.selected_vram_tile)
                     .zoom(2.),
             );
         });

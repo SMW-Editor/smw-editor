@@ -1,6 +1,7 @@
 mod components;
 mod editing;
 mod highlighting;
+mod input;
 mod internals;
 mod layout;
 mod math;
@@ -18,7 +19,7 @@ use smwe_render::{
     palette_renderer::PaletteRenderer,
     tile_renderer::{Tile, TileRenderer},
 };
-use smwe_widgets::vram_view::VramView;
+use smwe_widgets::vram_view::{VramSelectionMode, VramView};
 
 use crate::ui::editing_mode::EditingMode;
 
@@ -31,9 +32,10 @@ pub struct UiSpriteMapEditor {
     palette_renderer: Arc<Mutex<PaletteRenderer>>,
     gfx_bufs:         GfxBuffers,
 
-    level_num:        u16,
-    editing_mode:     EditingMode,
-    always_show_grid: bool,
+    level_num:           u16,
+    vram_selection_mode: VramSelectionMode,
+    editing_mode:        EditingMode,
+    always_show_grid:    bool,
 
     debug_selection_bounds: bool,
 
@@ -68,6 +70,7 @@ impl UiSpriteMapEditor {
             gfx_bufs,
 
             level_num: 0,
+            vram_selection_mode: VramSelectionMode::SingleTile,
             editing_mode: EditingMode::Move(None),
             always_show_grid: false,
 
