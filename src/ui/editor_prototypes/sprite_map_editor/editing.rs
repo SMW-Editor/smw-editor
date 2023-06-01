@@ -1,4 +1,5 @@
-use egui::Pos2;
+use egui::{vec2, Pos2};
+use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::{math::point_to_tile_coords, UiSpriteMapEditor};
 use crate::ui::editing_mode::{Drag, Selection, SnapToGrid};
@@ -6,7 +7,19 @@ use crate::ui::editing_mode::{Drag, Selection, SnapToGrid};
 impl UiSpriteMapEditor {
     pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: Pos2) {
         if self.last_inserted_tile != grid_cell_pos {
-            self.add_selected_tile_at(grid_cell_pos);
+            match self.vram_selection_mode {
+                VramSelectionMode::SingleTile => self.add_selected_tile_at(grid_cell_pos),
+                VramSelectionMode::TwoByTwoTiles => {
+                    let current_selection = self.selected_vram_tile;
+                    for offset in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+                        self.selected_vram_tile.0 = current_selection.0 + offset.0;
+                        self.selected_vram_tile.1 = current_selection.1 + offset.1;
+                        let pos = grid_cell_pos + (self.tile_size_px * vec2(offset.0 as f32, offset.1 as f32));
+                        self.add_selected_tile_at(pos);
+                    }
+                    self.selected_vram_tile = current_selection;
+                }
+            }
             self.last_inserted_tile = grid_cell_pos;
         }
         self.unselect_all_tiles();
