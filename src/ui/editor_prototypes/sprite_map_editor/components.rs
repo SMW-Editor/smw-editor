@@ -39,10 +39,14 @@ impl UiSpriteMapEditor {
 
         ui.strong("Selection preview");
         let px = self.pixels_per_point;
+        let preview_size = tweak!(8.);
         let zoom = tweak!(8.);
-        let (rect, _response) = ui.allocate_exact_size(Vec2::splat(zoom * 8. / px), Sense::hover());
+        let (rect, _response) = ui.allocate_exact_size(Vec2::splat(zoom * preview_size / px), Sense::hover());
 
-        let screen_size = rect.size() * px;
+        let screen_size = match self.vram_selection_mode {
+            VramSelectionMode::SingleTile => rect.size() * px,
+            VramSelectionMode::TwoByTwoTiles => rect.size() * px * 2.,
+        };
         let offset = vec2(-(self.selected_vram_tile.0 as f32), -32. - self.selected_vram_tile.1 as f32) * zoom;
 
         ui.painter().add(PaintCallback {
