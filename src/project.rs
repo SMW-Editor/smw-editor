@@ -1,5 +1,6 @@
 use std::{cell::RefCell, path::Path, sync::Arc};
 
+use egui::Id;
 use smwe_emu::rom::Rom;
 
 #[derive(Debug)]
@@ -17,5 +18,13 @@ impl Project {
         rom.load_symbols(include_str!("../symbols/SMW_U.sym"));
 
         Ok(Self { title: String::from("Test Project"), rom: Arc::new(rom) })
+    }
+
+    pub fn rom_id() -> Id {
+        Id::new("rom")
+    }
+
+    pub fn project_title_id() -> Id {
+        Id::new("project_title")
     }
 }

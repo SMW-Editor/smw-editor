@@ -14,7 +14,7 @@ use egui_dock::{DockArea, Style as DockStyle, Tree};
 use smwe_emu::rom::Rom;
 
 use crate::{
-    project::ProjectRef,
+    project::{Project, ProjectRef},
     ui::{
         dev_utils::address_converter::UiAddressConverter,
         editor_prototypes::{
@@ -46,8 +46,8 @@ impl UiMainWindow {
         if let Some(project) = project {
             cc.egui_ctx.data_mut(|data| {
                 let project = project.borrow();
-                data.insert_temp(Id::new("project_name"), project.title.clone());
-                data.insert_temp(Id::new("rom"), Arc::clone(&project.rom));
+                data.insert_temp(Project::project_title_id(), project.title.clone());
+                data.insert_temp(Project::rom_id(), Arc::clone(&project.rom));
             });
         }
 

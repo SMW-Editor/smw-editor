@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use eframe::egui::{Button, Ui, Window};
-use egui::Id;
 use rfd::FileDialog;
 
 use crate::{
@@ -132,8 +131,8 @@ impl UiProjectCreator {
             Ok(project) => {
                 log::info!("Success creating a new project");
                 ui.data_mut(|data| {
-                    data.insert_temp(Id::new("project_title"), project.title);
-                    data.insert_temp(Id::new("rom"), project.rom);
+                    data.insert_temp(Project::project_title_id(), project.title);
+                    data.insert_temp(Project::rom_id(), project.rom);
                 });
                 *created_or_cancelled = true;
                 self.err_project_creation.clear();
