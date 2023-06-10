@@ -13,7 +13,7 @@ impl DockableEditorTool for UiSpriteMapEditor {
             self.initialized = true;
         }
 
-        self.handle_keyboard(ui);
+        self.handle_input(ui);
 
         SidePanel::left("sprite_map_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
         CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui));

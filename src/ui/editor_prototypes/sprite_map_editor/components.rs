@@ -85,8 +85,8 @@ impl UiSpriteMapEditor {
                 [
                     icon mode_name mode_desc mode_pattern mode_value;
 
-                    [icons::ARROWS_OUT_CARDINAL]
-                    ["Move mode"]
+                    [icons::CURSOR]
+                    ["Insert mode"]
                     ["Double click to insert tile, single click to select, drag to move."]
                     [EditingMode::Move(_)]
                     [EditingMode::Move(None)];
