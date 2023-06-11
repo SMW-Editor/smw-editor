@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use egui::{emath::Numeric, vec2, Button, DragValue, Response, Sense, Ui, Widget, WidgetText};
+use egui::{emath::Numeric, Button, DragValue, Response, Ui, Widget, WidgetText};
 use egui_phosphor as icons;
 
 type NumFormatter<'a> = Box<dyn 'a + Fn(f64, RangeInclusive<usize>) -> String>;
@@ -107,11 +107,9 @@ where
         let min = *self.range.start();
         let max = *self.range.end();
 
-        let mut response = ui.allocate_response(vec2(0., 0.), Sense::focusable_noninteractive());
-
-        ui.horizontal(|ui| {
+        let inner_response = ui.horizontal(|ui| {
             let button_l = ui.add_enabled(*self.value > min, Button::new(label_l));
-            let drag_value = ui.add({
+            let mut drag_value = ui.add({
                 let mut dv = DragValue::new(self.value).clamp_range(self.range);
                 if let Some(custom_formatter) = self.custom_formatter {
                     dv = dv.custom_formatter(custom_formatter);
@@ -126,17 +124,15 @@ where
 
             if button_l.clicked() {
                 *self.value = V::from_f64(self.value.to_f64() - 1.);
-                response.mark_changed();
-            }
-            if drag_value.changed() {
-                response.mark_changed();
+                drag_value.mark_changed();
             }
             if button_r.clicked() {
                 *self.value = V::from_f64(self.value.to_f64() + 1.);
-                response.mark_changed();
+                drag_value.mark_changed();
             }
+            drag_value
         });
 
-        response
+        inner_response.inner
     }
 }
