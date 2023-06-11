@@ -2371,6 +2371,7 @@ dependencies = [
  "paste",
  "rfd",
  "serde",
+ "serde_json",
  "smwe-emu",
  "smwe-render",
  "smwe-rom",
@@ -2395,7 +2396,9 @@ dependencies = [
  "glow",
  "itertools",
  "log",
+ "serde",
  "smwe-emu",
+ "thiserror",
 ]
 
 [[package]]

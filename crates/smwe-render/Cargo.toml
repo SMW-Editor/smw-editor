@@ -13,3 +13,5 @@ epaint = "0.22"
 glow = "0.12"
 itertools = "0.10"
 log = "0.4"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }

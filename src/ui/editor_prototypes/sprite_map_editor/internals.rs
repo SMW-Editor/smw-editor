@@ -1,13 +1,73 @@
+use std::{fs, path::PathBuf};
+
 use duplicate::duplicate;
 use egui::emath::*;
 use itertools::Itertools;
 use num::Integer;
 use paste::paste;
+use rfd::{MessageButtons, MessageDialog, MessageLevel};
+use smwe_render::tile_renderer::{Tile, TileJson};
 
 use super::{math::*, UiSpriteMapEditor};
 use crate::ui::editing_mode::SnapToGrid;
 
 impl UiSpriteMapEditor {
+    pub(super) fn create_new_map(&mut self) {
+        self.sprite_tiles.clear();
+        self.upload_tiles();
+    }
+
+    pub(super) fn open_map(&mut self, path: PathBuf) {
+        match fs::read_to_string(path) {
+            Err(e) => {
+                MessageDialog::new()
+                    .set_title("Failed to open selected file.")
+                    .set_description(&format!("{e:?}"))
+                    .set_level(MessageLevel::Error)
+                    .set_buttons(MessageButtons::Ok)
+                    .show();
+            }
+            Ok(s) => match serde_json::from_str::<Vec<TileJson>>(&s) {
+                Err(e) => {
+                    MessageDialog::new()
+                        .set_title("Failed to deserialize sprite tile map from JSON.")
+                        .set_description(&format!("{e:?}"))
+                        .set_level(MessageLevel::Error)
+                        .set_buttons(MessageButtons::Ok)
+                        .show();
+                }
+                Ok(tiles) => {
+                    self.sprite_tiles = tiles.into_iter().map(Tile::from).collect_vec();
+                    self.upload_tiles();
+                }
+            },
+        }
+    }
+
+    pub(super) fn save_map_as(&mut self, path: PathBuf) {
+        let tiles = self.sprite_tiles.iter().map(|&t| TileJson::from(t)).collect_vec();
+        match serde_json::to_string_pretty(&tiles) {
+            Err(e) => {
+                MessageDialog::new()
+                    .set_title("Failed to serialize sprite tile map into JSON.")
+                    .set_description(&format!("{e:?}"))
+                    .set_level(MessageLevel::Error)
+                    .set_buttons(MessageButtons::Ok)
+                    .show();
+            }
+            Ok(s) => {
+                if let Err(e) = fs::write(path, s) {
+                    MessageDialog::new()
+                        .set_title("Save sprite tile map to selected file.")
+                        .set_description(&format!("{e:?}"))
+                        .set_level(MessageLevel::Error)
+                        .set_buttons(MessageButtons::Ok)
+                        .show();
+                }
+            }
+        }
+    }
+
     pub(super) fn update_cpu(&mut self) {
         smwe_emu::emu::decompress_sublevel(&mut self.cpu, self.level_num);
         println!("Updated CPU");

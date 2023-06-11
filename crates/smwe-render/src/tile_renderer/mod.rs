@@ -1,5 +1,7 @@
 use emath::*;
 use glow::*;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::{
     basic_renderer::{BasicRenderer, BindUniforms, GlVertexAttribute, ShaderSources},
@@ -25,6 +27,21 @@ pub struct TileUniforms {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Tile(pub [u32; 4]);
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TileJson {
+    x:         u32,
+    y:         u32,
+    tile_id:   u32,
+    scale:     u8,
+    color_row: u8,
+    flip_x:    bool,
+    flip_y:    bool,
+}
+
+#[derive(Debug, Error)]
+#[error("Could not deserialize tile")]
+pub struct TileDeserializeError;
 
 impl TileRenderer {
     pub fn new(gl: &Context) -> Self {
@@ -88,6 +105,18 @@ impl Tile {
         self.0[3] & 0xFF
     }
 
+    pub fn color_row(self) -> u32 {
+        (self.0[3] >> 8) & 0xF
+    }
+
+    pub fn flip_x(self) -> bool {
+        (self.0[3] & 0x4000) != 0
+    }
+
+    pub fn flip_y(self) -> bool {
+        (self.0[3] & 0x8000) != 0
+    }
+
     pub fn move_by(&mut self, offset: Vec2) {
         self.0[0] = (self.0[0] as i32 + offset.x as i32) as u32;
         self.0[1] = (self.0[1] as i32 + offset.y as i32) as u32;
@@ -107,5 +136,33 @@ impl Tile {
             let cell_coord = unscaled.floor();
             (cell_coord * cell_size) as u32
         };
+    }
+}
+
+impl From<Tile> for TileJson {
+    fn from(value: Tile) -> Self {
+        Self {
+            x:         value.0[0],
+            y:         value.0[1],
+            tile_id:   value.tile_num(),
+            scale:     value.scale() as u8,
+            color_row: value.color_row() as u8,
+            flip_x:    value.flip_x(),
+            flip_y:    value.flip_y(),
+        }
+    }
+}
+
+impl From<TileJson> for Tile {
+    fn from(value: TileJson) -> Self {
+        Self([
+            value.x,
+            value.y,
+            value.tile_id,
+            value.scale as u32
+                | ((value.color_row as u32 & 0xF) << 8)
+                | (0x4000 * value.flip_x as u32)
+                | (0x8000 * value.flip_x as u32),
+        ])
     }
 }
