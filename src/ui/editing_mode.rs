@@ -9,6 +9,8 @@ pub enum EditingMode {
     Move(Option<Drag>),
     Probe,
     Select,
+    FlipHorizontally,
+    FlipVertically,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -26,6 +28,12 @@ pub struct Drag {
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct SnapToGrid {
     pub cell_origin: Vec2,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FlipDirection {
+    Horizontal,
+    Vertical,
 }
 
 impl Drag {
@@ -98,6 +106,26 @@ impl EditingMode {
         match self {
             Self::Probe => response.clicked_by(PointerButton::Primary),
             _ => false,
+        }
+    }
+
+    pub fn flipped(self, response: &Response) -> Option<FlipDirection> {
+        match self {
+            Self::FlipHorizontally => response.clicked_by(PointerButton::Primary).then(|| {
+                if response.ctx.input(|input| input.modifiers.command_only()) {
+                    FlipDirection::Vertical
+                } else {
+                    FlipDirection::Horizontal
+                }
+            }),
+            Self::FlipVertically => response.clicked_by(PointerButton::Primary).then(|| {
+                if response.ctx.input(|input| input.modifiers.command_only()) {
+                    FlipDirection::Horizontal
+                } else {
+                    FlipDirection::Vertical
+                }
+            }),
+            _ => None,
         }
     }
 }

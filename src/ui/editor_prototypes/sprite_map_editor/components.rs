@@ -87,28 +87,40 @@ impl UiSpriteMapEditor {
                     icon mode_name mode_desc mode_pattern mode_value;
 
                     [icons::CURSOR]
-                    ["Insert mode"]
-                    ["Double click to insert tile, single click to select, drag to move."]
+                    ["Insertion tool"]
+                    ["Right-click to insert tile, single click to select, drag to move."]
                     [EditingMode::Move(_)]
                     [EditingMode::Move(None)];
 
                     [icons::RECTANGLE]
-                    ["Select mode"]
+                    ["Rectangular selection"]
                     ["Left-click and drag to select tiles."]
                     [EditingMode::Select]
                     [EditingMode::Select];
 
                     [icons::ERASER]
-                    ["Erase mode"]
+                    ["Eraser"]
                     ["Delete tiles while left mouse button is pressed."]
                     [EditingMode::Erase]
                     [EditingMode::Erase];
 
                     [icons::EYEDROPPER]
-                    ["Probe mode"]
+                    ["Probe"]
                     ["Pick a tile from the canvas on left-click."]
                     [EditingMode::Probe]
                     [EditingMode::Probe];
+
+                    [icons::ARROWS_OUT_LINE_HORIZONTAL]
+                    ["Horizontal flip"]
+                    ["Horizontally mirror selection or individual tile on left-click. Hold Ctrl to temporarily switch to vertical flip."]
+                    [EditingMode::FlipHorizontally]
+                    [EditingMode::FlipHorizontally];
+
+                    [icons::ARROWS_OUT_LINE_VERTICAL]
+                    ["Vertical flip"]
+                    ["Vertical mirror selection or individual tile on left-click. Hold Ctrl to temporarily switch to horizontal flip."]
+                    [EditingMode::FlipVertically]
+                    [EditingMode::FlipVertically];
                 ]
                 {
                     let button = if matches!(self.editing_mode, mode_pattern) {
@@ -260,6 +272,10 @@ impl UiSpriteMapEditor {
 
                 if self.editing_mode.probed(&response) {
                     self.handle_edition_probe(relative_pointer_pos);
+                }
+
+                if let Some(flip_direction) = self.editing_mode.flipped(&response) {
+                    todo!("flipping selection or individual tile")
                 }
 
                 if should_highlight_hovered {
