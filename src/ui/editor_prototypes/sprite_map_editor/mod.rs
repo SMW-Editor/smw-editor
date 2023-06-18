@@ -4,7 +4,6 @@ mod highlighting;
 mod input;
 mod internals;
 mod layout;
-mod math;
 
 use std::{
     collections::HashSet,
@@ -14,6 +13,7 @@ use std::{
 use egui::*;
 use glow::Context;
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
+use smwe_math::space::{OnCanvas, OnGrid, OnScreen};
 use smwe_render::{
     gfx_buffers::GfxBuffers,
     palette_renderer::PaletteRenderer,
@@ -43,14 +43,15 @@ pub struct UiSpriteMapEditor {
     tile_size_px:           f32,
     zoom:                   f32,
     pixels_per_point:       f32,
+    grid_size:              OnGrid<Vec2>,
     hovering_selected_tile: bool,
-    selection_bounds:       Option<Rect>,
-    selection_offset:       Option<Vec2>,
+    selection_bounds:       Option<OnCanvas<Rect>>,
+    selection_offset:       Option<OnScreen<Vec2>>,
 
     selected_vram_tile:           (u32, u32),
     selected_palette:             u32,
     sprite_tiles:                 Vec<Tile>,
-    last_inserted_tile:           Pos2,
+    last_inserted_tile:           OnCanvas<Pos2>,
     selected_sprite_tile_indices: HashSet<usize>,
 }
 
@@ -80,6 +81,7 @@ impl UiSpriteMapEditor {
             tile_size_px: 8.,
             zoom: 3.,
             pixels_per_point: 0.,
+            grid_size: OnGrid(Vec2::splat(31.)),
             hovering_selected_tile: false,
             selection_bounds: None,
             selection_offset: None,
@@ -87,7 +89,7 @@ impl UiSpriteMapEditor {
             selected_vram_tile: (0, 0),
             selected_palette: 0,
             tile_palette,
-            last_inserted_tile: pos2(-1., -1.),
+            last_inserted_tile: OnCanvas(pos2(-1., -1.)),
             selected_sprite_tile_indices: HashSet::new(),
         }
     }

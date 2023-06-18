@@ -2373,6 +2373,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smwe-emu",
+ "smwe-math",
  "smwe-render",
  "smwe-rom",
  "smwe-widgets",
@@ -2388,6 +2389,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "smwe-math"
+version = "0.1.0"
+dependencies = [
+ "emath",
+]
+
+[[package]]
 name = "smwe-render"
 version = "0.1.0"
 dependencies = [
@@ -2398,6 +2406,7 @@ dependencies = [
  "log",
  "serde",
  "smwe-emu",
+ "smwe-math",
  "thiserror",
 ]
 

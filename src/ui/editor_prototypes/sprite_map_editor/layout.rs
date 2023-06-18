@@ -29,14 +29,18 @@ impl DockableEditorTool for UiSpriteMapEditor {
 
 impl UiSpriteMapEditor {
     fn left_panel(&mut self, ui: &mut Ui) {
-        ui.separator();
-        self.tile_selector(ui);
-        ui.add_space(tweak!(10.));
-        self.tile_selection_preview(ui);
-        ui.add_space(tweak!(10.));
-        self.palette_row_selector(ui);
-        ui.add_space(tweak!(10.));
-        self.debug_toggles(ui);
+        ui.group(|ui| {
+            self.tile_selector(ui);
+        });
+        ui.group(|ui| {
+            self.tile_selection_preview(ui);
+        });
+        ui.group(|ui| {
+            self.palette_row_selector(ui);
+        });
+        ui.group(|ui| {
+            self.debug_toggles(ui);
+        });
     }
 
     fn central_panel(&mut self, ui: &mut Ui) {

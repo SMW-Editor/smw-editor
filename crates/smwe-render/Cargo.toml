@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 smwe-emu = { path = "../smwe-emu" }
+smwe-math = { path = "../smwe-math" }
 
 emath = "0.22"
 epaint = "0.22"

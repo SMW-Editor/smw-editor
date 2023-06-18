@@ -1,11 +1,7 @@
-mod project;
-mod ui;
-
 use std::{cell::RefCell, env, sync::Arc};
 
 use eframe::{NativeOptions, Renderer};
-
-use crate::{
+use smw_editor::{
     project::{Project, ProjectRef},
     ui::UiMainWindow,
 };

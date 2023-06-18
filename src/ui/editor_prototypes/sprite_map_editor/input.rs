@@ -1,6 +1,7 @@
 use duplicate::duplicate;
 use egui::{vec2, InputState, Key, Ui};
 use itertools::Itertools;
+use smwe_math::space::OnCanvas;
 
 use crate::ui::{editing_mode::SnapToGrid, editor_prototypes::sprite_map_editor::UiSpriteMapEditor};
 
@@ -49,7 +50,7 @@ impl UiSpriteMapEditor {
             ]
             if input.key_pressed(Key::key) {
                 self.move_selected_tiles_by(
-                    offset,
+                    OnCanvas(offset),
                     input.modifiers.shift_only().then_some(SnapToGrid::default()),
                 );
             }

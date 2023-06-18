@@ -6,9 +6,10 @@ use itertools::Itertools;
 use num::Integer;
 use paste::paste;
 use rfd::{MessageButtons, MessageDialog, MessageLevel};
+use smwe_math::space::{OnCanvas, OnScreen};
 use smwe_render::tile_renderer::{Tile, TileJson};
 
-use super::{math::*, UiSpriteMapEditor};
+use super::UiSpriteMapEditor;
 use crate::ui::editing_mode::SnapToGrid;
 
 impl UiSpriteMapEditor {
@@ -85,21 +86,26 @@ impl UiSpriteMapEditor {
             .set_tiles(&self.gl, self.sprite_tiles.clone());
     }
 
-    pub(super) fn any_tile_contains_pointer(&mut self, pointer_pos: Pos2, canvas_top_left_pos: Pos2) -> bool {
-        let point = (pointer_pos - canvas_top_left_pos).to_pos2();
-        let scale = self.zoom / self.pixels_per_point;
-        let tile_contains_pointer = |tile| tile_contains_point(tile, point, scale);
-        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(tile_contains_pointer)
+    pub(super) fn any_tile_contains_pointer(
+        &mut self, pointer_pos: OnScreen<Pos2>, canvas_top_left_pos: OnScreen<Pos2>,
+    ) -> bool {
+        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(|tile| {
+            let pointer_in_canvas =
+                pointer_pos.relative_to(canvas_top_left_pos).to_canvas(self.pixels_per_point, self.zoom);
+            tile.contains_point(pointer_in_canvas)
+        })
     }
 
-    pub(super) fn move_selected_tiles_by(&mut self, mut move_offset: Vec2, snap_to_grid: Option<SnapToGrid>) {
+    pub(super) fn move_selected_tiles_by(&mut self, mut move_offset: OnCanvas<Vec2>, snap_to_grid: Option<SnapToGrid>) {
         if self.selected_sprite_tile_indices.is_empty() {
             return;
         }
 
         let bounds = self.selection_bounds.expect("unset even though some tiles are selected");
-        move_offset.x = move_offset.x.clamp(-bounds.min.x, (31. * self.tile_size_px) - bounds.max.x);
-        move_offset.y = move_offset.y.clamp(-bounds.min.y, (31. * self.tile_size_px) - bounds.max.y);
+        move_offset = move_offset.clamp(
+            OnCanvas(-bounds.0.min.to_vec2()),
+            OnCanvas(Vec2::splat(31. * self.tile_size_px) - bounds.0.max.to_vec2()),
+        );
 
         for &idx in self.selected_sprite_tile_indices.iter() {
             self.sprite_tiles[idx].move_by(move_offset);
@@ -112,16 +118,16 @@ impl UiSpriteMapEditor {
         self.upload_tiles();
     }
 
-    pub(super) fn add_selected_tile_at(&mut self, pos: Pos2) {
+    pub(super) fn add_selected_tile_at(&mut self, pos: OnCanvas<Pos2>) {
         let tile_idx = (self.selected_vram_tile.0 + self.selected_vram_tile.1 * 16) as usize;
         let mut tile = self.tile_palette[tile_idx + (32 * 16)];
-        tile.0[0] = pos.x.floor() as u32;
-        tile.0[1] = pos.y.floor() as u32;
+        tile.0[0] = pos.0.x.floor() as u32;
+        tile.0[1] = pos.0.y.floor() as u32;
         self.sprite_tiles.push(tile);
         self.upload_tiles();
     }
 
-    pub(super) fn select_tile_at(&mut self, pos: Pos2, clear_previous_selection: bool) {
+    pub(super) fn select_tile_at(&mut self, pos: OnScreen<Pos2>, clear_previous_selection: bool) {
         if clear_previous_selection {
             self.unselect_all_tiles();
         }
@@ -131,14 +137,14 @@ impl UiSpriteMapEditor {
             .iter()
             .enumerate()
             .rev()
-            .find(|(_, &tile)| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
+            .find(|(_, &tile)| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
         {
             self.selected_sprite_tile_indices.insert(idx);
         }
         self.compute_selection_bounds();
     }
 
-    pub(super) fn select_tiles_in(&mut self, rect: Rect, clear_previous_selection: bool) {
+    pub(super) fn select_tiles_in(&mut self, rect: OnScreen<Rect>, clear_previous_selection: bool) {
         if clear_previous_selection {
             self.unselect_all_tiles();
         }
@@ -147,7 +153,7 @@ impl UiSpriteMapEditor {
             .sprite_tiles
             .iter()
             .enumerate()
-            .filter(|(_, &tile)| tile_intersects_rect(tile, rect, self.zoom / self.pixels_per_point))
+            .filter(|(_, &tile)| tile.intersects_rect(rect.to_canvas(self.pixels_per_point, self.zoom)))
             .map(|(i, _)| i)
             .collect_vec();
         self.mark_tiles_as_selected(indices.into_iter());
@@ -174,27 +180,27 @@ impl UiSpriteMapEditor {
                         .selected_sprite_tile_indices
                         .iter()
                         .map(|&i| self.sprite_tiles[i].pos())
-                        .minmax_by(|a, b| a.dimension.total_cmp(&b.dimension))
+                        .minmax_by(|a, b| a.0.dimension.total_cmp(&b.0.dimension))
                         .into_option()
-                        .map(|(min, max)| (min.dimension, max.dimension))
+                        .map(|(min, max)| (min.0.dimension, max.0.dimension))
                         .unwrap();
                 }
             }
-            Rect::from_min_max(pos2(min_tile_x, min_tile_y), pos2(max_tile_x, max_tile_y))
+            OnCanvas(Rect::from_min_max(pos2(min_tile_x, min_tile_y), pos2(max_tile_x, max_tile_y)))
         });
     }
 
-    pub(super) fn delete_tiles_at(&mut self, pos: Pos2) {
-        self.sprite_tiles.retain(|&tile| !tile_contains_point(tile, pos, self.zoom / self.pixels_per_point));
+    pub(super) fn delete_tiles_at(&mut self, pos: OnScreen<Pos2>) {
+        self.sprite_tiles.retain(|&tile| !tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)));
         self.upload_tiles();
     }
 
-    pub(super) fn probe_tile_at(&mut self, pos: Pos2) {
+    pub(super) fn probe_tile_at(&mut self, pos: OnScreen<Pos2>) {
         if let Some(tile) = self
             .sprite_tiles
             .iter()
             .rev()
-            .find(|&&tile| tile_contains_point(tile, pos, self.zoom / self.pixels_per_point))
+            .find(|&&tile| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
         {
             let (y, x) = tile.tile_num().div_rem(&16);
             self.selected_vram_tile = (x, y - 96);

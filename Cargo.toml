@@ -2,6 +2,7 @@
 
 members = [
     "crates/smwe-emu",
+    "crates/smwe-math",
     "crates/smwe-render",
     "crates/smwe-rom",
     "crates/smwe-widgets",
@@ -19,6 +20,7 @@ rust-version = "1.65"
 
 [dependencies]
 smwe-emu = { path = "crates/smwe-emu" }
+smwe-math = { path = "crates/smwe-math" }
 smwe-render = { path = "crates/smwe-render" }
 smwe-rom = { path = "crates/smwe-rom" }
 smwe-widgets = { path = "crates/smwe-widgets" }

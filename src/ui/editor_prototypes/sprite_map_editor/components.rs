@@ -5,6 +5,7 @@ use egui::*;
 use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use inline_tweak::tweak;
+use smwe_math::space::{OnGrid, OnScreen};
 use smwe_render::tile_renderer::TileUniforms;
 use smwe_widgets::{
     palette_view::{PaletteView, SelectionType, ViewedPalettes},
@@ -183,25 +184,26 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn editing_area(&mut self, ui: &mut Ui) {
-        let editing_area_size = Vec2::splat(32. * self.tile_size_px * self.zoom / self.pixels_per_point);
-        let canvas_outer_margin = Margin::from(0.5 * (ui.available_size() - editing_area_size));
+        let editing_area_size = OnGrid(Vec2::splat(32.)).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
+        let canvas_outer_margin = Margin::from(0.5 * (ui.available_size() - editing_area_size.0));
         Frame::canvas(ui.style()).outer_margin(canvas_outer_margin).show(ui, |ui| {
-            let sprite_renderer = Arc::clone(&self.sprite_renderer);
-            let gfx_bufs = self.gfx_bufs;
-            let (canvas_rect, response) = ui.allocate_exact_size(editing_area_size, Sense::click_and_drag());
-            let screen_size = canvas_rect.size() * self.pixels_per_point;
-            let scale_pp = self.tile_size_px / self.pixels_per_point;
-            let zoom = self.zoom;
+            let (canvas_rect, response) = ui.allocate_exact_size(editing_area_size.0, Sense::click_and_drag());
 
             // Tiles
             ui.painter().add(PaintCallback {
                 rect:     canvas_rect,
-                callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    sprite_renderer
-                        .lock()
-                        .expect("Cannot lock mutex on sprite renderer")
-                        .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset: Vec2::ZERO, zoom });
-                })),
+                callback: {
+                    let sprite_renderer = Arc::clone(&self.sprite_renderer);
+                    let gfx_bufs = self.gfx_bufs;
+                    let screen_size = canvas_rect.size() * self.pixels_per_point;
+                    let zoom = self.zoom;
+                    Arc::new(CallbackFn::new(move |_info, painter| {
+                        sprite_renderer
+                            .lock()
+                            .expect("Cannot lock mutex on sprite renderer")
+                            .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset: Vec2::ZERO, zoom });
+                    }))
+                },
             });
 
             // Grid
@@ -218,24 +220,30 @@ impl UiSpriteMapEditor {
             // DEBUG: show selection bounds
             if self.debug_selection_bounds {
                 if let Some(mut bounds) = self.selection_bounds {
-                    let scaling = self.zoom / self.pixels_per_point;
-                    bounds.min = canvas_rect.left_top() + (bounds.min.to_vec2() * scaling);
-                    bounds.max =
-                        canvas_rect.left_top() + ((bounds.max.to_vec2() + Vec2::splat(self.tile_size_px)) * scaling);
-                    ui.painter().rect_stroke(bounds, Rounding::none(), Stroke::new(2., Color32::BLUE));
+                    bounds.0.max += Vec2::splat(self.tile_size_px);
+                    ui.painter().rect_stroke(
+                        bounds
+                            .to_screen(self.pixels_per_point, self.zoom)
+                            .0
+                            .translate(canvas_rect.left_top().to_vec2()),
+                        Rounding::none(),
+                        Stroke::new(2., Color32::BLUE),
+                    );
                 }
             }
 
             // Interaction
             if let Some(hover_pos) = response.hover_pos() {
-                let canvas_top_left_pos = canvas_rect.left_top();
+                let canvas_top_left_pos = OnScreen(canvas_rect.left_top());
 
-                let relative_pointer_offset = hover_pos - canvas_rect.left_top();
+                let relative_pointer_offset = OnScreen(hover_pos - canvas_rect.left_top());
                 let relative_pointer_pos = relative_pointer_offset.to_pos2();
 
-                let hovered_tile_offset = (relative_pointer_offset / scale_pp / self.zoom).floor();
-                let hovered_tile_offset = hovered_tile_offset.clamp(vec2(0., 0.), vec2(31., 31.));
-                let grid_cell_pos = (hovered_tile_offset * self.tile_size_px).to_pos2();
+                let grid_cell_pos = relative_pointer_offset
+                    .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
+                    .clamp(OnGrid(vec2(0., 0.)), self.grid_size)
+                    .to_canvas(self.tile_size_px)
+                    .to_pos2();
 
                 let holding_shift = ui.input(|i| i.modifiers.shift_only());
                 let holding_ctrl = ui.input(|i| i.modifiers.command_only());
@@ -249,7 +257,7 @@ impl UiSpriteMapEditor {
                 if let Some(selection) = self.editing_mode.selected(&response) {
                     if let Selection::Drag(Some(selection_rect)) = selection {
                         ui.painter().rect_stroke(
-                            selection_rect,
+                            selection_rect.0,
                             Rounding::none(),
                             Stroke::new(1., ui.visuals().selection.bg_fill),
                         );
@@ -275,15 +283,15 @@ impl UiSpriteMapEditor {
                 }
 
                 if let Some(flip_direction) = self.editing_mode.flipped(&response) {
-                    todo!("flipping selection or individual tile")
+                    todo!("flipping selection or individual tile: {flip_direction:?}")
                 }
 
                 if should_highlight_hovered {
-                    self.higlight_hovered_tiles(ui, relative_pointer_pos, canvas_rect.left_top());
+                    self.higlight_hovered_tiles(ui, relative_pointer_pos, OnScreen(canvas_rect.left_top()));
                 }
             }
 
-            self.highlight_selected_tiles(ui, canvas_rect.left_top());
+            self.highlight_selected_tiles(ui, OnScreen(canvas_rect.left_top()));
             self.hovering_selected_tile = false;
         });
     }

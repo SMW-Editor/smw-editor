@@ -1,6 +1,7 @@
 use emath::*;
 use glow::*;
 use serde::{Deserialize, Serialize};
+use smwe_math::space::{OnCanvas, OnScreen};
 use thiserror::Error;
 
 use crate::{
@@ -93,49 +94,71 @@ impl BindUniforms for TileUniforms {
 }
 
 impl Tile {
-    pub fn pos(self) -> Pos2 {
-        pos2(self.0[0] as f32, self.0[1] as f32)
+    #[inline]
+    pub fn pos(self) -> OnCanvas<Pos2> {
+        OnCanvas(pos2(self.0[0] as f32, self.0[1] as f32))
     }
 
+    #[inline]
     pub fn tile_num(self) -> u32 {
         self.0[2]
     }
 
+    #[inline]
     pub fn scale(self) -> u32 {
         self.0[3] & 0xFF
     }
 
+    #[inline]
     pub fn color_row(self) -> u32 {
         (self.0[3] >> 8) & 0xF
     }
 
+    #[inline]
     pub fn flip_x(self) -> bool {
         (self.0[3] & 0x4000) != 0
     }
 
+    #[inline]
     pub fn flip_y(self) -> bool {
         (self.0[3] & 0x8000) != 0
     }
 
-    pub fn move_by(&mut self, offset: Vec2) {
-        self.0[0] = (self.0[0] as i32 + offset.x as i32) as u32;
-        self.0[1] = (self.0[1] as i32 + offset.y as i32) as u32;
+    #[inline]
+    pub fn move_by(&mut self, offset: OnCanvas<Vec2>) {
+        self.0[0] = (self.0[0] as i32 + offset.0.x as i32) as u32;
+        self.0[1] = (self.0[1] as i32 + offset.0.y as i32) as u32;
     }
 
-    pub fn snap_to_grid(&mut self, cell_size: u32, cell_origin: Vec2) {
+    #[inline]
+    pub fn snap_to_grid(&mut self, cell_size: u32, cell_origin: OnScreen<Vec2>) {
         let cell_size = cell_size as f32;
         self.0[0] = {
-            let origin_pos = self.0[0] as f32 + cell_origin.x;
+            let origin_pos = self.0[0] as f32 + cell_origin.0.x;
             let unscaled = origin_pos / cell_size;
             let cell_coord = unscaled.floor();
             (cell_coord * cell_size) as u32
         };
         self.0[1] = {
-            let origin_pos = self.0[1] as f32 + cell_origin.y;
+            let origin_pos = self.0[1] as f32 + cell_origin.0.y;
             let unscaled = origin_pos / cell_size;
             let cell_coord = unscaled.floor();
             (cell_coord * cell_size) as u32
         };
+    }
+
+    #[inline]
+    pub fn contains_point(self, point: OnCanvas<Pos2>) -> bool {
+        let min = self.pos().0;
+        let size = Vec2::splat(self.scale() as f32);
+        Rect::from_min_size(min, size).contains(point.0)
+    }
+
+    #[inline]
+    pub fn intersects_rect(self, rect: OnCanvas<Rect>) -> bool {
+        let min = self.pos().0;
+        let size = Vec2::splat(self.scale() as f32);
+        Rect::from_min_size(min, size).intersects(rect.0)
     }
 }
 

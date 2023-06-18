@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use egui::{PointerButton, Pos2, Rect, Response, Vec2};
+use smwe_math::space::OnScreen;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EditingMode {
@@ -15,19 +16,19 @@ pub enum EditingMode {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Selection {
-    Click(Option<Pos2>),
-    Drag(Option<Rect>),
+    Click(Option<OnScreen<Pos2>>),
+    Drag(Option<OnScreen<Rect>>),
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Drag {
-    pub from: Pos2,
-    pub to:   Pos2,
+    pub from: OnScreen<Pos2>,
+    pub to:   OnScreen<Pos2>,
 }
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct SnapToGrid {
-    pub cell_origin: Vec2,
+    pub cell_origin: OnScreen<Vec2>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -38,8 +39,8 @@ pub enum FlipDirection {
 
 impl Drag {
     #[inline]
-    pub fn delta(self) -> Vec2 {
-        self.to - self.from
+    pub fn delta(self) -> OnScreen<Vec2> {
+        OnScreen(self.to.0 - self.from.0)
     }
 }
 
@@ -60,7 +61,9 @@ impl EditingMode {
                     *drag = response.ctx.input(|i| {
                         i.pointer
                             .press_origin()
-                            .and_then(|from| response.interact_pointer_pos().map(|to| Drag { from, to }))
+                            .map(OnScreen)
+                            .zip(response.interact_pointer_pos().map(OnScreen))
+                            .map(|(from, to)| Drag { from, to })
                     });
                     *drag
                 })
@@ -80,13 +83,13 @@ impl EditingMode {
 
     pub fn selected(self, response: &Response) -> Option<Selection> {
         match self {
-            Self::Move(_) => {
-                response.clicked_by(PointerButton::Primary).then(|| Selection::Click(response.interact_pointer_pos()))
-            }
+            Self::Move(_) => response
+                .clicked_by(PointerButton::Primary)
+                .then(|| Selection::Click(response.interact_pointer_pos().map(OnScreen))),
             Self::Select => response.dragged_by(PointerButton::Primary).then(|| {
                 let rect = response.ctx.input(|i| {
                     i.pointer.press_origin().and_then(|origin| {
-                        response.interact_pointer_pos().map(|current| Rect::from_two_pos(origin, current))
+                        response.interact_pointer_pos().map(|current| Rect::from_two_pos(origin, current)).map(OnScreen)
                     })
                 });
                 Selection::Drag(rect)
