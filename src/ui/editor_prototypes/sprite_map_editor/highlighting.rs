@@ -1,5 +1,5 @@
 use egui::*;
-use smwe_math::space::{OnCanvas, OnGrid, OnScreen};
+use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
 use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::UiSpriteMapEditor;
@@ -26,7 +26,7 @@ impl UiSpriteMapEditor {
                     self.sprite_tiles.iter().find(|&&tile| tile.contains_point(pointer_pos_canvas))
                 {
                     let tile_pos_in_canvas = hovered_tile.pos().to_screen(self.pixels_per_point, self.zoom);
-                    let exact_tile_pos = OnScreen(canvas_left_top.0 + tile_pos_in_canvas.0.to_vec2());
+                    let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(
                         ui,
                         exact_tile_pos,
@@ -40,9 +40,9 @@ impl UiSpriteMapEditor {
                     };
                     let tile_pos_in_canvas = relative_pointer_pos
                         .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                        .clamp(OnGrid(pos2(0., 0.)), OnGrid(max_selected_tile.to_pos2()))
+                        .clamp(OnGrid::<Pos2>::new(0., 0.), OnGrid(max_selected_tile.to_pos2()))
                         .to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
-                    let exact_tile_pos = OnScreen(canvas_left_top.0 + tile_pos_in_canvas.0.to_vec2());
+                    let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(
                         ui,
                         exact_tile_pos,
@@ -56,7 +56,7 @@ impl UiSpriteMapEditor {
                     self.sprite_tiles.iter().find(|&&tile| tile.contains_point(pointer_pos_canvas))
                 {
                     let tile_pos_in_canvas = hovered_tile.pos().to_screen(self.pixels_per_point, self.zoom);
-                    let exact_tile_pos = OnScreen(canvas_left_top.0 + tile_pos_in_canvas.0.to_vec2());
+                    let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(
                         ui,
                         exact_tile_pos,
@@ -70,14 +70,8 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn highlight_tile_at(&self, ui: &mut Ui, point: OnScreen<Pos2>, color: impl Into<Color32>, scale: f32) {
-        ui.painter().rect_filled(
-            Rect::from_min_size(
-                point.0,
-                OnCanvas(Vec2::splat(self.tile_size_px * scale)).to_screen(self.pixels_per_point, self.zoom).0,
-            ),
-            Rounding::none(),
-            color,
-        );
+        let size = OnCanvas(Vec2::splat(self.tile_size_px * scale)).to_screen(self.pixels_per_point, self.zoom);
+        ui.painter().rect_filled(OnScreen::<Rect>::from_min_size(point, size).0, Rounding::none(), color);
     }
 
     pub(super) fn highlight_selected_tiles(&mut self, ui: &mut Ui, canvas_pos: OnScreen<Pos2>) {
@@ -85,11 +79,7 @@ impl UiSpriteMapEditor {
         for tile in self.selected_sprite_tile_indices.iter().map(|&idx| &self.sprite_tiles[idx]) {
             self.highlight_tile_at(
                 ui,
-                OnScreen(
-                    canvas_pos.0
-                        + selection_offset.0
-                        + tile.pos().to_screen(self.pixels_per_point, self.zoom).0.to_vec2(),
-                ),
+                canvas_pos + selection_offset + tile.pos().to_screen(self.pixels_per_point, self.zoom).to_vec2(),
                 CellSelectorStyle::get_from_egui(ui.ctx(), |style| {
                     if self.hovering_selected_tile {
                         style.hovered_tile_highlight_color

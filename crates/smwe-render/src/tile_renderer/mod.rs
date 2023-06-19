@@ -1,7 +1,7 @@
 use emath::*;
 use glow::*;
 use serde::{Deserialize, Serialize};
-use smwe_math::space::{OnCanvas, OnScreen};
+use smwe_math::coordinates::{OnCanvas, OnScreen};
 use thiserror::Error;
 
 use crate::{

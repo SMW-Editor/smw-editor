@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use egui::{PointerButton, Pos2, Rect, Response, Vec2};
-use smwe_math::space::OnScreen;
+use smwe_math::coordinates::OnScreen;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EditingMode {

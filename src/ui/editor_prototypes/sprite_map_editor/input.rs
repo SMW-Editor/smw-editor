@@ -1,7 +1,7 @@
 use duplicate::duplicate;
 use egui::{vec2, InputState, Key, Ui};
 use itertools::Itertools;
-use smwe_math::space::OnCanvas;
+use smwe_math::coordinates::OnCanvas;
 
 use crate::ui::{editing_mode::SnapToGrid, editor_prototypes::sprite_map_editor::UiSpriteMapEditor};
 

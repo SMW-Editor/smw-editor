@@ -5,7 +5,7 @@ use egui::*;
 use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use inline_tweak::tweak;
-use smwe_math::space::{OnGrid, OnScreen};
+use smwe_math::coordinates::{OnGrid, OnScreen};
 use smwe_render::tile_renderer::TileUniforms;
 use smwe_widgets::{
     palette_view::{PaletteView, SelectionType, ViewedPalettes},
@@ -184,7 +184,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn editing_area(&mut self, ui: &mut Ui) {
-        let editing_area_size = OnGrid(Vec2::splat(32.)).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
+        let editing_area_size = OnGrid::splat(32.).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
         let canvas_outer_margin = Margin::from(0.5 * (ui.available_size() - editing_area_size.0));
         Frame::canvas(ui.style()).outer_margin(canvas_outer_margin).show(ui, |ui| {
             let (canvas_rect, response) = ui.allocate_exact_size(editing_area_size.0, Sense::click_and_drag());
@@ -241,7 +241,7 @@ impl UiSpriteMapEditor {
 
                 let grid_cell_pos = relative_pointer_offset
                     .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                    .clamp(OnGrid(vec2(0., 0.)), self.grid_size)
+                    .clamp(OnGrid(Vec2::ZERO), self.grid_size)
                     .to_canvas(self.tile_size_px)
                     .to_pos2();
 

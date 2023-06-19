@@ -1,5 +1,5 @@
-use egui::{pos2, vec2, Pos2};
-use smwe_math::space::{OnCanvas, OnGrid, OnScreen};
+use egui::{Pos2, Vec2};
+use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
 use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::UiSpriteMapEditor;
@@ -15,7 +15,7 @@ impl UiSpriteMapEditor {
                     for offset in [(0, 0), (0, 1), (1, 0), (1, 1)] {
                         self.selected_vram_tile.0 = current_selection.0 + offset.0;
                         self.selected_vram_tile.1 = current_selection.1 + offset.1;
-                        let offset = OnGrid(vec2(offset.0 as f32, offset.1 as f32)).to_canvas(self.tile_size_px);
+                        let offset = OnGrid::<Vec2>::new(offset.0 as f32, offset.1 as f32).to_canvas(self.tile_size_px);
                         let pos = OnCanvas(grid_cell_pos.0 + offset.0);
                         self.add_selected_tile_at(pos);
                     }
@@ -58,10 +58,9 @@ impl UiSpriteMapEditor {
                 let pointer_in_canvas = drag_data.from.relative_to(canvas_top_left_pos);
                 let hovered_tile_exact_offset = pointer_in_canvas
                     .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                    .clamp(OnGrid(pos2(0., 0.)), self.grid_size.to_pos2())
+                    .clamp(OnGrid::<Pos2>::new(0., 0.), self.grid_size.to_pos2())
                     .to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
-                let cell_origin =
-                    OnScreen(pointer_in_canvas.relative_to(hovered_tile_exact_offset).0.to_vec2() / self.zoom);
+                let cell_origin = pointer_in_canvas.relative_to(hovered_tile_exact_offset).to_vec2() / self.zoom;
                 SnapToGrid { cell_origin }
             }),
         );
@@ -77,7 +76,7 @@ impl UiSpriteMapEditor {
         if snap_to_grid {
             let sel_bounds = self.selection_bounds.expect("unset even though some tiles are selected");
 
-            let bounds_min_grid = OnCanvas(sel_bounds.0.min).to_grid(self.tile_size_px);
+            let bounds_min_grid = sel_bounds.left_top().to_grid(self.tile_size_px);
             let started_tile = drag_data.from.relative_to(canvas_top_left_pos).to_grid(
                 self.pixels_per_point,
                 self.zoom,
@@ -90,16 +89,16 @@ impl UiSpriteMapEditor {
             );
 
             let bounds_at_grid_exact_offset =
-                bounds_min_grid.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2().0;
+                bounds_min_grid.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2();
             let started_tile_exact_offset =
-                started_tile.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2().0;
+                started_tile.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2();
             let hovered_tile_exact_offset =
-                hovered_tile.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2().0;
+                hovered_tile.to_screen(self.pixels_per_point, self.zoom, self.tile_size_px).to_vec2();
 
-            let bounds_screen = OnCanvas(sel_bounds.0.min).to_screen(self.pixels_per_point, self.zoom);
-            let bounds_offset = bounds_screen.to_vec2().0 - bounds_at_grid_exact_offset;
-            drag_data.from = OnScreen(canvas_top_left_pos.0 + started_tile_exact_offset + bounds_offset);
-            drag_data.to = OnScreen(canvas_top_left_pos.0 + hovered_tile_exact_offset);
+            let bounds_screen = sel_bounds.left_top().to_screen(self.pixels_per_point, self.zoom);
+            let bounds_offset = bounds_screen.to_vec2() - bounds_at_grid_exact_offset;
+            drag_data.from = canvas_top_left_pos + started_tile_exact_offset + bounds_offset;
+            drag_data.to = canvas_top_left_pos + hovered_tile_exact_offset;
         }
 
         // todo restrict moving selection display to canvas
