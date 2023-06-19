@@ -266,7 +266,7 @@ impl UiSpriteMapEditor {
                 }
 
                 if let Some(drag_data) = self.editing_mode.dropped(&response) {
-                    self.handle_edition_drop_moved(drag_data, holding_shift, canvas_top_left_pos);
+                    self.handle_edition_drop(drag_data, holding_shift, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
@@ -283,7 +283,7 @@ impl UiSpriteMapEditor {
                 }
 
                 if let Some(flip_direction) = self.editing_mode.flipped(&response) {
-                    todo!("flipping selection or individual tile: {flip_direction:?}")
+                    self.handle_edition_flip(relative_pointer_pos, flip_direction);
                 }
 
                 if should_highlight_hovered {

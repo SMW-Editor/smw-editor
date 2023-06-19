@@ -3,7 +3,7 @@ use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
 use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::UiSpriteMapEditor;
-use crate::ui::editing_mode::{Drag, Selection, SnapToGrid};
+use crate::ui::editing_mode::{Drag, FlipDirection, Selection, SnapToGrid};
 
 impl UiSpriteMapEditor {
     pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: OnCanvas<Pos2>) {
@@ -45,7 +45,7 @@ impl UiSpriteMapEditor {
         }
     }
 
-    pub(super) fn handle_edition_drop_moved(
+    pub(super) fn handle_edition_drop(
         &mut self, drag_data: Drag, snap_to_grid: bool, canvas_top_left_pos: OnScreen<Pos2>,
     ) {
         if !self.any_tile_contains_pointer(drag_data.from, canvas_top_left_pos) {
@@ -116,5 +116,18 @@ impl UiSpriteMapEditor {
     pub(super) fn handle_edition_probe(&mut self, relative_pointer_pos: OnScreen<Pos2>) {
         self.probe_tile_at(relative_pointer_pos);
         self.unselect_all_tiles();
+    }
+
+    pub(super) fn handle_edition_flip(&mut self, relative_pointer_pos: OnScreen<Pos2>, flip_direction: FlipDirection) {
+        let pointer_on_canvas = relative_pointer_pos.to_canvas(self.pixels_per_point, self.zoom);
+        if self.any_selected_tile_contains_point(pointer_on_canvas) {
+            self.flip_selected_tiles(flip_direction);
+        } else if let Some(tile) = self.find_tile_containing_point_mut(pointer_on_canvas) {
+            match flip_direction {
+                FlipDirection::Horizontal => tile.toggle_flip_x(),
+                FlipDirection::Vertical => tile.toggle_flip_y(),
+            }
+            self.upload_tiles();
+        }
     }
 }

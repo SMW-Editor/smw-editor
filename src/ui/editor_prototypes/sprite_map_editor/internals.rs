@@ -10,7 +10,7 @@ use smwe_math::coordinates::{OnCanvas, OnScreen};
 use smwe_render::tile_renderer::{Tile, TileJson};
 
 use super::UiSpriteMapEditor;
-use crate::ui::editing_mode::SnapToGrid;
+use crate::ui::editing_mode::{FlipDirection, SnapToGrid};
 
 impl UiSpriteMapEditor {
     pub(super) fn create_new_map(&mut self) {
@@ -86,6 +86,17 @@ impl UiSpriteMapEditor {
             .set_tiles(&self.gl, self.sprite_tiles.clone());
     }
 
+    pub(super) fn update_tile_palette(&mut self) {
+        for tile in self.tile_palette.iter_mut() {
+            tile.0[3] &= 0xC0FF;
+            tile.0[3] |= (self.selected_palette + 8) << 8;
+        }
+        self.vram_renderer
+            .lock()
+            .expect("Cannot lock mutex on VRAM renderer")
+            .set_tiles(&self.gl, self.tile_palette.clone());
+    }
+
     pub(super) fn any_tile_contains_pointer(
         &mut self, pointer_pos: OnScreen<Pos2>, canvas_top_left_pos: OnScreen<Pos2>,
     ) -> bool {
@@ -94,6 +105,18 @@ impl UiSpriteMapEditor {
                 pointer_pos.relative_to(canvas_top_left_pos).to_canvas(self.pixels_per_point, self.zoom);
             tile.contains_point(pointer_in_canvas)
         })
+    }
+
+    pub(super) fn any_selected_tile_contains_point(&self, point: OnCanvas<Pos2>) -> bool {
+        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(|tile| tile.contains_point(point))
+    }
+
+    pub(super) fn find_tile_containing_point(&self, point: OnCanvas<Pos2>) -> Option<&Tile> {
+        self.sprite_tiles.iter().find(|tile| tile.contains_point(point))
+    }
+
+    pub(super) fn find_tile_containing_point_mut(&mut self, point: OnCanvas<Pos2>) -> Option<&mut Tile> {
+        self.sprite_tiles.iter_mut().find(|tile| tile.contains_point(point))
     }
 
     pub(super) fn move_selected_tiles_by(&mut self, mut move_offset: OnCanvas<Vec2>, snap_to_grid: Option<SnapToGrid>) {
@@ -207,14 +230,23 @@ impl UiSpriteMapEditor {
         };
     }
 
-    pub(super) fn update_tile_palette(&mut self) {
-        for tile in self.tile_palette.iter_mut() {
-            tile.0[3] &= 0xC0FF;
-            tile.0[3] |= (self.selected_palette + 8) << 8;
+    pub(super) fn flip_selected_tiles(&mut self, flip_direction: FlipDirection) {
+        let selection_bounds = self.selection_bounds.expect("unset even though some tiles are selected");
+        let (x_min, x_max) = selection_bounds.x_range().into_inner();
+        let (y_min, y_max) = selection_bounds.y_range().into_inner();
+        for &i in self.selected_sprite_tile_indices.iter() {
+            let tile = &mut self.sprite_tiles[i];
+            match flip_direction {
+                FlipDirection::Horizontal => {
+                    tile.toggle_flip_x();
+                    tile.0[0] = (x_min + (x_max - tile.0[0] as f32)) as u32;
+                }
+                FlipDirection::Vertical => {
+                    tile.toggle_flip_y();
+                    tile.0[1] = (y_min + (y_max - tile.0[1] as f32)) as u32;
+                }
+            }
         }
-        self.vram_renderer
-            .lock()
-            .expect("Cannot lock mutex on VRAM renderer")
-            .set_tiles(&self.gl, self.tile_palette.clone());
+        self.upload_tiles();
     }
 }

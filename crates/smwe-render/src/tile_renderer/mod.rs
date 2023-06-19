@@ -125,9 +125,27 @@ impl Tile {
     }
 
     #[inline]
+    pub fn toggle_flip_x(&mut self) {
+        let flag = ((self.0[3] & 0x4000) == 0) as i32;
+        self.0[3] ^= ((-flag) as u32 ^ self.0[3]) & 0x4000;
+    }
+
+    #[inline]
+    pub fn toggle_flip_y(&mut self) {
+        let flag = ((self.0[3] & 0x8000) == 0) as i32;
+        self.0[3] ^= ((-flag) as u32 ^ self.0[3]) & 0x8000;
+    }
+
+    #[inline]
     pub fn move_by(&mut self, offset: OnCanvas<Vec2>) {
-        self.0[0] = (self.0[0] as i32 + offset.0.x as i32) as u32;
-        self.0[1] = (self.0[1] as i32 + offset.0.y as i32) as u32;
+        self.0[0] = (self.0[0] as i32 + offset.0[0] as i32) as u32;
+        self.0[1] = (self.0[1] as i32 + offset.0[1] as i32) as u32;
+    }
+
+    #[inline]
+    pub fn move_to(&mut self, point: OnCanvas<Pos2>) {
+        self.0[0] = point.floor().0[0] as u32;
+        self.0[1] = point.floor().0[1] as u32;
     }
 
     #[inline]
