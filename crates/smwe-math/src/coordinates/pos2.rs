@@ -43,8 +43,10 @@ impl OnGrid<Pos2> {
 
 #[duplicate_item(wrapper; [OnScreen]; [OnCanvas]; [OnGrid])]
 impl wrapper<Pos2> {
+    pub const ZERO: Self = Self::new(0., 0.);
+
     #[inline(always)]
-    pub fn new(x: f32, y: f32) -> Self {
+    pub const fn new(x: f32, y: f32) -> Self {
         Self(pos2(x, y))
     }
 

@@ -33,7 +33,7 @@ impl UiSpriteMapEditor {
                     };
                     let tile_pos_in_canvas = relative_pointer_pos
                         .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                        .clamp(OnGrid::<Pos2>::new(0., 0.), max_selected_tile.to_pos2())
+                        .clamp(OnGrid::<Pos2>::ZERO, max_selected_tile.to_pos2())
                         .to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
                     let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(

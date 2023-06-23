@@ -43,8 +43,10 @@ impl OnGrid<Vec2> {
 
 #[duplicate_item(wrapper; [OnScreen]; [OnCanvas]; [OnGrid])]
 impl wrapper<Vec2> {
+    pub const ZERO: Self = Self::new(0., 0.);
+
     #[inline(always)]
-    pub fn new(x: f32, y: f32) -> Self {
+    pub const fn new(x: f32, y: f32) -> Self {
         Self(vec2(x, y))
     }
 

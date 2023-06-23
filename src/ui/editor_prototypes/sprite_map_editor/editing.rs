@@ -58,7 +58,7 @@ impl UiSpriteMapEditor {
                 let pointer_in_canvas = drag_data.from.relative_to(canvas_top_left_pos);
                 let hovered_tile_exact_offset = pointer_in_canvas
                     .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                    .clamp(OnGrid::<Pos2>::new(0., 0.), self.grid_size.to_pos2())
+                    .clamp(OnGrid::<Pos2>::ZERO, self.grid_size.to_pos2())
                     .to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
                 let cell_origin = pointer_in_canvas.relative_to(hovered_tile_exact_offset).to_vec2() / self.zoom;
                 SnapToGrid { cell_origin }
