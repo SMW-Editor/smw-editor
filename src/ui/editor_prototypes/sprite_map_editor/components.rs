@@ -245,11 +245,15 @@ impl UiSpriteMapEditor {
                     .to_canvas(self.tile_size_px)
                     .to_pos2();
 
-                let holding_shift = ui.input(|i| i.modifiers.shift_only());
-                let holding_ctrl = ui.input(|i| i.modifiers.command_only());
+                let (holding_shift_only, holding_ctrl_only) =
+                    ui.input(|i| (i.modifiers.shift_only(), i.modifiers.command_only()));
 
                 let mut should_highlight_hovered = true;
 
+                // Keyboard shortcuts
+                self.handle_paste(ui, canvas_top_left_pos);
+
+                // Editing tools
                 if self.editing_mode.inserted(&response) {
                     self.handle_edition_insert(grid_cell_pos);
                 }
@@ -262,15 +266,15 @@ impl UiSpriteMapEditor {
                             Stroke::new(1., ui.visuals().selection.bg_fill),
                         );
                     }
-                    self.handle_selection_plot(selection, !holding_ctrl, canvas_top_left_pos);
+                    self.handle_selection_plot(selection, !holding_ctrl_only, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.dropped(&response) {
-                    self.handle_edition_drop(drag_data, holding_shift, canvas_top_left_pos);
+                    self.handle_edition_drop(drag_data, holding_shift_only, canvas_top_left_pos);
                 }
 
                 if let Some(drag_data) = self.editing_mode.moving(&response) {
-                    self.handle_edition_dragging(drag_data, holding_shift, canvas_top_left_pos);
+                    self.handle_edition_dragging(drag_data, holding_shift_only, canvas_top_left_pos);
                     should_highlight_hovered = false;
                 }
 
@@ -286,6 +290,7 @@ impl UiSpriteMapEditor {
                     self.handle_edition_flip(relative_pointer_pos, flip_direction);
                 }
 
+                // Highlighting
                 if should_highlight_hovered {
                     self.higlight_hovered_tiles(ui, relative_pointer_pos, OnScreen(canvas_rect.left_top()));
                 }

@@ -1,8 +1,8 @@
 mod components;
 mod editing;
 mod highlighting;
-mod input;
 mod internals;
+mod keyboard_shortcuts;
 mod layout;
 
 use std::{

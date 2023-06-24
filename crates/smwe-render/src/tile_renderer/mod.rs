@@ -203,7 +203,7 @@ impl From<TileJson> for Tile {
             value.scale as u32
                 | ((value.color_row as u32 & 0xF) << 8)
                 | (0x4000 * value.flip_x as u32)
-                | (0x8000 * value.flip_x as u32),
+                | (0x8000 * value.flip_y as u32),
         ])
     }
 }

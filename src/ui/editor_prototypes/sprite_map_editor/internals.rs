@@ -1,7 +1,7 @@
 use std::{fs, ops::Not, path::PathBuf};
 
 use duplicate::duplicate;
-use egui::emath::*;
+use egui::{emath::*, PlatformOutput};
 use itertools::Itertools;
 use num::Integer;
 use paste::paste;
@@ -143,9 +143,16 @@ impl UiSpriteMapEditor {
 
     pub(super) fn add_selected_tile_at(&mut self, pos: OnCanvas<Pos2>) {
         let tile_idx = (self.selected_vram_tile.0 + self.selected_vram_tile.1 * 16) as usize;
-        let mut tile = self.tile_palette[tile_idx + (32 * 16)];
-        tile.0[0] = pos.0.x.floor() as u32;
-        tile.0[1] = pos.0.y.floor() as u32;
+        let tile = self.tile_palette[tile_idx + (32 * 16)];
+        self.add_tile_at(tile, pos);
+    }
+
+    pub(super) fn add_tile_at(&mut self, mut tile: Tile, pos: OnCanvas<Pos2>) {
+        tile.move_to(pos.floor());
+        self.add_tile(tile);
+    }
+
+    pub(super) fn add_tile(&mut self, tile: Tile) {
         self.selected_sprite_tile_indices.insert(self.sprite_tiles.len());
         self.sprite_tiles.push(tile);
     }
@@ -211,6 +218,40 @@ impl UiSpriteMapEditor {
             }
             OnCanvas(Rect::from_min_max(pos2(min_tile_x, min_tile_y), pos2(max_tile_x, max_tile_y)))
         });
+    }
+
+    pub(super) fn copy_selected_tiles(&self, platform_output: &mut PlatformOutput) {
+        let selected_tiles = self
+            .selected_sprite_tile_indices
+            .iter()
+            .map(|&i| self.sprite_tiles[i])
+            .map(|mut t| {
+                let bounds = self.selection_bounds.expect("No selection bounds even though tiles are selected");
+                t.move_by(-bounds.left_top().to_vec2());
+                t
+            })
+            .map(TileJson::from)
+            .collect_vec();
+        platform_output.copied_text =
+            serde_json::to_string(&selected_tiles).expect("Failed to serialize selected tiles");
+    }
+
+    pub(super) fn paste_tiles_at(&mut self, tiles: Vec<TileJson>, paste_offset: OnCanvas<Vec2>) {
+        self.unselect_all_tiles();
+        for mut tile in tiles.into_iter().map(Tile::from) {
+            tile.move_by(paste_offset);
+            self.add_tile(tile);
+        }
+        self.compute_selection_bounds();
+        self.upload_tiles();
+    }
+
+    pub(super) fn delete_selected_tiles(&mut self) {
+        for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
+            self.sprite_tiles.remove(idx);
+        }
+        self.selection_bounds = None;
+        self.upload_tiles();
     }
 
     pub(super) fn delete_tiles_at(&mut self, pos: OnScreen<Pos2>) {
