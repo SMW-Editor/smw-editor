@@ -146,8 +146,8 @@ impl UiSpriteMapEditor {
         let mut tile = self.tile_palette[tile_idx + (32 * 16)];
         tile.0[0] = pos.0.x.floor() as u32;
         tile.0[1] = pos.0.y.floor() as u32;
+        self.selected_sprite_tile_indices.insert(self.sprite_tiles.len());
         self.sprite_tiles.push(tile);
-        self.upload_tiles();
     }
 
     pub(super) fn select_tile_at(&mut self, pos: OnScreen<Pos2>, clear_previous_selection: bool) {

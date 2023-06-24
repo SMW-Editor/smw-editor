@@ -7,6 +7,7 @@ use crate::ui::editing_mode::{Drag, FlipDirection, Selection, SnapToGrid};
 
 impl UiSpriteMapEditor {
     pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: OnCanvas<Pos2>) {
+        self.unselect_all_tiles();
         if self.last_inserted_tile != grid_cell_pos {
             match self.vram_selection_mode {
                 VramSelectionMode::SingleTile => self.add_selected_tile_at(grid_cell_pos),
@@ -22,9 +23,10 @@ impl UiSpriteMapEditor {
                     self.selected_vram_tile = current_selection;
                 }
             }
+            self.compute_selection_bounds();
+            self.upload_tiles();
             self.last_inserted_tile = grid_cell_pos;
         }
-        self.unselect_all_tiles();
     }
 
     pub(super) fn handle_selection_plot(
