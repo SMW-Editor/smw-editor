@@ -4,21 +4,33 @@ use smwe_math::coordinates::{OnCanvas, OnScreen};
 use smwe_render::tile_renderer::TileJson;
 
 use super::UiSpriteMapEditor;
-use crate::ui::editing_mode::SnapToGrid;
+use crate::ui::editing_mode::{EditingMode, SnapToGrid};
 
-const SHORTCUT_SELECT_ALL: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::A);
-const SHORTCUT_ZOOM_IN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::PlusEquals);
-const SHORTCUT_ZOOM_OUT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Minus);
+pub(super) const SHORTCUT_SELECT_ALL: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::A);
+pub(super) const SHORTCUT_UNSELECT_ALL: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Escape);
+
+pub(super) const SHORTCUT_DELETE_SELECTED: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Delete);
+
+pub(super) const SHORTCUT_ZOOM_IN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::PlusEquals);
+pub(super) const SHORTCUT_ZOOM_OUT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Minus);
+
+pub(super) const SHORTCUT_MODE_INSERT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num1);
+pub(super) const SHORTCUT_MODE_SELECT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num2);
+pub(super) const SHORTCUT_MODE_ERASE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num3);
+pub(super) const SHORTCUT_MODE_PROBE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num4);
+pub(super) const SHORTCUT_MODE_FLIP_HORIZONTALLY: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num5);
+pub(super) const SHORTCUT_MODE_FLIP_VERTICALLY: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num6);
 
 impl UiSpriteMapEditor {
     pub(super) fn handle_input(&mut self, ui: &mut Ui) {
         self.kb_shortcut_select_all(ui);
         self.kb_shortcut_unselect_all(ui);
-        self.kb_shortcut_delete_selection(ui);
+        self.kb_shortcut_delete_selected(ui);
         self.kb_shortcut_move_selection(ui);
+        self.kb_shortcut_copy(ui);
+        self.kb_shortcut_cut(ui);
+        self.kb_shortcuts_tools(ui);
         self.handle_zoom(ui);
-        self.handle_copy(ui);
-        self.handle_cut(ui);
     }
 
     fn kb_shortcut_select_all(&mut self, ui: &mut Ui) {
@@ -28,13 +40,13 @@ impl UiSpriteMapEditor {
     }
 
     fn kb_shortcut_unselect_all(&mut self, ui: &mut Ui) {
-        if ui.input(|input| input.key_pressed(Key::Escape)) {
+        if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_UNSELECT_ALL)) {
             self.unselect_all_tiles();
         }
     }
 
-    fn kb_shortcut_delete_selection(&mut self, ui: &mut Ui) {
-        if ui.input(|input| input.key_pressed(Key::Delete)) {
+    fn kb_shortcut_delete_selected(&mut self, ui: &mut Ui) {
+        if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_DELETE_SELECTED)) {
             self.delete_selected_tiles();
         }
     }
@@ -66,20 +78,20 @@ impl UiSpriteMapEditor {
         }
     }
 
-    fn handle_copy(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_copy(&mut self, ui: &mut Ui) {
         if ui.input(|input| input.events.contains(&Event::Copy)) {
             ui.output_mut(|output| self.copy_selected_tiles(output));
         }
     }
 
-    fn handle_cut(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_cut(&mut self, ui: &mut Ui) {
         if ui.input(|input| input.events.contains(&Event::Cut)) {
             ui.output_mut(|output| self.copy_selected_tiles(output));
             self.delete_selected_tiles();
         }
     }
 
-    pub(super) fn handle_paste(&mut self, ui: &mut Ui, canvas_top_left: OnScreen<Pos2>) {
+    pub(super) fn kb_shortcut_paste(&mut self, ui: &mut Ui, canvas_top_left: OnScreen<Pos2>) {
         ui.input(|input| {
             for event in input.events.iter() {
                 if let Event::Paste(pasted_text) = event {
@@ -93,5 +105,22 @@ impl UiSpriteMapEditor {
                 }
             }
         });
+    }
+
+    fn kb_shortcuts_tools(&mut self, ui: &mut Ui) {
+        let modes = [
+            (&SHORTCUT_MODE_INSERT, EditingMode::Move(None)),
+            (&SHORTCUT_MODE_SELECT, EditingMode::Select),
+            (&SHORTCUT_MODE_ERASE, EditingMode::Erase),
+            (&SHORTCUT_MODE_PROBE, EditingMode::Probe),
+            (&SHORTCUT_MODE_FLIP_HORIZONTALLY, EditingMode::FlipHorizontally),
+            (&SHORTCUT_MODE_FLIP_VERTICALLY, EditingMode::FlipVertically),
+        ];
+        for (shortcut, mode) in modes {
+            if ui.input_mut(|input| input.consume_shortcut(shortcut)) {
+                self.editing_mode = mode;
+                break;
+            }
+        }
     }
 }

@@ -82,43 +82,57 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn editing_mode_selector(&mut self, ui: &mut Ui) {
+        use super::keyboard_shortcuts::{
+            SHORTCUT_MODE_ERASE,
+            SHORTCUT_MODE_FLIP_HORIZONTALLY,
+            SHORTCUT_MODE_FLIP_VERTICALLY,
+            SHORTCUT_MODE_INSERT,
+            SHORTCUT_MODE_PROBE,
+            SHORTCUT_MODE_SELECT,
+        };
         ui.horizontal(|ui| {
             duplicate! {
                 [
-                    icon mode_name mode_desc mode_pattern mode_value;
+                    icon mode_name shortcut mode_desc mode_pattern mode_value;
 
                     [icons::CURSOR]
                     ["Insertion tool"]
+                    [SHORTCUT_MODE_INSERT]
                     ["Right-click to insert tile, single click to select, drag to move."]
                     [EditingMode::Move(_)]
                     [EditingMode::Move(None)];
 
                     [icons::RECTANGLE]
                     ["Rectangular selection"]
+                    [SHORTCUT_MODE_SELECT]
                     ["Left-click and drag to select tiles."]
                     [EditingMode::Select]
                     [EditingMode::Select];
 
                     [icons::ERASER]
                     ["Eraser"]
+                    [SHORTCUT_MODE_ERASE]
                     ["Delete tiles while left mouse button is pressed."]
                     [EditingMode::Erase]
                     [EditingMode::Erase];
 
                     [icons::EYEDROPPER]
                     ["Probe"]
+                    [SHORTCUT_MODE_PROBE]
                     ["Pick a tile from the canvas on left-click."]
                     [EditingMode::Probe]
                     [EditingMode::Probe];
 
                     [icons::ARROWS_OUT_LINE_HORIZONTAL]
                     ["Horizontal flip"]
+                    [SHORTCUT_MODE_FLIP_HORIZONTALLY]
                     ["Horizontally mirror selection or individual tile on left-click. Hold Ctrl to temporarily switch to vertical flip."]
                     [EditingMode::FlipHorizontally]
                     [EditingMode::FlipHorizontally];
 
                     [icons::ARROWS_OUT_LINE_VERTICAL]
                     ["Vertical flip"]
+                    [SHORTCUT_MODE_FLIP_VERTICALLY]
                     ["Vertical mirror selection or individual tile on left-click. Hold Ctrl to temporarily switch to horizontal flip."]
                     [EditingMode::FlipVertically]
                     [EditingMode::FlipVertically];
@@ -131,7 +145,10 @@ impl UiSpriteMapEditor {
                     };
 
                     let tooltip = |ui: &mut Ui| {
-                        ui.strong(mode_name);
+                        ui.horizontal(|ui| {
+                            ui.strong(mode_name);
+                            ui.weak(ui.ctx().format_shortcut(&shortcut));
+                        });
                         ui.label(mode_desc);
                     };
 
@@ -251,7 +268,7 @@ impl UiSpriteMapEditor {
                 let mut should_highlight_hovered = true;
 
                 // Keyboard shortcuts
-                self.handle_paste(ui, canvas_top_left_pos);
+                self.kb_shortcut_paste(ui, canvas_top_left_pos);
 
                 // Editing tools
                 if self.editing_mode.inserted(&response) {
