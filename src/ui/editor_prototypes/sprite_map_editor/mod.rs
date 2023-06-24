@@ -37,6 +37,7 @@ pub struct UiSpriteMapEditor {
     editing_mode:        EditingMode,
     always_show_grid:    bool,
 
+    #[cfg(debug_assertions)]
     debug_selection_bounds: bool,
 
     initialized:            bool,
@@ -75,6 +76,7 @@ impl UiSpriteMapEditor {
             editing_mode: EditingMode::Move(None),
             always_show_grid: false,
 
+            #[cfg(debug_assertions)]
             debug_selection_bounds: false,
 
             initialized: false,

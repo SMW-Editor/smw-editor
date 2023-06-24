@@ -75,6 +75,7 @@ impl UiSpriteMapEditor {
         });
     }
 
+    #[cfg(debug_assertions)]
     pub(super) fn debug_toggles(&mut self, ui: &mut Ui) {
         ui.collapsing("Debug", |ui| {
             ui.checkbox(&mut self.debug_selection_bounds, "Show selection bounds");
@@ -235,6 +236,7 @@ impl UiSpriteMapEditor {
             }
 
             // DEBUG: show selection bounds
+            #[cfg(debug_assertions)]
             if self.debug_selection_bounds {
                 if let Some(mut bounds) = self.selection_bounds {
                     bounds.0.max += Vec2::splat(self.tile_size_px);

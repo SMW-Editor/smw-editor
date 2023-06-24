@@ -37,6 +37,8 @@ impl UiSpriteMapEditor {
             ui.allocate_space(vec2(ui.available_width(), 0.));
             self.palette_row_selector(ui);
         });
+
+        #[cfg(debug_assertions)]
         ui.group(|ui| {
             ui.allocate_space(vec2(ui.available_width(), 0.));
             self.debug_toggles(ui);
