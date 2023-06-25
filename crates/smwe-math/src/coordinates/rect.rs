@@ -122,8 +122,8 @@ impl wrapper<Rect> {
     }
 
     #[must_use]
-    pub fn expand2(self, amnt: Vec2) -> Self {
-        Self(self.0.expand2(amnt))
+    pub fn expand2(self, amnt: wrapper<Vec2>) -> Self {
+        Self(self.0.expand2(amnt.0))
     }
 
     #[must_use]
@@ -132,14 +132,14 @@ impl wrapper<Rect> {
     }
 
     #[must_use]
-    pub fn shrink2(self, amnt: Vec2) -> Self {
-        Self(self.0.shrink2(amnt))
+    pub fn shrink2(self, amnt: wrapper<Vec2>) -> Self {
+        Self(self.0.shrink2(amnt.0))
     }
 
     #[inline]
     #[must_use]
-    pub fn translate(self, amnt: Vec2) -> Self {
-        Self(self.0.translate(amnt))
+    pub fn translate(self, amnt: wrapper<Vec2>) -> Self {
+        Self(self.0.translate(amnt.0))
     }
 
     #[inline]
