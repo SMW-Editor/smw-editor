@@ -1,5 +1,5 @@
 use egui::*;
-use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
+use smwe_math::coordinates::*;
 use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::UiSpriteMapEditor;
@@ -29,7 +29,7 @@ impl UiSpriteMapEditor {
                 } else if matches!(self.editing_mode, EditingMode::Move(_)) {
                     let (selection_scale, max_selected_tile) = match self.vram_selection_mode {
                         VramSelectionMode::SingleTile => (1., self.grid_size),
-                        VramSelectionMode::TwoByTwoTiles => (2., self.grid_size - OnGrid::<Vec2>::splat(1.)),
+                        VramSelectionMode::TwoByTwoTiles => (2., self.grid_size - OnGrid::splat(1.)),
                     };
                     let tile_pos_in_canvas = relative_pointer_pos
                         .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
@@ -61,7 +61,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn highlight_tile_at(&self, ui: &mut Ui, point: OnScreen<Pos2>, color: impl Into<Color32>, scale: f32) {
-        let size = OnCanvas::<Vec2>::splat(self.tile_size_px * scale).to_screen(self.pixels_per_point, self.zoom);
+        let size = OnCanvas::splat(self.tile_size_px * scale).to_screen(self.pixels_per_point, self.zoom);
         ui.painter().rect_filled(OnScreen::<Rect>::from_min_size(point, size).0, Rounding::none(), color);
     }
 

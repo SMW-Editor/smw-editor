@@ -100,6 +100,13 @@ impl Tile {
     }
 
     #[inline]
+    pub fn rect(self) -> OnCanvas<Rect> {
+        let min = self.pos().0;
+        let size = Vec2::splat(self.scale() as f32);
+        OnCanvas(Rect::from_min_size(min, size))
+    }
+
+    #[inline]
     pub fn tile_num(self) -> u32 {
         self.0[2]
     }
@@ -167,16 +174,12 @@ impl Tile {
 
     #[inline]
     pub fn contains_point(self, point: OnCanvas<Pos2>) -> bool {
-        let min = self.pos().0;
-        let size = Vec2::splat(self.scale() as f32);
-        Rect::from_min_size(min, size).contains(point.0)
+        self.rect().contains(point)
     }
 
     #[inline]
     pub fn intersects_rect(self, rect: OnCanvas<Rect>) -> bool {
-        let min = self.pos().0;
-        let size = Vec2::splat(self.scale() as f32);
-        Rect::from_min_size(min, size).intersects(rect.0)
+        self.rect().intersects(rect)
     }
 }
 

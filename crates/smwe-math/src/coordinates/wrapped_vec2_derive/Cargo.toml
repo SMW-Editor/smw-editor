@@ -1,0 +1,12 @@
+[package]
+name = "wrapped_vec2_derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+emath = "0.22"
+quote = "1.0"
+syn = "2.0"

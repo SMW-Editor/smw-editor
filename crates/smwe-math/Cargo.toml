@@ -6,5 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+wrapped_vec2_derive = { path = "src/coordinates/wrapped_vec2_derive" }
+wrapped_pos2_derive = { path = "src/coordinates/wrapped_pos2_derive" }
+wrapped_rect_derive = { path = "src/coordinates/wrapped_rect_derive" }
 duplicate = "1.0"
 emath = "0.22"
+shrinkwraprs = "0.3"

@@ -1,6 +1,3 @@
-use std::ops::Sub;
-
-use duplicate::duplicate_item;
 use emath::*;
 
 use super::{OnCanvas, OnGrid, OnScreen};
@@ -38,48 +35,5 @@ impl OnGrid<Pos2> {
     #[inline(always)]
     pub fn to_canvas(self, tile_size: f32) -> OnCanvas<Pos2> {
         self.to_vec2().to_canvas(tile_size).to_pos2()
-    }
-}
-
-#[duplicate_item(wrapper; [OnScreen]; [OnCanvas]; [OnGrid])]
-impl wrapper<Pos2> {
-    pub const ZERO: Self = Self::new(0., 0.);
-
-    #[inline(always)]
-    pub const fn new(x: f32, y: f32) -> Self {
-        Self(pos2(x, y))
-    }
-
-    #[inline(always)]
-    pub fn to_vec2(self) -> wrapper<Vec2> {
-        wrapper(self.0.to_vec2())
-    }
-
-    #[inline(always)]
-    pub fn relative_to(self, other: Self) -> Self {
-        Self(self.0 - other.0.to_vec2())
-    }
-
-    #[inline]
-    pub fn distance(self, other: Self) -> f32 {
-        self.0.distance(other.0)
-    }
-
-    #[inline]
-    pub fn distance_sq(self, other: Self) -> f32 {
-        self.0.distance_sq(other.0)
-    }
-
-    pub fn lerp(self, other: Self, t: f32) -> Self {
-        Self(self.0.lerp(other.0, t))
-    }
-}
-
-#[duplicate_item(wrapper; [OnScreen]; [OnCanvas]; [OnGrid])]
-impl Sub for wrapper<Pos2> {
-    type Output = wrapper<Vec2>;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        wrapper(self.0.sub(rhs.0))
     }
 }

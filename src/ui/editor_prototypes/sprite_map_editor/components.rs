@@ -5,7 +5,7 @@ use egui::*;
 use egui_glow::CallbackFn;
 use egui_phosphor as icons;
 use inline_tweak::tweak;
-use smwe_math::coordinates::{OnGrid, OnScreen};
+use smwe_math::coordinates::*;
 use smwe_render::tile_renderer::TileUniforms;
 use smwe_widgets::{
     palette_view::{PaletteView, SelectionType, ViewedPalettes},
@@ -43,7 +43,8 @@ impl UiSpriteMapEditor {
         let px = self.pixels_per_point;
         let preview_size = tweak!(8.);
         let zoom = tweak!(8.);
-        let (rect, _response) = ui.allocate_exact_size(Vec2::splat(zoom * preview_size / px), Sense::hover());
+        let (rect, _response) =
+            ui.allocate_exact_size(OnCanvas::splat(preview_size).to_screen(px, zoom).0, Sense::hover());
 
         let screen_size = match self.vram_selection_mode {
             VramSelectionMode::SingleTile => rect.size() * px,

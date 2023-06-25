@@ -13,7 +13,7 @@ use std::{
 use egui::*;
 use glow::Context;
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
-use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
+use smwe_math::coordinates::*;
 use smwe_render::{
     gfx_buffers::GfxBuffers,
     palette_renderer::PaletteRenderer,
@@ -83,7 +83,7 @@ impl UiSpriteMapEditor {
             tile_size_px: 8.,
             zoom: 3.,
             pixels_per_point: 0.,
-            grid_size: OnGrid::<Vec2>::splat(31.),
+            grid_size: OnGrid::splat(31.),
             hovering_selected_tile: false,
             selection_bounds: None,
             selection_offset: None,

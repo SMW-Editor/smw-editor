@@ -6,7 +6,7 @@ use itertools::Itertools;
 use num::Integer;
 use paste::paste;
 use rfd::{MessageButtons, MessageDialog, MessageLevel};
-use smwe_math::coordinates::{OnCanvas, OnScreen};
+use smwe_math::coordinates::*;
 use smwe_render::tile_renderer::{Tile, TileJson};
 
 use super::UiSpriteMapEditor;
@@ -127,7 +127,7 @@ impl UiSpriteMapEditor {
         let bounds = self.selection_bounds.expect("unset even though some tiles are selected");
         move_offset = move_offset.clamp(
             -bounds.left_top().to_vec2(),
-            OnCanvas::<Vec2>::splat(31. * self.tile_size_px) - bounds.right_bottom().to_vec2(),
+            OnCanvas::splat(31. * self.tile_size_px) - bounds.right_bottom().to_vec2(),
         );
 
         for &idx in self.selected_sprite_tile_indices.iter() {

@@ -1,5 +1,5 @@
 use egui::{Pos2, Vec2};
-use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
+use smwe_math::coordinates::*;
 use smwe_widgets::vram_view::VramSelectionMode;
 
 use super::UiSpriteMapEditor;
