@@ -261,7 +261,7 @@ impl UiSpriteMapEditor {
 
                 let grid_cell_pos = relative_pointer_offset
                     .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                    .clamp(OnGrid(Vec2::ZERO), self.grid_size)
+                    .clamp(OnGrid::<Vec2>::ZERO, self.grid_size)
                     .to_canvas(self.tile_size_px)
                     .to_pos2();
 

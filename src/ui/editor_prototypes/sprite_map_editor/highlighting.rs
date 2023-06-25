@@ -62,7 +62,7 @@ impl UiSpriteMapEditor {
 
     pub(super) fn highlight_tile_at(&self, ui: &mut Ui, point: OnScreen<Pos2>, color: impl Into<Color32>, scale: f32) {
         let size = OnCanvas::splat(self.tile_size_px * scale).to_screen(self.pixels_per_point, self.zoom);
-        ui.painter().rect_filled(OnScreen::<Rect>::from_min_size(point, size).0, Rounding::none(), color);
+        ui.painter().rect_filled(OnScreen::from_min_size(point, size).0, Rounding::none(), color);
     }
 
     pub(super) fn highlight_selected_tiles(&mut self, ui: &mut Ui, canvas_pos: OnScreen<Pos2>) {

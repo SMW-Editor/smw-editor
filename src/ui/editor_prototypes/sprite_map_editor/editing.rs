@@ -8,25 +8,22 @@ use crate::ui::editing_mode::{Drag, FlipDirection, Selection, SnapToGrid};
 impl UiSpriteMapEditor {
     pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: OnCanvas<Pos2>) {
         self.unselect_all_tiles();
-        if self.last_inserted_tile != grid_cell_pos {
-            match self.vram_selection_mode {
-                VramSelectionMode::SingleTile => self.add_selected_tile_at(grid_cell_pos),
-                VramSelectionMode::TwoByTwoTiles => {
-                    let current_selection = self.selected_vram_tile;
-                    for offset in [(0, 0), (0, 1), (1, 0), (1, 1)] {
-                        self.selected_vram_tile.0 = current_selection.0 + offset.0;
-                        self.selected_vram_tile.1 = current_selection.1 + offset.1;
-                        let offset = OnGrid::<Vec2>::new(offset.0 as f32, offset.1 as f32).to_canvas(self.tile_size_px);
-                        let pos = OnCanvas(grid_cell_pos.0 + offset.0);
-                        self.add_selected_tile_at(pos);
-                    }
-                    self.selected_vram_tile = current_selection;
+        match self.vram_selection_mode {
+            VramSelectionMode::SingleTile => self.add_selected_tile_at(grid_cell_pos),
+            VramSelectionMode::TwoByTwoTiles => {
+                let current_selection = self.selected_vram_tile;
+                for offset in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+                    self.selected_vram_tile.0 = current_selection.0 + offset.0;
+                    self.selected_vram_tile.1 = current_selection.1 + offset.1;
+                    let offset = OnGrid::<Vec2>::new(offset.0 as f32, offset.1 as f32).to_canvas(self.tile_size_px);
+                    let pos = OnCanvas(grid_cell_pos.0 + offset.0);
+                    self.add_selected_tile_at(pos);
                 }
+                self.selected_vram_tile = current_selection;
             }
-            self.compute_selection_bounds();
-            self.upload_tiles();
-            self.last_inserted_tile = grid_cell_pos;
         }
+        self.compute_selection_bounds();
+        self.upload_tiles();
     }
 
     pub(super) fn handle_selection_plot(

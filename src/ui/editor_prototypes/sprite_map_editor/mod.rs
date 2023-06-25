@@ -52,7 +52,6 @@ pub struct UiSpriteMapEditor {
     selected_vram_tile:           (u32, u32),
     selected_palette:             u32,
     sprite_tiles:                 Vec<Tile>,
-    last_inserted_tile:           OnCanvas<Pos2>,
     selected_sprite_tile_indices: HashSet<usize>,
 }
 
@@ -91,7 +90,6 @@ impl UiSpriteMapEditor {
             selected_vram_tile: (0, 0),
             selected_palette: 0,
             tile_palette,
-            last_inserted_tile: OnCanvas::<Pos2>::new(-1., -1.),
             selected_sprite_tile_indices: HashSet::new(),
         }
     }
