@@ -1,6 +1,7 @@
 use std::{cell::RefCell, env, sync::Arc};
 
 use eframe::{NativeOptions, Renderer};
+use egui::vec2;
 use smw_editor::{
     project::{Project, ProjectRef},
     ui::UiMainWindow,
@@ -10,7 +11,11 @@ fn main() -> eframe::Result<()> {
     log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize log4rs");
 
     let project = dev_open_rom();
-    let native_options = NativeOptions { renderer: Renderer::Glow, ..NativeOptions::default() };
+    let native_options = NativeOptions {
+        renderer: Renderer::Glow,
+        min_window_size: Some(vec2(1280., 720.)),
+        ..NativeOptions::default()
+    };
     eframe::run_native("SMW Editor v0.1.0", native_options, Box::new(|cc| Box::new(UiMainWindow::new(project, cc))))
 }
 

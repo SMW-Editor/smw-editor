@@ -203,121 +203,135 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn editing_area(&mut self, ui: &mut Ui) {
-        let editing_area_size = OnGrid::splat(32.).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px);
-        let canvas_outer_margin = Margin::from(0.5 * (ui.available_size() - editing_area_size.0));
-        Frame::canvas(ui.style()).outer_margin(canvas_outer_margin).show(ui, |ui| {
-            let (canvas_rect, response) = ui.allocate_exact_size(editing_area_size.0, Sense::click_and_drag());
-
-            // Tiles
-            ui.painter().add(PaintCallback {
-                rect:     canvas_rect,
-                callback: {
-                    let sprite_renderer = Arc::clone(&self.sprite_renderer);
-                    let gfx_bufs = self.gfx_bufs;
-                    let screen_size = canvas_rect.size() * self.pixels_per_point;
-                    let zoom = self.zoom;
-                    Arc::new(CallbackFn::new(move |_info, painter| {
-                        sprite_renderer
-                            .lock()
-                            .expect("Cannot lock mutex on sprite renderer")
-                            .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset: Vec2::ZERO, zoom });
-                    }))
-                },
+        ScrollArea::both()
+            .drag_to_scroll(false)
+            .min_scrolled_height(ui.available_height())
+            .min_scrolled_width(ui.available_width())
+            .show(ui, |ui| {
+                let editing_area_rect = ui.available_rect_before_wrap();
+                let canvas_rect = Rect::from_center_size(editing_area_rect.center(), self.canvas_size().0);
+                let max_rect = editing_area_rect.union(canvas_rect);
+                let margin = Margin {
+                    left:   canvas_rect.min.x - max_rect.min.x,
+                    right:  max_rect.max.x - canvas_rect.max.x,
+                    top:    canvas_rect.min.y - max_rect.min.y,
+                    bottom: max_rect.max.y - canvas_rect.max.y,
+                };
+                Frame::canvas(ui.style()).inner_margin(Margin::same(0.)).outer_margin(margin).show(ui, |ui| {
+                    self.canvas(ui);
+                });
             });
+    }
 
-            // Grid
-            if self.always_show_grid || ui.input(|i| i.modifiers.shift_only()) {
-                let spacing = self.zoom * self.tile_size_px / self.pixels_per_point;
-                let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
-                for cell in 0..33 {
-                    let position = cell as f32 * spacing;
-                    ui.painter().hline(canvas_rect.min.x..=canvas_rect.max.x, canvas_rect.min.y + position, stroke);
-                    ui.painter().vline(canvas_rect.min.x + position, canvas_rect.min.y..=canvas_rect.max.y, stroke);
-                }
+    pub(super) fn canvas(&mut self, ui: &mut Ui) {
+        let (canvas_rect, response) = ui.allocate_exact_size(self.canvas_size().0, Sense::click_and_drag());
+
+        // Tiles
+        ui.painter().add(PaintCallback {
+            rect:     canvas_rect,
+            callback: {
+                let sprite_renderer = Arc::clone(&self.sprite_renderer);
+                let gfx_bufs = self.gfx_bufs;
+                let screen_size = canvas_rect.size() * self.pixels_per_point;
+                let zoom = self.zoom;
+                Arc::new(CallbackFn::new(move |_info, painter| {
+                    sprite_renderer
+                        .lock()
+                        .expect("Cannot lock mutex on sprite renderer")
+                        .paint(painter.gl(), &TileUniforms { gfx_bufs, screen_size, offset: Vec2::ZERO, zoom });
+                }))
+            },
+        });
+
+        // Grid
+        if self.always_show_grid || ui.input(|i| i.modifiers.shift_only()) {
+            let spacing = self.zoom * self.tile_size_px / self.pixels_per_point;
+            let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
+            for cell in 0..33 {
+                let position = cell as f32 * spacing;
+                ui.painter().hline(canvas_rect.min.x..=canvas_rect.max.x, canvas_rect.min.y + position, stroke);
+                ui.painter().vline(canvas_rect.min.x + position, canvas_rect.min.y..=canvas_rect.max.y, stroke);
+            }
+        }
+
+        // DEBUG: show selection bounds
+        #[cfg(debug_assertions)]
+        if self.debug_selection_bounds {
+            if let Some(mut bounds) = self.selection_bounds {
+                bounds.0.max += Vec2::splat(self.tile_size_px);
+                ui.painter().rect_stroke(
+                    bounds.to_screen(self.pixels_per_point, self.zoom).0.translate(canvas_rect.left_top().to_vec2()),
+                    Rounding::none(),
+                    Stroke::new(2., Color32::BLUE),
+                );
+            }
+        }
+
+        // Interaction
+        if let Some(hover_pos) = response.hover_pos() {
+            let canvas_top_left_pos = OnScreen(canvas_rect.left_top());
+
+            let relative_pointer_offset = OnScreen(hover_pos - canvas_rect.left_top());
+            let relative_pointer_pos = relative_pointer_offset.to_pos2();
+
+            let grid_cell_pos = relative_pointer_offset
+                .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
+                .clamp(OnGrid::<Vec2>::ZERO, self.grid_size)
+                .to_canvas(self.tile_size_px)
+                .to_pos2();
+
+            let (holding_shift_only, holding_ctrl_only) =
+                ui.input(|i| (i.modifiers.shift_only(), i.modifiers.command_only()));
+
+            let mut should_highlight_hovered = true;
+
+            // Keyboard shortcuts
+            self.kb_shortcut_paste(ui, canvas_top_left_pos);
+
+            // Editing tools
+            if self.editing_mode.inserted(&response) {
+                self.handle_edition_insert(grid_cell_pos);
             }
 
-            // DEBUG: show selection bounds
-            #[cfg(debug_assertions)]
-            if self.debug_selection_bounds {
-                if let Some(mut bounds) = self.selection_bounds {
-                    bounds.0.max += Vec2::splat(self.tile_size_px);
+            if let Some(selection) = self.editing_mode.selected(&response) {
+                if let Selection::Drag(Some(selection_rect)) = selection {
                     ui.painter().rect_stroke(
-                        bounds
-                            .to_screen(self.pixels_per_point, self.zoom)
-                            .0
-                            .translate(canvas_rect.left_top().to_vec2()),
+                        selection_rect.0,
                         Rounding::none(),
-                        Stroke::new(2., Color32::BLUE),
+                        Stroke::new(1., ui.visuals().selection.bg_fill),
                     );
                 }
+                self.handle_selection_plot(selection, !holding_ctrl_only, canvas_top_left_pos);
             }
 
-            // Interaction
-            if let Some(hover_pos) = response.hover_pos() {
-                let canvas_top_left_pos = OnScreen(canvas_rect.left_top());
-
-                let relative_pointer_offset = OnScreen(hover_pos - canvas_rect.left_top());
-                let relative_pointer_pos = relative_pointer_offset.to_pos2();
-
-                let grid_cell_pos = relative_pointer_offset
-                    .to_grid(self.pixels_per_point, self.zoom, self.tile_size_px)
-                    .clamp(OnGrid::<Vec2>::ZERO, self.grid_size)
-                    .to_canvas(self.tile_size_px)
-                    .to_pos2();
-
-                let (holding_shift_only, holding_ctrl_only) =
-                    ui.input(|i| (i.modifiers.shift_only(), i.modifiers.command_only()));
-
-                let mut should_highlight_hovered = true;
-
-                // Keyboard shortcuts
-                self.kb_shortcut_paste(ui, canvas_top_left_pos);
-
-                // Editing tools
-                if self.editing_mode.inserted(&response) {
-                    self.handle_edition_insert(grid_cell_pos);
-                }
-
-                if let Some(selection) = self.editing_mode.selected(&response) {
-                    if let Selection::Drag(Some(selection_rect)) = selection {
-                        ui.painter().rect_stroke(
-                            selection_rect.0,
-                            Rounding::none(),
-                            Stroke::new(1., ui.visuals().selection.bg_fill),
-                        );
-                    }
-                    self.handle_selection_plot(selection, !holding_ctrl_only, canvas_top_left_pos);
-                }
-
-                if let Some(drag_data) = self.editing_mode.dropped(&response) {
-                    self.handle_edition_drop(drag_data, holding_shift_only, canvas_top_left_pos);
-                }
-
-                if let Some(drag_data) = self.editing_mode.moving(&response) {
-                    self.handle_edition_dragging(drag_data, holding_shift_only, canvas_top_left_pos);
-                    should_highlight_hovered = false;
-                }
-
-                if self.editing_mode.erased(&response) {
-                    self.handle_edition_erase(relative_pointer_pos);
-                }
-
-                if self.editing_mode.probed(&response) {
-                    self.handle_edition_probe(relative_pointer_pos);
-                }
-
-                if let Some(flip_direction) = self.editing_mode.flipped(&response) {
-                    self.handle_edition_flip(relative_pointer_pos, flip_direction);
-                }
-
-                // Highlighting
-                if should_highlight_hovered {
-                    self.higlight_hovered_tiles(ui, relative_pointer_pos, OnScreen(canvas_rect.left_top()));
-                }
+            if let Some(drag_data) = self.editing_mode.dropped(&response) {
+                self.handle_edition_drop(drag_data, holding_shift_only, canvas_top_left_pos);
             }
 
-            self.highlight_selected_tiles(ui, OnScreen(canvas_rect.left_top()));
-            self.hovering_selected_tile = false;
-        });
+            if let Some(drag_data) = self.editing_mode.moving(&response) {
+                self.handle_edition_dragging(drag_data, holding_shift_only, canvas_top_left_pos);
+                should_highlight_hovered = false;
+            }
+
+            if self.editing_mode.erased(&response) {
+                self.handle_edition_erase(relative_pointer_pos);
+            }
+
+            if self.editing_mode.probed(&response) {
+                self.handle_edition_probe(relative_pointer_pos);
+            }
+
+            if let Some(flip_direction) = self.editing_mode.flipped(&response) {
+                self.handle_edition_flip(relative_pointer_pos, flip_direction);
+            }
+
+            // Highlighting
+            if should_highlight_hovered {
+                self.higlight_hovered_tiles(ui, relative_pointer_pos, OnScreen(canvas_rect.left_top()));
+            }
+        }
+
+        self.highlight_selected_tiles(ui, OnScreen(canvas_rect.left_top()));
+        self.hovering_selected_tile = false;
     }
 }

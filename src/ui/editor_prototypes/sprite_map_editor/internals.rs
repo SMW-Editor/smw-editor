@@ -97,6 +97,10 @@ impl UiSpriteMapEditor {
             .set_tiles(&self.gl, self.tile_palette.clone());
     }
 
+    pub(super) fn canvas_size(&self) -> OnScreen<Vec2> {
+        OnGrid::splat(32.).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px)
+    }
+
     pub(super) fn any_tile_contains_pointer(
         &mut self, pointer_pos: OnScreen<Pos2>, canvas_top_left_pos: OnScreen<Pos2>,
     ) -> bool {

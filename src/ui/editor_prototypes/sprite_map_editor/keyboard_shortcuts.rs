@@ -96,9 +96,11 @@ impl UiSpriteMapEditor {
             for event in input.events.iter() {
                 if let Event::Paste(pasted_text) = event {
                     if let Ok(pasted_tiles) = serde_json::from_str::<Vec<TileJson>>(pasted_text) {
-                        let pointer_pos = OnScreen(input.pointer.hover_pos().expect("Failed to get hover position"))
-                            - canvas_top_left;
-                        let paste_offset = pointer_pos.to_canvas(self.pixels_per_point, self.zoom);
+                        let hover_pos = OnScreen(input.pointer.hover_pos().expect("Failed to get hover position"));
+                        let paste_offset = hover_pos
+                            .relative_to(canvas_top_left)
+                            .to_vec2()
+                            .to_canvas(self.pixels_per_point, self.zoom);
                         self.paste_tiles_at(pasted_tiles, paste_offset);
                     }
                     break;
