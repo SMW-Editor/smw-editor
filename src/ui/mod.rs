@@ -24,7 +24,7 @@ use crate::{
         },
         project_creator::UiProjectCreator,
         tab_viewer::EditorToolTabViewer,
-        tool::{DockableEditorTool, DockableEditorToolEnum},
+        tool::DockableEditorTool,
     },
 };
 
@@ -32,7 +32,7 @@ use crate::{
 pub struct UiMainWindow {
     gl:                 Arc<glow::Context>,
     project_creator:    Option<UiProjectCreator>,
-    dock_tree:          Tree<DockableEditorToolEnum>,
+    dock_tree:          Tree<Box<dyn DockableEditorTool>>,
     last_open_tool_idx: usize,
 }
 
@@ -82,11 +82,11 @@ impl eframe::App for UiMainWindow {
 impl UiMainWindow {
     fn open_tool<ToolType>(&mut self, tool: ToolType)
     where
-        ToolType: 'static + DockableEditorTool + Into<DockableEditorToolEnum>,
+        ToolType: 'static + DockableEditorTool,
     {
         if self.last_open_tool_idx < usize::MAX {
             log::info!("Opened {}", tool.title().text());
-            self.dock_tree.push_to_focused_leaf(tool.into());
+            self.dock_tree.push_to_focused_leaf(Box::new(tool));
             self.last_open_tool_idx += 1;
         }
     }

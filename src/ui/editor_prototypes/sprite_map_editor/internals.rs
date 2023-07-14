@@ -14,7 +14,7 @@ use crate::ui::editing_mode::{FlipDirection, SnapToGrid};
 
 impl UiSpriteMapEditor {
     pub(super) fn create_new_map(&mut self) {
-        self.sprite_tiles.clear();
+        self.sprite_tiles.write(|tiles| tiles.0.clear());
         self.upload_tiles();
     }
 
@@ -37,8 +37,10 @@ impl UiSpriteMapEditor {
                         .set_buttons(MessageButtons::Ok)
                         .show();
                 }
-                Ok(tiles) => {
-                    self.sprite_tiles = tiles.into_iter().map(Tile::from).collect_vec();
+                Ok(loaded_tiles) => {
+                    self.sprite_tiles.write(move |tiles| {
+                        tiles.0 = loaded_tiles.into_iter().map(Tile::from).collect_vec();
+                    });
                     self.upload_tiles();
                 }
             },
@@ -46,7 +48,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn save_map_as(&mut self, path: PathBuf) {
-        let tiles = self.sprite_tiles.iter().map(|&t| TileJson::from(t)).collect_vec();
+        let tiles = self.sprite_tiles.read(|tiles| tiles.0.iter().map(|&t| TileJson::from(t)).collect_vec());
         match serde_json::to_string_pretty(&tiles) {
             Err(e) => {
                 MessageDialog::new()
@@ -83,7 +85,7 @@ impl UiSpriteMapEditor {
         self.sprite_renderer
             .lock()
             .expect("Cannot lock mutex on sprite renderer")
-            .set_tiles(&self.gl, self.sprite_tiles.clone());
+            .set_tiles(&self.gl, self.sprite_tiles.read(|tiles| tiles.0.clone()));
     }
 
     pub(super) fn update_tile_palette(&mut self) {
@@ -104,7 +106,7 @@ impl UiSpriteMapEditor {
     pub(super) fn any_tile_contains_pointer(
         &mut self, pointer_pos: OnScreen<Pos2>, canvas_top_left_pos: OnScreen<Pos2>,
     ) -> bool {
-        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(|tile| {
+        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles.read(|tiles| tiles.0[i])).any(|tile| {
             let pointer_in_canvas =
                 pointer_pos.relative_to(canvas_top_left_pos).to_canvas(self.pixels_per_point, self.zoom);
             tile.contains_point(pointer_in_canvas)
@@ -112,15 +114,14 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn any_selected_tile_contains_point(&self, point: OnCanvas<Pos2>) -> bool {
-        self.selected_sprite_tile_indices.iter().map(|&i| self.sprite_tiles[i]).any(|tile| tile.contains_point(point))
+        self.selected_sprite_tile_indices
+            .iter()
+            .map(|&i| self.sprite_tiles.read(|tiles| tiles.0[i]))
+            .any(|tile| tile.contains_point(point))
     }
 
-    pub(super) fn find_tile_containing_point(&self, point: OnCanvas<Pos2>) -> Option<&Tile> {
-        self.sprite_tiles.iter().find(|tile| tile.contains_point(point))
-    }
-
-    pub(super) fn find_tile_containing_point_mut(&mut self, point: OnCanvas<Pos2>) -> Option<&mut Tile> {
-        self.sprite_tiles.iter_mut().find(|tile| tile.contains_point(point))
+    pub(super) fn find_tile_containing_point(&self, point: OnCanvas<Pos2>) -> Option<Tile> {
+        self.sprite_tiles.read(|tiles| tiles.0.iter().copied().find(|tile| tile.contains_point(point)))
     }
 
     pub(super) fn move_selected_tiles_by(&mut self, mut move_offset: OnCanvas<Vec2>, snap_to_grid: Option<SnapToGrid>) {
@@ -134,12 +135,14 @@ impl UiSpriteMapEditor {
             OnCanvas::splat(31. * self.tile_size_px) - bounds.right_bottom().to_vec2(),
         );
 
-        for &idx in self.selected_sprite_tile_indices.iter() {
-            self.sprite_tiles[idx].move_by(move_offset);
-            if let Some(snap_to_grid) = snap_to_grid {
-                self.sprite_tiles[idx].snap_to_grid(self.tile_size_px as u32, snap_to_grid.cell_origin);
+        self.sprite_tiles.write(|tiles| {
+            for &idx in self.selected_sprite_tile_indices.iter() {
+                tiles.0[idx].move_by(move_offset);
+                if let Some(snap_to_grid) = snap_to_grid {
+                    tiles.0[idx].snap_to_grid(self.tile_size_px as u32, snap_to_grid.cell_origin);
+                }
             }
-        }
+        });
 
         self.compute_selection_bounds();
         self.upload_tiles();
@@ -157,8 +160,8 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn add_tile(&mut self, tile: Tile) {
-        self.selected_sprite_tile_indices.insert(self.sprite_tiles.len());
-        self.sprite_tiles.push(tile);
+        self.selected_sprite_tile_indices.insert(self.sprite_tiles.read(|tiles| tiles.0.len()));
+        self.sprite_tiles.write(|tiles| tiles.0.push(tile));
     }
 
     pub(super) fn select_tile_at(&mut self, pos: OnScreen<Pos2>, clear_previous_selection: bool) {
@@ -166,15 +169,17 @@ impl UiSpriteMapEditor {
             self.unselect_all_tiles();
         }
 
-        if let Some((idx, _)) = self
-            .sprite_tiles
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, &tile)| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
-        {
-            self.selected_sprite_tile_indices.insert(idx);
-        }
+        self.sprite_tiles.read(|tiles| {
+            if let Some((idx, _)) = tiles
+                .0
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, &tile)| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
+            {
+                self.selected_sprite_tile_indices.insert(idx);
+            }
+        });
         self.compute_selection_bounds();
     }
 
@@ -183,13 +188,15 @@ impl UiSpriteMapEditor {
             self.unselect_all_tiles();
         }
 
-        let indices = self
-            .sprite_tiles
-            .iter()
-            .enumerate()
-            .filter(|(_, &tile)| tile.intersects_rect(rect.to_canvas(self.pixels_per_point, self.zoom)))
-            .map(|(i, _)| i)
-            .collect_vec();
+        let indices = self.sprite_tiles.read(|tiles| {
+            tiles
+                .0
+                .iter()
+                .enumerate()
+                .filter(|(_, &tile)| tile.intersects_rect(rect.to_canvas(self.pixels_per_point, self.zoom)))
+                .map(|(i, _)| i)
+                .collect_vec()
+        });
         self.mark_tiles_as_selected(indices.into_iter());
     }
 
@@ -213,7 +220,7 @@ impl UiSpriteMapEditor {
                     let ([<min_tile_ dimension>], [<max_tile_ dimension>]) = self
                         .selected_sprite_tile_indices
                         .iter()
-                        .map(|&i| self.sprite_tiles[i].pos())
+                        .map(|&i| self.sprite_tiles.read(|tiles| tiles.0[i].pos()))
                         .minmax_by(|a, b| a.0.dimension.total_cmp(&b.0.dimension))
                         .into_option()
                         .map(|(min, max)| (min.0.dimension, max.0.dimension))
@@ -228,7 +235,7 @@ impl UiSpriteMapEditor {
         let selected_tiles = self
             .selected_sprite_tile_indices
             .iter()
-            .map(|&i| self.sprite_tiles[i])
+            .map(|&i| self.sprite_tiles.read(|tiles| tiles.0[i]))
             .map(|mut t| {
                 let bounds = self.selection_bounds.expect("No selection bounds even though tiles are selected");
                 t.move_by(-bounds.left_top().to_vec2());
@@ -251,47 +258,52 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn delete_selected_tiles(&mut self) {
-        for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
-            self.sprite_tiles.remove(idx);
-        }
+        self.sprite_tiles.write(|tiles| {
+            for idx in self.selected_sprite_tile_indices.drain().sorted().rev() {
+                tiles.0.remove(idx);
+            }
+        });
         self.selection_bounds = None;
         self.upload_tiles();
     }
 
     pub(super) fn delete_tiles_at(&mut self, pos: OnScreen<Pos2>) {
-        self.sprite_tiles.retain(|&tile| !tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)));
+        self.sprite_tiles.write(|tiles| {
+            tiles.0.retain(|&tile| !tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
+        });
         self.upload_tiles();
     }
 
     pub(super) fn probe_tile_at(&mut self, pos: OnScreen<Pos2>) {
-        if let Some(tile) = self
-            .sprite_tiles
-            .iter()
-            .rev()
-            .find(|&&tile| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
-        {
-            let (y, x) = tile.tile_num().div_rem(&16);
-            self.selected_vram_tile = (x, y - 96);
-        };
+        self.sprite_tiles.read(|tiles| {
+            if let Some(tile) =
+                tiles.0.iter().rev().find(|&&tile| tile.contains_point(pos.to_canvas(self.pixels_per_point, self.zoom)))
+            {
+                let (y, x) = tile.tile_num().div_rem(&16);
+                self.selected_vram_tile = (x, y - 96);
+            }
+        });
     }
 
     pub(super) fn flip_selected_tiles(&mut self, flip_direction: FlipDirection) {
         let selection_bounds = self.selection_bounds.expect("unset even though some tiles are selected");
         let (x_min, x_max) = selection_bounds.x_range().into_inner();
         let (y_min, y_max) = selection_bounds.y_range().into_inner();
-        for &i in self.selected_sprite_tile_indices.iter() {
-            let tile = &mut self.sprite_tiles[i];
-            match flip_direction {
-                FlipDirection::Horizontal => {
-                    tile.toggle_flip_x();
-                    tile.0[0] = (x_min + (x_max - tile.0[0] as f32)) as u32;
-                }
-                FlipDirection::Vertical => {
-                    tile.toggle_flip_y();
-                    tile.0[1] = (y_min + (y_max - tile.0[1] as f32)) as u32;
+        self.sprite_tiles.write(|tiles| {
+            for &i in self.selected_sprite_tile_indices.iter() {
+                let tile = &mut tiles.0[i];
+                match flip_direction {
+                    FlipDirection::Horizontal => {
+                        tile.toggle_flip_x();
+                        tile.0[0] = (x_min + (x_max - tile.0[0] as f32)) as u32;
+                    }
+                    FlipDirection::Vertical => {
+                        tile.toggle_flip_y();
+                        tile.0[1] = (y_min + (y_max - tile.0[1] as f32)) as u32;
+                    }
                 }
             }
-        }
+        });
         self.upload_tiles();
     }
 }

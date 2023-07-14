@@ -1,12 +1,12 @@
 use egui::{Ui, WidgetText};
 use egui_dock::TabViewer;
 
-use crate::ui::tool::{DockableEditorTool, DockableEditorToolEnum};
+use crate::ui::tool::DockableEditorTool;
 
 pub struct EditorToolTabViewer;
 
 impl TabViewer for EditorToolTabViewer {
-    type Tab = DockableEditorToolEnum;
+    type Tab = Box<dyn DockableEditorTool>;
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
         tab.update(ui);

@@ -6,6 +6,9 @@ use smwe_render::tile_renderer::TileJson;
 use super::UiSpriteMapEditor;
 use crate::ui::editing_mode::{EditingMode, SnapToGrid};
 
+pub(super) const SHORTCUT_UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
+pub(super) const SHORTCUT_REDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Y);
+
 pub(super) const SHORTCUT_SELECT_ALL: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::A);
 pub(super) const SHORTCUT_UNSELECT_ALL: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Escape);
 
@@ -23,6 +26,8 @@ pub(super) const SHORTCUT_MODE_FLIP_VERTICALLY: KeyboardShortcut = KeyboardShort
 
 impl UiSpriteMapEditor {
     pub(super) fn handle_input(&mut self, ui: &mut Ui) {
+        self.kb_shortcut_undo(ui);
+        self.kb_shortcut_redo(ui);
         self.kb_shortcut_select_all(ui);
         self.kb_shortcut_unselect_all(ui);
         self.kb_shortcut_delete_selected(ui);
@@ -33,9 +38,21 @@ impl UiSpriteMapEditor {
         self.handle_zoom(ui);
     }
 
+    fn kb_shortcut_undo(&mut self, ui: &mut Ui) {
+        if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_UNDO)) {
+            self.handle_undo();
+        }
+    }
+
+    fn kb_shortcut_redo(&mut self, ui: &mut Ui) {
+        if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_REDO)) {
+            self.handle_redo();
+        }
+    }
+
     fn kb_shortcut_select_all(&mut self, ui: &mut Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_SELECT_ALL)) {
-            self.mark_tiles_as_selected(0..self.sprite_tiles.len());
+            self.mark_tiles_as_selected(0..self.sprite_tiles.read(|tiles| tiles.0.len()));
         }
     }
 

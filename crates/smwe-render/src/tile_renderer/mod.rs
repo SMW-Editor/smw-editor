@@ -95,6 +95,16 @@ impl BindUniforms for TileUniforms {
 
 impl Tile {
     #[inline]
+    pub fn from_le_bytes(bytes: [u8; 16]) -> Self {
+        Self([
+            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+            u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]),
+            u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]),
+            u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]),
+        ])
+    }
+    
+    #[inline]
     pub fn pos(self) -> OnCanvas<Pos2> {
         OnCanvas(pos2(self.0[0] as f32, self.0[1] as f32))
     }

@@ -6,6 +6,20 @@ use super::UiSpriteMapEditor;
 use crate::ui::editing_mode::{Drag, FlipDirection, Selection, SnapToGrid};
 
 impl UiSpriteMapEditor {
+    pub(super) fn handle_undo(&mut self) {
+        self.sprite_tiles.undo();
+        self.selected_sprite_tile_indices.clear();
+        self.compute_selection_bounds();
+        self.upload_tiles();
+    }
+
+    pub(super) fn handle_redo(&mut self) {
+        self.sprite_tiles.redo();
+        self.selected_sprite_tile_indices.clear();
+        self.compute_selection_bounds();
+        self.upload_tiles();
+    }
+
     pub(super) fn handle_edition_insert(&mut self, grid_cell_pos: OnCanvas<Pos2>) {
         self.unselect_all_tiles();
         match self.vram_selection_mode {
@@ -121,12 +135,21 @@ impl UiSpriteMapEditor {
         let pointer_on_canvas = relative_pointer_pos.to_canvas(self.pixels_per_point, self.zoom);
         if self.any_selected_tile_contains_point(pointer_on_canvas) {
             self.flip_selected_tiles(flip_direction);
-        } else if let Some(tile) = self.find_tile_containing_point_mut(pointer_on_canvas) {
-            match flip_direction {
-                FlipDirection::Horizontal => tile.toggle_flip_x(),
-                FlipDirection::Vertical => tile.toggle_flip_y(),
+        } else {
+            let flipped = self.sprite_tiles.write(|tiles| {
+                tiles
+                    .0
+                    .iter_mut()
+                    .find(|tile| tile.contains_point(pointer_on_canvas))
+                    .map(|tile| match flip_direction {
+                        FlipDirection::Horizontal => tile.toggle_flip_x(),
+                        FlipDirection::Vertical => tile.toggle_flip_y(),
+                    })
+                    .is_some()
+            });
+            if flipped {
+                self.upload_tiles();
             }
-            self.upload_tiles();
         }
     }
 }
