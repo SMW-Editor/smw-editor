@@ -138,7 +138,6 @@ impl UiSpriteMapEditor {
         } else {
             let flipped = self.sprite_tiles.write(|tiles| {
                 tiles
-                    .0
                     .iter_mut()
                     .find(|tile| tile.contains_point(pointer_on_canvas))
                     .map(|tile| match flip_direction {

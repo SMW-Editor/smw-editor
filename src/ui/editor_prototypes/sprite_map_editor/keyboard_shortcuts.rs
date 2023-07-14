@@ -52,7 +52,7 @@ impl UiSpriteMapEditor {
 
     fn kb_shortcut_select_all(&mut self, ui: &mut Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_SELECT_ALL)) {
-            self.mark_tiles_as_selected(0..self.sprite_tiles.read(|tiles| tiles.0.len()));
+            self.mark_tiles_as_selected(0..self.sprite_tiles.read(|tiles| tiles.len()));
         }
     }
 

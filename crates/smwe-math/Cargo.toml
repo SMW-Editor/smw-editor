@@ -1,5 +1,6 @@
 [package]
 name = "smwe-math"
+authors = ["Adam Gąsior (Adanos020)"]
 version = "0.1.0"
 edition = "2021"
 

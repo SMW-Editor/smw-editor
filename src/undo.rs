@@ -59,11 +59,6 @@ impl<Data: Undo> UndoableData<Data> {
         self.stack.step_number > 0
     }
 
-    pub fn clear_stack(&mut self) {
-        self.stack.step_stack.clear();
-        self.stack.step_number = 0;
-    }
-
     pub fn can_redo(&self) -> bool {
         self.stack.step_number < self.stack.step_stack.len()
     }
@@ -84,6 +79,11 @@ impl<Data: Undo> UndoableData<Data> {
             new_data_bytes.resize(step.new_size, 0);
             self.data = Data::from_bytes(new_data_bytes);
         }
+    }
+
+    pub fn clear_stack(&mut self) {
+        self.stack.step_stack.clear();
+        self.stack.step_number = 0;
     }
 }
 

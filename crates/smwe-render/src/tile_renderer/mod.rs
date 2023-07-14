@@ -1,6 +1,7 @@
 use emath::*;
 use glow::*;
 use serde::{Deserialize, Serialize};
+use shrinkwraprs::Shrinkwrap;
 use smwe_math::coordinates::{OnCanvas, OnScreen};
 use thiserror::Error;
 
@@ -26,7 +27,8 @@ pub struct TileUniforms {
     pub zoom:        f32,
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, Shrinkwrap)]
+#[shrinkwrap(mutable)]
 pub struct Tile(pub [u32; 4]);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -103,7 +105,7 @@ impl Tile {
             u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]),
         ])
     }
-    
+
     #[inline]
     pub fn pos(self) -> OnCanvas<Pos2> {
         OnCanvas(pos2(self.0[0] as f32, self.0[1] as f32))
@@ -196,8 +198,8 @@ impl Tile {
 impl From<Tile> for TileJson {
     fn from(value: Tile) -> Self {
         Self {
-            x:         value.0[0],
-            y:         value.0[1],
+            x:         value[0],
+            y:         value[1],
             tile_id:   value.tile_num(),
             scale:     value.scale() as u8,
             color_row: value.color_row() as u8,

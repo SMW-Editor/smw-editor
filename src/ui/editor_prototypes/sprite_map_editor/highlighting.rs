@@ -67,7 +67,7 @@ impl UiSpriteMapEditor {
 
     pub(super) fn highlight_selected_tiles(&mut self, ui: &mut Ui, canvas_pos: OnScreen<Pos2>) {
         let selection_offset = self.selection_offset.take().unwrap_or_default();
-        for tile in self.selected_sprite_tile_indices.iter().map(|&idx| self.sprite_tiles.read(|tiles| tiles.0[idx])) {
+        for tile in self.selected_sprite_tile_indices.iter().map(|&idx| self.sprite_tiles.read(|tiles| tiles[idx])) {
             self.highlight_tile_at(
                 ui,
                 canvas_pos + selection_offset + tile.pos().to_screen(self.pixels_per_point, self.zoom).to_vec2(),

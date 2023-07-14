@@ -12,6 +12,7 @@ use std::{
 
 use egui::*;
 use glow::Context;
+use shrinkwraprs::Shrinkwrap;
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
 use smwe_math::coordinates::*;
 use smwe_render::{
@@ -26,7 +27,8 @@ use crate::{
     undo::{Undo, UndoableData},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Shrinkwrap)]
+#[shrinkwrap(mutable)]
 pub struct SpriteTiles(pub Vec<Tile>);
 
 pub struct UiSpriteMapEditor {
