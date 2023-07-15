@@ -13,7 +13,7 @@ use smwe_widgets::{
     vram_view::*,
 };
 
-use super::UiSpriteMapEditor;
+use super::super::UiSpriteMapEditor;
 use crate::ui::editing_mode::*;
 
 impl UiSpriteMapEditor {
@@ -84,7 +84,7 @@ impl UiSpriteMapEditor {
     }
 
     pub(super) fn editing_mode_selector(&mut self, ui: &mut Ui) {
-        use super::keyboard_shortcuts::{
+        use super::super::keyboard_shortcuts::{
             SHORTCUT_MODE_ERASE,
             SHORTCUT_MODE_FLIP_HORIZONTALLY,
             SHORTCUT_MODE_FLIP_VERTICALLY,

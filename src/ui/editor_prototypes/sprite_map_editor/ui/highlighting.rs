@@ -2,7 +2,7 @@ use egui::*;
 use smwe_math::coordinates::*;
 use smwe_widgets::vram_view::VramSelectionMode;
 
-use super::UiSpriteMapEditor;
+use super::super::UiSpriteMapEditor;
 use crate::ui::{
     editing_mode::*,
     style::{CellSelectorStyle, EditorStyle},
@@ -17,7 +17,7 @@ impl UiSpriteMapEditor {
             EditingMode::Move(_) | EditingMode::FlipHorizontally | EditingMode::FlipVertically => {
                 if self.any_selected_tile_contains_point(pointer_pos_canvas) {
                     self.hovering_selected_tile = true;
-                } else if let Some(hovered_tile) = self.find_tile_containing_point(pointer_pos_canvas) {
+                } else if let Some((_, hovered_tile)) = self.find_tile_containing_point(pointer_pos_canvas) {
                     let tile_pos_in_canvas = hovered_tile.pos().to_screen(self.pixels_per_point, self.zoom);
                     let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(
@@ -45,7 +45,7 @@ impl UiSpriteMapEditor {
                 }
             }
             EditingMode::Erase => {
-                if let Some(hovered_tile) = self.find_tile_containing_point(pointer_pos_canvas) {
+                if let Some((_, hovered_tile)) = self.find_tile_containing_point(pointer_pos_canvas) {
                     let tile_pos_in_canvas = hovered_tile.pos().to_screen(self.pixels_per_point, self.zoom);
                     let exact_tile_pos = canvas_left_top + tile_pos_in_canvas.to_vec2();
                     self.highlight_tile_at(

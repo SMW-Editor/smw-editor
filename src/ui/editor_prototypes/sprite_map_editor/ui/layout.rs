@@ -1,6 +1,7 @@
 use egui::*;
 
-use crate::ui::{editor_prototypes::sprite_map_editor::UiSpriteMapEditor, tool::DockableEditorTool};
+use super::super::UiSpriteMapEditor;
+use crate::ui::tool::DockableEditorTool;
 
 impl DockableEditorTool for UiSpriteMapEditor {
     fn update(&mut self, ui: &mut Ui) {

@@ -1,9 +1,7 @@
-mod components;
-mod editing;
-mod highlighting;
 mod internals;
 mod keyboard_shortcuts;
-mod layout;
+mod sprite_tiles;
+mod ui;
 
 use std::{
     collections::HashSet,
@@ -12,7 +10,6 @@ use std::{
 
 use egui::*;
 use glow::Context;
-use shrinkwraprs::Shrinkwrap;
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
 use smwe_math::coordinates::*;
 use smwe_render::{
@@ -23,13 +20,9 @@ use smwe_render::{
 use smwe_widgets::vram_view::{VramSelectionMode, VramView};
 
 use crate::{
-    ui::editing_mode::EditingMode,
-    undo::{Undo, UndoableData},
+    ui::{editing_mode::EditingMode, editor_prototypes::sprite_map_editor::sprite_tiles::SpriteTiles},
+    undo::UndoableData,
 };
-
-#[derive(Clone, Debug, Shrinkwrap)]
-#[shrinkwrap(mutable)]
-pub struct SpriteTiles(pub Vec<Tile>);
 
 pub struct UiSpriteMapEditor {
     gl:               Arc<Context>,
@@ -61,25 +54,6 @@ pub struct UiSpriteMapEditor {
     selected_palette:             u32,
     sprite_tiles:                 UndoableData<SpriteTiles>,
     selected_sprite_tile_indices: HashSet<usize>,
-}
-
-impl Undo for SpriteTiles {
-    fn from_bytes(bytes: Vec<u8>) -> Self {
-        let tiles = bytes
-            .chunks(16)
-            .map(|chunk| chunk.try_into().expect("Length of bytes list not divisible by 16"))
-            .map(Tile::from_le_bytes)
-            .collect();
-        Self(tiles)
-    }
-
-    fn to_bytes(&self) -> Vec<u8> {
-        self.0.iter().flat_map(|tile| tile.0.into_iter().flat_map(|x| x.to_le_bytes())).collect()
-    }
-
-    fn size_bytes(&self) -> usize {
-        self.0.len() * std::mem::size_of::<Tile>()
-    }
 }
 
 impl UiSpriteMapEditor {
