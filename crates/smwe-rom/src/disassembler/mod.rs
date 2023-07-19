@@ -505,7 +505,7 @@ impl RomAssemblyWalker {
                                 .map(|&a| AddrPc::try_from(a).unwrap())
                                 .filter(|&a| sub.analysed_blocks.insert(a))
                                 .collect_vec();
-                            sub.remaining_blocks.extend(pending_blocks.into_iter());
+                            sub.remaining_blocks.extend(pending_blocks);
                         }
                     }
 

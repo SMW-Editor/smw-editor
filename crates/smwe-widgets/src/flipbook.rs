@@ -110,7 +110,7 @@ impl<'a> Widget for Flipbook<'a> {
 
 // UI
 impl<'a> Flipbook<'a> {
-    pub fn to_shape(self, ui: &mut Ui, rect: Rect) -> Shape {
+    pub fn to_shape(self, ui: &Ui, rect: Rect) -> Shape {
         let Self { animation, duration, size: _, looped, reverse } = self;
         let reset_anim = || ui.ctx().animate_value_with_time(animation.id, if reverse { 1.0 } else { 0.0 }, 0.0);
 

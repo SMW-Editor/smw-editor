@@ -1,4 +1,4 @@
-use std::{cell::RefCell, path::Path, sync::Arc};
+use std::{cell::RefCell, path::Path, rc::Rc, sync::Arc};
 
 use egui::Id;
 use smwe_emu::rom::Rom;
@@ -9,7 +9,7 @@ pub struct Project {
     pub rom:   Arc<Rom>,
 }
 
-pub type ProjectRef = Arc<RefCell<Project>>;
+pub type ProjectRef = Rc<RefCell<Project>>;
 
 impl Project {
     pub fn new(rom_path: impl AsRef<Path>) -> anyhow::Result<Self> {

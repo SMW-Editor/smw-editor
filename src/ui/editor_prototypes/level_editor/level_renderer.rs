@@ -159,7 +159,7 @@ impl LevelRenderer {
             } else {
                 cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_bank
             };
-            for (tile_id, (off_x, off_y)) in (0..4).zip([(0, 0), (0, 8), (8, 0), (8, 8)].into_iter()) {
+            for (tile_id, (off_x, off_y)) in (0..4).zip([(0, 0), (0, 8), (8, 0), (8, 8)]) {
                 let tile_id = cpu.mem.load_u16(block_ptr + tile_id * 2);
                 tiles.push(bg_tile(block_x + off_x, block_y + off_y, tile_id));
             }

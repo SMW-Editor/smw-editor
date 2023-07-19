@@ -25,7 +25,7 @@ pub(super) const SHORTCUT_MODE_FLIP_HORIZONTALLY: KeyboardShortcut = KeyboardSho
 pub(super) const SHORTCUT_MODE_FLIP_VERTICALLY: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::Num6);
 
 impl UiSpriteMapEditor {
-    pub(super) fn handle_input(&mut self, ui: &mut Ui) {
+    pub(super) fn handle_input(&mut self, ui: &Ui) {
         self.kb_shortcut_undo(ui);
         self.kb_shortcut_redo(ui);
         self.kb_shortcut_select_all(ui);
@@ -38,37 +38,37 @@ impl UiSpriteMapEditor {
         self.handle_zoom(ui);
     }
 
-    fn kb_shortcut_undo(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_undo(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_UNDO)) {
             self.handle_undo();
         }
     }
 
-    fn kb_shortcut_redo(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_redo(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_REDO)) {
             self.handle_redo();
         }
     }
 
-    fn kb_shortcut_select_all(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_select_all(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_SELECT_ALL)) {
             self.mark_tiles_as_selected(0..self.sprite_tiles.read(|tiles| tiles.len()));
         }
     }
 
-    fn kb_shortcut_unselect_all(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_unselect_all(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_UNSELECT_ALL)) {
             self.unselect_all_tiles();
         }
     }
 
-    fn kb_shortcut_delete_selected(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_delete_selected(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.consume_shortcut(&SHORTCUT_DELETE_SELECTED)) {
             self.delete_selected_tiles();
         }
     }
 
-    fn kb_shortcut_move_selection(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_move_selection(&mut self, ui: &Ui) {
         let move_distance = if ui.input(|input| input.modifiers.shift_only()) { self.tile_size_px } else { 1. };
         duplicate! {
             [
@@ -87,7 +87,7 @@ impl UiSpriteMapEditor {
         }
     }
 
-    fn handle_zoom(&mut self, ui: &mut Ui) {
+    fn handle_zoom(&mut self, ui: &Ui) {
         if ui.input_mut(|input| input.zoom_delta() > 1. || input.consume_shortcut(&SHORTCUT_ZOOM_IN)) {
             self.zoom = 4.0f32.min(self.zoom + 0.25);
         } else if ui.input_mut(|input| input.zoom_delta() < 1. || input.consume_shortcut(&SHORTCUT_ZOOM_OUT)) {
@@ -95,20 +95,20 @@ impl UiSpriteMapEditor {
         }
     }
 
-    fn kb_shortcut_copy(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_copy(&mut self, ui: &Ui) {
         if ui.input(|input| input.events.contains(&Event::Copy)) {
             ui.output_mut(|output| self.copy_selected_tiles(output));
         }
     }
 
-    fn kb_shortcut_cut(&mut self, ui: &mut Ui) {
+    fn kb_shortcut_cut(&mut self, ui: &Ui) {
         if ui.input(|input| input.events.contains(&Event::Cut)) {
             ui.output_mut(|output| self.copy_selected_tiles(output));
             self.delete_selected_tiles();
         }
     }
 
-    pub(super) fn kb_shortcut_paste(&mut self, ui: &mut Ui, canvas_top_left: OnScreen<Pos2>) {
+    pub(super) fn kb_shortcut_paste(&mut self, ui: &Ui, canvas_top_left: OnScreen<Pos2>) {
         ui.input(|input| {
             for event in input.events.iter() {
                 if let Event::Paste(pasted_text) = event {
@@ -126,7 +126,7 @@ impl UiSpriteMapEditor {
         });
     }
 
-    fn kb_shortcuts_tools(&mut self, ui: &mut Ui) {
+    fn kb_shortcuts_tools(&mut self, ui: &Ui) {
         let modes = [
             (&SHORTCUT_MODE_INSERT, EditingMode::Move(None)),
             (&SHORTCUT_MODE_SELECT, EditingMode::Select),

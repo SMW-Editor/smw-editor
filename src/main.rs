@@ -1,4 +1,4 @@
-use std::{cell::RefCell, env, sync::Arc};
+use std::{cell::RefCell, env, rc::Rc};
 
 use eframe::{NativeOptions, Renderer};
 use egui::vec2;
@@ -33,5 +33,5 @@ fn dev_open_rom() -> Option<ProjectRef> {
         })
         .ok()?;
 
-    Some(Arc::new(RefCell::new(project)))
+    Some(Rc::new(RefCell::new(project)))
 }

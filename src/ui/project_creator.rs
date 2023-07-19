@@ -35,7 +35,7 @@ impl Default for UiProjectCreator {
 }
 
 impl UiProjectCreator {
-    pub fn update(&mut self, ui: &mut Ui) -> bool {
+    pub fn update(&mut self, ui: &Ui) -> bool {
         let mut opened = true;
         let mut created_or_cancelled = false;
 
@@ -126,7 +126,7 @@ impl UiProjectCreator {
         }
     }
 
-    fn handle_project_creation(&mut self, ui: &mut Ui, created_or_cancelled: &mut bool) {
+    fn handle_project_creation(&mut self, ui: &Ui, created_or_cancelled: &mut bool) {
         match Project::new(&self.base_rom_path) {
             Ok(project) => {
                 log::info!("Success creating a new project");

@@ -217,7 +217,7 @@ impl RomInternalHeader {
                     .with_error_mapper(InternalHeaderParseError::ReadEmulationModeInterruptVectors)
                     .slice_pc(vectors_slice.skip_forward(1).offset_forward(4))
                     .parse(&mut parse_vectors)?;
-                native.into_iter().chain(emulation.into_iter()).collect()
+                native.into_iter().chain(emulation).collect()
             },
         })
     }

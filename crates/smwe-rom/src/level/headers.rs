@@ -110,7 +110,7 @@ impl SecondaryHeader {
     pub fn read_from_rom(disasm: &mut RomDisassembly, level_num: u32) -> Result<Self, RomError> {
         let mut bytes = [0; 4];
         let byte_table_addrs = [0x05F000, 0x05F200, 0x05F400, 0x05F600];
-        for (byte, addr) in bytes.iter_mut().zip(byte_table_addrs.into_iter()) {
+        for (byte, addr) in bytes.iter_mut().zip(byte_table_addrs) {
             let data_block = DataBlock {
                 slice: SnesSlice::new(AddrSnes(addr), 0x200),
                 kind:  DataKind::LevelHeaderSecondaryByteTable,
