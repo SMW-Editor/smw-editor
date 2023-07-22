@@ -2,7 +2,7 @@ use egui::*;
 use smwe_math::coordinates::*;
 use smwe_widgets::vram_view::VramSelectionMode;
 
-use super::super::UiSpriteMapEditor;
+use super::UiSpriteMapEditor;
 use crate::ui::{
     editing_mode::*,
     style::{CellSelectorStyle, EditorStyle},

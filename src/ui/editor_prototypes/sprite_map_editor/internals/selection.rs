@@ -9,6 +9,10 @@ use smwe_math::coordinates::OnCanvas;
 use super::super::UiSpriteMapEditor;
 
 impl UiSpriteMapEditor {
+    pub(in super::super) fn select_all_tiles(&mut self) {
+        self.mark_tiles_as_selected(0..self.sprite_tiles.read(|tiles| tiles.len()));
+    }
+
     pub(in super::super) fn unselect_all_tiles(&mut self) {
         self.selected_sprite_tile_indices.clear();
         self.selection_bounds = None;

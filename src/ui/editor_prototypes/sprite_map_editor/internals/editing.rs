@@ -1,4 +1,4 @@
-use egui::{Pos2, Vec2};
+use egui::{PlatformOutput, Pos2, Vec2};
 use smwe_math::coordinates::*;
 use smwe_widgets::vram_view::VramSelectionMode;
 
@@ -18,6 +18,15 @@ impl UiSpriteMapEditor {
         self.selected_sprite_tile_indices.clear();
         self.compute_selection_bounds();
         self.upload_tiles();
+    }
+
+    pub(in super::super) fn handle_copy(&mut self, output: &mut PlatformOutput) {
+        self.copy_selected_tiles(output);
+    }
+
+    pub(in super::super) fn handle_cut(&mut self, output: &mut PlatformOutput) {
+        self.handle_copy(output);
+        self.delete_selected_tiles();
     }
 
     pub(in super::super) fn handle_edition_insert(&mut self, grid_cell_pos: OnCanvas<Pos2>) {
@@ -49,7 +58,7 @@ impl UiSpriteMapEditor {
                 self.select_tile_at(OnScreen(pos.to_pos2()), clear_previous_selection);
             }
             Selection::Drag(Some(selection_rect)) => {
-                self.select_tiles_in(
+                self.select_tiles_inside(
                     OnScreen(selection_rect.0.translate(-canvas_top_left_pos.0.to_vec2())),
                     clear_previous_selection,
                 );

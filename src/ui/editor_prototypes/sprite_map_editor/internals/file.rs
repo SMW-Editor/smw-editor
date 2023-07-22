@@ -12,6 +12,18 @@ impl UiSpriteMapEditor {
         self.upload_tiles();
     }
 
+    pub(in super::super) fn open_map_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new().pick_file() {
+            self.open_map(path);
+        }
+    }
+
+    pub(in super::super) fn save_map_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new().save_file() {
+            self.save_map(path);
+        }
+    }
+
     pub(in super::super) fn open_map(&mut self, path: PathBuf) {
         match std::fs::read_to_string(path) {
             Err(e) => {
@@ -43,7 +55,7 @@ impl UiSpriteMapEditor {
         }
     }
 
-    pub(in super::super) fn save_map_as(&mut self, path: PathBuf) {
+    pub(in super::super) fn save_map(&mut self, path: PathBuf) {
         let tiles = self.sprite_tiles.read(|tiles| tiles.iter().map(|&t| TileJson::from(t)).collect_vec());
         match serde_json::to_string_pretty(&tiles) {
             Err(e) => {

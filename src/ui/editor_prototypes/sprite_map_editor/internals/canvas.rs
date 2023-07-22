@@ -12,6 +12,15 @@ impl UiSpriteMapEditor {
         OnGrid::splat(32.).to_screen(self.pixels_per_point, self.zoom, self.tile_size_px)
     }
 
+    pub(in super::super) fn any_selected_tile_contains_point(&self, point: OnCanvas<Pos2>) -> bool {
+        self.sprite_tiles
+            .read(|tiles| self.selected_sprite_tile_indices.iter().copied().any(|i| tiles[i].contains_point(point)))
+    }
+
+    pub(in super::super) fn find_tile_containing_point(&self, point: OnCanvas<Pos2>) -> Option<(usize, Tile)> {
+        self.sprite_tiles.read(|tiles| tiles.iter().copied().enumerate().find(|(_, tile)| tile.contains_point(point)))
+    }
+
     pub(in super::super) fn select_tile_at(&mut self, pos: OnScreen<Pos2>, clear_previous_selection: bool) {
         if clear_previous_selection {
             self.unselect_all_tiles();
@@ -24,7 +33,7 @@ impl UiSpriteMapEditor {
         self.compute_selection_bounds();
     }
 
-    pub(in super::super) fn select_tiles_in(&mut self, rect: OnScreen<Rect>, clear_previous_selection: bool) {
+    pub(in super::super) fn select_tiles_inside(&mut self, rect: OnScreen<Rect>, clear_previous_selection: bool) {
         if clear_previous_selection {
             self.unselect_all_tiles();
         }
@@ -39,15 +48,6 @@ impl UiSpriteMapEditor {
                 .collect_vec()
         });
         self.mark_tiles_as_selected(indices);
-    }
-
-    pub(in super::super) fn any_selected_tile_contains_point(&self, point: OnCanvas<Pos2>) -> bool {
-        self.sprite_tiles
-            .read(|tiles| self.selected_sprite_tile_indices.iter().copied().any(|i| tiles[i].contains_point(point)))
-    }
-
-    pub(in super::super) fn find_tile_containing_point(&self, point: OnCanvas<Pos2>) -> Option<(usize, Tile)> {
-        self.sprite_tiles.read(|tiles| tiles.iter().copied().enumerate().find(|(_, tile)| tile.contains_point(point)))
     }
 
     pub(in super::super) fn move_selected_tiles_by(
@@ -110,7 +110,7 @@ impl UiSpriteMapEditor {
             serde_json::to_string(&selected_tiles).expect("Failed to serialize selected tiles");
     }
 
-    pub(in super::super) fn paste_tiles_at(&mut self, tiles: Vec<TileJson>, paste_offset: OnCanvas<Vec2>) {
+    pub(in super::super) fn paste_tiles_to(&mut self, tiles: Vec<TileJson>, paste_offset: OnCanvas<Vec2>) {
         self.unselect_all_tiles();
 
         let tiles = tiles

@@ -1,7 +1,10 @@
+mod central_panel;
+mod highlighting;
 mod internals;
 mod keyboard_shortcuts;
+mod left_panel;
+mod menu_bar;
 mod sprite_tiles;
-mod ui;
 
 use std::{
     collections::HashSet,
@@ -18,20 +21,22 @@ use smwe_render::{
     tile_renderer::{Tile, TileRenderer},
 };
 use smwe_widgets::vram_view::{VramSelectionMode, VramView};
+use sprite_tiles::SpriteTiles;
 
 use crate::{
-    ui::{editing_mode::EditingMode, editor_prototypes::sprite_map_editor::sprite_tiles::SpriteTiles},
+    ui::{editing_mode::EditingMode, tool::DockableEditorTool},
     undo::UndoableData,
 };
 
 pub struct UiSpriteMapEditor {
-    gl:               Arc<Context>,
-    cpu:              Cpu,
-    tile_palette:     Vec<Tile>,
-    vram_renderer:    Arc<Mutex<TileRenderer>>,
-    sprite_renderer:  Arc<Mutex<TileRenderer>>,
-    palette_renderer: Arc<Mutex<PaletteRenderer>>,
-    gfx_bufs:         GfxBuffers,
+    gl:                Arc<Context>,
+    cpu:               Cpu,
+    tile_palette:      Vec<Tile>,
+    vram_renderer:     Arc<Mutex<TileRenderer>>,
+    sprite_renderer:   Arc<Mutex<TileRenderer>>,
+    palette_renderer:  Arc<Mutex<PaletteRenderer>>,
+    gfx_bufs:          GfxBuffers,
+    state_needs_reset: bool,
 
     level_num:           u16,
     vram_selection_mode: VramSelectionMode,
@@ -41,7 +46,6 @@ pub struct UiSpriteMapEditor {
     #[cfg(debug_assertions)]
     debug_selection_bounds: bool,
 
-    initialized:            bool,
     tile_size_px:           f32,
     zoom:                   f32,
     pixels_per_point:       f32,
@@ -70,6 +74,7 @@ impl UiSpriteMapEditor {
             sprite_renderer: Arc::new(Mutex::new(sprite_renderer)),
             palette_renderer: Arc::new(Mutex::new(palette_renderer)),
             gfx_bufs,
+            state_needs_reset: true,
 
             level_num: 0,
             vram_selection_mode: VramSelectionMode::SingleTile,
@@ -79,7 +84,6 @@ impl UiSpriteMapEditor {
             #[cfg(debug_assertions)]
             debug_selection_bounds: false,
 
-            initialized: false,
             tile_size_px: 8.,
             zoom: 3.,
             pixels_per_point: 0.,
@@ -99,5 +103,34 @@ impl UiSpriteMapEditor {
         self.vram_renderer.lock().expect("Cannot lock mutex on VRAM renderer").destroy(&self.gl);
         self.sprite_renderer.lock().expect("Cannot lock mutex on sprite renderer").destroy(&self.gl);
         self.palette_renderer.lock().expect("Cannot lock mutex on palette renderer").destroy(&self.gl);
+    }
+}
+
+impl DockableEditorTool for UiSpriteMapEditor {
+    fn update(&mut self, ui: &mut Ui) {
+        self.reset_state(ui.ctx());
+        self.handle_input(ui);
+        self.layout(ui);
+    }
+
+    fn title(&self) -> WidgetText {
+        "Sprite Tile Editor".into()
+    }
+
+    fn on_closed(&mut self) {
+        self.destroy();
+    }
+}
+
+impl UiSpriteMapEditor {
+    const MAX_ZOOM: f32 = 5.0;
+    const MIN_ZOOM: f32 = 1.0;
+
+    pub(super) fn layout(&mut self, ui: &mut Ui) {
+        TopBottomPanel::top("sprite_map_editor.top_panel").show_inside(ui, |ui| {
+            menu::bar(ui, |ui| self.menu_bar(ui));
+        });
+        SidePanel::left("sprite_map_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
+        CentralPanel::default().show_inside(ui, |ui| self.central_panel(ui));
     }
 }

@@ -1,7 +1,13 @@
 use egui::{Key::*, KeyboardShortcut as Shortcut, Modifiers};
 
+pub(in super::super) const SHORTCUT_NEW: Shortcut = Shortcut::new(Modifiers::COMMAND, N);
+pub(in super::super) const SHORTCUT_SAVE: Shortcut = Shortcut::new(Modifiers::COMMAND, S);
+pub(in super::super) const SHORTCUT_OPEN: Shortcut = Shortcut::new(Modifiers::COMMAND, O);
+
 pub(in super::super) const SHORTCUT_UNDO: Shortcut = Shortcut::new(Modifiers::COMMAND, Z);
 pub(in super::super) const SHORTCUT_REDO: Shortcut = Shortcut::new(Modifiers::COMMAND, Y);
+pub(in super::super) const SHORTCUT_COPY: Shortcut = Shortcut::new(Modifiers::COMMAND, C);
+pub(in super::super) const SHORTCUT_CUT: Shortcut = Shortcut::new(Modifiers::COMMAND, X);
 
 pub(in super::super) const SHORTCUT_SELECT_ALL: Shortcut = Shortcut::new(Modifiers::COMMAND, A);
 pub(in super::super) const SHORTCUT_UNSELECT_ALL: Shortcut = Shortcut::new(Modifiers::NONE, Escape);
