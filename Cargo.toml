@@ -36,7 +36,7 @@ egui = { version = "0.22", features = ["serde"] }
 egui_dock = "0.6"
 egui_extras = "0.22"
 egui_glow = "0.22"
-egui-phosphor = "0.1"
+egui-phosphor = "0.2"
 glow = "0.12"
 inline_tweak = "1.0"
 itertools = "0.11"

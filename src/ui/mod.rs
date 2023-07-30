@@ -11,6 +11,7 @@ use std::sync::Arc;
 use eframe::{CreationContext, Frame};
 use egui::*;
 use egui_dock::{DockArea, Style as DockStyle, Tree};
+use egui_phosphor::Variant;
 use smwe_emu::rom::Rom;
 
 use crate::{
@@ -39,7 +40,7 @@ pub struct UiMainWindow {
 impl UiMainWindow {
     pub fn new(project: Option<ProjectRef>, cc: &CreationContext) -> Self {
         let mut fonts = FontDefinitions::default();
-        egui_phosphor::add_to_fonts(&mut fonts);
+        egui_phosphor::add_to_fonts(&mut fonts, Variant::Regular);
         cc.egui_ctx.set_fonts(fonts);
         cc.egui_ctx.set_visuals(Visuals::dark());
 

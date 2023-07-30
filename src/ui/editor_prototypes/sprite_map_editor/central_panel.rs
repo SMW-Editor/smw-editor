@@ -3,7 +3,7 @@ use std::sync::Arc;
 use duplicate::duplicate;
 use egui::*;
 use egui_glow::CallbackFn;
-use egui_phosphor as icons;
+use egui_phosphor::regular as icons;
 use inline_tweak::tweak;
 use smwe_math::coordinates::*;
 use smwe_render::tile_renderer::TileUniforms;
@@ -21,6 +21,28 @@ impl UiSpriteMapEditor {
         });
         ui.add_space(ui.spacing().item_spacing.y);
         self.editing_area(ui);
+    }
+
+    pub(super) fn editor_toolbar_menu(&mut self, ui: &mut Ui) {
+        let level_switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::LeftRight)
+            .range(0..=0x1FF)
+            .hexadecimal(3, false, true);
+        if ui.add(level_switcher).changed() {
+            self.update_cpu();
+            self.update_renderers();
+        }
+        ui.separator();
+
+        self.editing_mode_selector(ui);
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            let zoom_slider = Slider::new(&mut self.zoom, Self::MIN_ZOOM..=Self::MAX_ZOOM).step_by(0.25).suffix("x");
+            ui.label(icons::MAGNIFYING_GLASS_PLUS);
+            ui.add(zoom_slider);
+        });
+
+        ui.add_space(ui.available_width());
     }
 
     pub(super) fn editing_mode_selector(&mut self, ui: &mut Ui) {
@@ -92,28 +114,6 @@ impl UiSpriteMapEditor {
                 }
             }
         });
-    }
-
-    pub(super) fn editor_toolbar_menu(&mut self, ui: &mut Ui) {
-        let level_switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::LeftRight)
-            .range(0..=0x1FF)
-            .hexadecimal(3, false, true);
-        if ui.add(level_switcher).changed() {
-            self.update_cpu();
-            self.update_renderers();
-        }
-        ui.separator();
-
-        self.editing_mode_selector(ui);
-        ui.separator();
-
-        ui.horizontal(|ui| {
-            let zoom_slider = Slider::new(&mut self.zoom, Self::MIN_ZOOM..=Self::MAX_ZOOM).step_by(0.25).suffix("x");
-            ui.add(zoom_slider);
-            ui.label(icons::MAGNIFYING_GLASS_PLUS);
-        });
-
-        ui.add_space(ui.available_width());
     }
 
     pub(super) fn editing_area(&mut self, ui: &mut Ui) {
