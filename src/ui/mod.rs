@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use eframe::{CreationContext, Frame};
 use egui::*;
-use egui_dock::{DockArea, Style as DockStyle, Tree};
+use egui_dock::{DockArea, DockState, Style as DockStyle};
 use egui_phosphor::Variant;
 use smwe_emu::rom::Rom;
 
@@ -29,11 +29,10 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
 pub struct UiMainWindow {
     gl:                 Arc<glow::Context>,
     project_creator:    Option<UiProjectCreator>,
-    dock_tree:          Tree<Box<dyn DockableEditorTool>>,
+    dock_state:         DockState<Box<dyn DockableEditorTool>>,
     last_open_tool_idx: usize,
 }
 
@@ -55,7 +54,7 @@ impl UiMainWindow {
         Self {
             gl:                 Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
             project_creator:    None,
-            dock_tree:          Tree::default(),
+            dock_state:         DockState::new(vec![]),
             last_open_tool_idx: 0,
         }
     }
@@ -66,9 +65,8 @@ impl eframe::App for UiMainWindow {
         CentralPanel::default().show(ctx, |ui| {
             self.main_menu_bar(ctx, frame);
 
-            DockArea::new(&mut self.dock_tree)
+            DockArea::new(&mut self.dock_state)
                 .style(DockStyle::from_egui(&ctx.style()))
-                .scroll_area_in_tabs(false)
                 .show(ctx, &mut EditorToolTabViewer);
 
             if let Some(project_creator) = &mut self.project_creator {
@@ -87,7 +85,7 @@ impl UiMainWindow {
     {
         if self.last_open_tool_idx < usize::MAX {
             log::info!("Opened {}", tool.title().text());
-            self.dock_tree.push_to_focused_leaf(Box::new(tool));
+            self.dock_state.push_to_focused_leaf(Box::new(tool));
             self.last_open_tool_idx += 1;
         }
     }

@@ -29,7 +29,7 @@ impl UiSpriteMapEditor {
             Err(e) => {
                 MessageDialog::new()
                     .set_title("Failed to open selected file.")
-                    .set_description(&format!("{e:?}"))
+                    .set_description(format!("{e:?}"))
                     .set_level(MessageLevel::Error)
                     .set_buttons(MessageButtons::Ok)
                     .show();
@@ -38,7 +38,7 @@ impl UiSpriteMapEditor {
                 Err(e) => {
                     MessageDialog::new()
                         .set_title("Failed to deserialize sprite tile map from JSON.")
-                        .set_description(&format!("{e:?}"))
+                        .set_description(format!("{e:?}"))
                         .set_level(MessageLevel::Error)
                         .set_buttons(MessageButtons::Ok)
                         .show();
@@ -61,7 +61,7 @@ impl UiSpriteMapEditor {
             Err(e) => {
                 MessageDialog::new()
                     .set_title("Failed to serialize sprite tile map into JSON.")
-                    .set_description(&format!("{e:?}"))
+                    .set_description(format!("{e:?}"))
                     .set_level(MessageLevel::Error)
                     .set_buttons(MessageButtons::Ok)
                     .show();
@@ -70,7 +70,7 @@ impl UiSpriteMapEditor {
                 if let Err(e) = std::fs::write(path, s) {
                     MessageDialog::new()
                         .set_title("Save sprite tile map to selected file.")
-                        .set_description(&format!("{e:?}"))
+                        .set_description(format!("{e:?}"))
                         .set_level(MessageLevel::Error)
                         .set_buttons(MessageButtons::Ok)
                         .show();

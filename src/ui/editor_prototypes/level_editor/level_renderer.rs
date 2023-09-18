@@ -151,10 +151,10 @@ impl LevelRenderer {
                 let (row, column) = (sidx / 16, sidx % 16);
                 (column * 16 + screen * 256, row * 16)
             };
-            let idx = if bg & !has_layer2 { idx % (16 * 27 * 2) } else { idx };
+            let idx = if bg && !has_layer2 { idx % (16 * 27 * 2) } else { idx };
             let block_id =
                 cpu.mem.load_u8(blocks_lo_addr + idx) as u16 | ((cpu.mem.load_u8(blocks_hi_addr + idx) as u16) << 8);
-            let block_ptr = if bg & !has_layer2 {
+            let block_ptr = if bg && !has_layer2 {
                 block_id as u32 * 8 + map16_bg
             } else {
                 cpu.mem.load_u16(0x0FBE + block_id as u32 * 2) as u32 + map16_bank

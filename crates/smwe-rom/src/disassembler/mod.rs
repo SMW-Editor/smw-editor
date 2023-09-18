@@ -139,7 +139,7 @@ impl RomDisassembly {
                             None
                         }
                     })
-                    .unwrap_or(Vec::new())
+                    .unwrap_or_default()
             },
         }
     }

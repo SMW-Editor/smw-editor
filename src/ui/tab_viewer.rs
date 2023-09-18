@@ -21,4 +21,8 @@ impl TabViewer for EditorToolTabViewer {
         log::info!("Closed {}", tab.title().text());
         true
     }
+
+    fn scroll_bars(&self, _tab: &Self::Tab) -> [bool; 2] {
+        [false, false]
+    }
 }
