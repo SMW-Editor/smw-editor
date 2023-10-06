@@ -1,4 +1,4 @@
-use egui::{PlatformOutput, Pos2, Rect, Vec2};
+use egui::{PlatformOutput, Pos2, Rangef, Rect, Vec2};
 use itertools::Itertools;
 use num::Integer;
 use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};
@@ -156,8 +156,8 @@ impl UiSpriteMapEditor {
 
     pub(in super::super) fn flip_selected_tiles(&mut self, flip_direction: FlipDirection) {
         let selection_bounds = self.selection_bounds.expect("unset even though some tiles are selected");
-        let (x_min, x_max) = selection_bounds.x_range().into_inner();
-        let (y_min, y_max) = selection_bounds.y_range().into_inner();
+        let Rangef { min: x_min, max: x_max } = selection_bounds.x_range();
+        let Rangef { min: y_min, max: y_max } = selection_bounds.y_range();
         self.sprite_tiles.write(|tiles| {
             for &i in self.selected_sprite_tile_indices.iter() {
                 let tile = &mut tiles[i];

@@ -4,7 +4,6 @@ pub mod vec2;
 
 use std::ops::*;
 
-use emath::{Pos2, Rect, Rot2, Vec2};
 use shrinkwraprs::Shrinkwrap;
 use wrapped_pos2_derive::WrappedPos2;
 use wrapped_rect_derive::WrappedRect;

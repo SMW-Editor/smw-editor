@@ -11,16 +11,16 @@ fn impl_wrapped_pos2(ast: &syn::DeriveInput) -> TokenStream {
     let wrapper_name = &ast.ident;
 
     let gen = quote! {
-        impl #wrapper_name<Pos2> {
+        impl #wrapper_name<emath::Pos2> {
             pub const ZERO: Self = Self::new(0., 0.);
 
             #[inline(always)]
             pub const fn new(x: f32, y: f32) -> Self {
-                Self(Pos2::new(x, y))
+                Self(emath::Pos2::new(x, y))
             }
 
             #[inline(always)]
-            pub fn to_vec2(self) -> #wrapper_name<Vec2> {
+            pub fn to_vec2(self) -> #wrapper_name<emath::Vec2> {
                 #wrapper_name(self.0.to_vec2())
             }
 
@@ -77,38 +77,38 @@ fn impl_wrapped_pos2(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
-        impl Sub for #wrapper_name<Pos2> {
-            type Output = #wrapper_name<Vec2>;
+        impl Sub for #wrapper_name<emath::Pos2> {
+            type Output = #wrapper_name<emath::Vec2>;
 
             fn sub(self, rhs: Self) -> Self::Output {
                 #wrapper_name(self.0.sub(rhs.0))
             }
         }
 
-        impl AddAssign<#wrapper_name<Vec2>> for #wrapper_name<Pos2> {
-            fn add_assign(&mut self, rhs: #wrapper_name<Vec2>) {
+        impl AddAssign<#wrapper_name<emath::Vec2>> for #wrapper_name<emath::Pos2> {
+            fn add_assign(&mut self, rhs: #wrapper_name<emath::Vec2>) {
                 self.0.add_assign(rhs.0);
             }
         }
 
-        impl SubAssign<#wrapper_name<Vec2>> for #wrapper_name<Pos2> {
-            fn sub_assign(&mut self, rhs: #wrapper_name<Vec2>) {
+        impl SubAssign<#wrapper_name<emath::Vec2>> for #wrapper_name<emath::Pos2> {
+            fn sub_assign(&mut self, rhs: #wrapper_name<emath::Vec2>) {
                 self.0.sub_assign(rhs.0);
             }
         }
 
-        impl Add<#wrapper_name<Vec2>> for #wrapper_name<Pos2> {
+        impl Add<#wrapper_name<emath::Vec2>> for #wrapper_name<emath::Pos2> {
             type Output = Self;
 
-            fn add(self, rhs: #wrapper_name<Vec2>) -> Self::Output {
+            fn add(self, rhs: #wrapper_name<emath::Vec2>) -> Self::Output {
                 Self(self.0.add(rhs.0))
             }
         }
 
-        impl Sub<#wrapper_name<Vec2>> for #wrapper_name<Pos2> {
+        impl Sub<#wrapper_name<emath::Vec2>> for #wrapper_name<emath::Pos2> {
             type Output = Self;
 
-            fn sub(self, rhs: #wrapper_name<Vec2>) -> Self::Output {
+            fn sub(self, rhs: #wrapper_name<emath::Vec2>) -> Self::Output {
                 Self(self.0.sub(rhs.0))
             }
         }

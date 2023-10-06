@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use egui::{emath::Numeric, Button, DragValue, Response, Ui, Widget, WidgetText};
-use egui_phosphor as icons;
+use egui_phosphor::regular as icons;
 
 type NumFormatter<'a> = Box<dyn 'a + Fn(f64, RangeInclusive<usize>) -> String>;
 type NumParser<'a> = Box<dyn 'a + Fn(&str) -> Option<f64>>;

@@ -19,7 +19,7 @@ authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)", "Selicre"]
 license = "MIT"
 edition = "2021"
 readme = "README.md"
-rust-version = "1.65"
+rust-version = "1.70"
 
 [dependencies]
 smwe-emu = { path = "crates/smwe-emu" }
@@ -31,12 +31,12 @@ wdc65816 = { path = "crates/wdc65816" }
 
 anyhow = "1.0"
 duplicate = "1.0"
-eframe = "0.22"
-egui = { version = "0.22", features = ["serde"] }
-egui_dock = "0.7"
-egui_extras = "0.22"
-egui_glow = "0.22"
-egui-phosphor = "0.2"
+eframe = "0.23"
+egui = { version = "0.23", features = ["serde"] }
+egui_dock = "0.8"
+egui_extras = "0.23"
+egui_glow = "0.23"
+egui-phosphor = "0.3"
 glow = "0.12"
 inline_tweak = "1.0"
 itertools = "0.11"

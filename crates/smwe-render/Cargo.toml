@@ -1,8 +1,10 @@
 [package]
 name = "smwe-render"
-authors = ["Adam Gąsior (Adanos020)", "Selicre"]
 version = "0.1.0"
+authors = ["Adam Gąsior (Adanos020)", "Selicre"]
+license = "MIT"
 edition = "2021"
+rust-version = "1.70"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,8 +12,8 @@ edition = "2021"
 smwe-emu = { path = "../smwe-emu" }
 smwe-math = { path = "../smwe-math" }
 
-emath = "0.22"
-epaint = "0.22"
+emath = "0.23"
+epaint = "0.23"
 glow = "0.12"
 itertools = "0.11"
 log = "0.4"

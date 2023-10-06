@@ -76,7 +76,7 @@ impl Widget for PaletteView<'_> {
                     let hovered_row = (relative_pos.y / cell_width).floor().clamp(0., (row_count - 1) as f32);
                     let highlight_rect =
                         Rect::from_min_size(view_rect.min + vec2(0., hovered_row * cell_width), row_size);
-                    ui.painter().rect_filled(highlight_rect, Rounding::none(), Color32::from_white_alpha(tweak!(100)));
+                    ui.painter().rect_filled(highlight_rect, Rounding::ZERO, Color32::from_white_alpha(tweak!(100)));
 
                     if response.clicked_by(PointerButton::Primary) && *row != hovered_row as _ {
                         response.mark_changed();

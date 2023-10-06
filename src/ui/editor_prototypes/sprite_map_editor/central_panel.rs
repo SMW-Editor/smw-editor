@@ -175,7 +175,7 @@ impl UiSpriteMapEditor {
                 bounds.0.max += Vec2::splat(self.tile_size_px);
                 ui.painter().rect_stroke(
                     bounds.to_screen(self.pixels_per_point, self.zoom).0.translate(canvas_rect.left_top().to_vec2()),
-                    Rounding::none(),
+                    Rounding::ZERO,
                     Stroke::new(2., Color32::BLUE),
                 );
             }
@@ -211,7 +211,7 @@ impl UiSpriteMapEditor {
                 if let Selection::Drag(Some(selection_rect)) = selection {
                     ui.painter().rect_stroke(
                         selection_rect.0,
-                        Rounding::none(),
+                        Rounding::ZERO,
                         Stroke::new(1., ui.visuals().selection.bg_fill),
                     );
                 }
