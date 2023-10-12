@@ -1,4 +1,6 @@
 mod level_renderer;
+mod object_layer;
+mod properties;
 
 use std::sync::{Arc, Mutex};
 
@@ -8,13 +10,14 @@ use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
 use smwe_render::color::Abgr1555;
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
-use crate::ui::{editor_prototypes::level_editor::level_renderer::LevelRenderer, tool::DockableEditorTool};
+use self::{level_renderer::LevelRenderer, object_layer::EditableObjectLayer, properties::LevelProperties};
+use crate::ui::tool::DockableEditorTool;
 
 pub struct UiLevelEditor {
     gl:             Arc<glow::Context>,
     cpu:            Cpu,
     level_renderer: Arc<Mutex<LevelRenderer>>,
-    initialized:    bool,
+
     offset:         Vec2,
     level_num:      u16,
     blue_pswitch:   bool,
@@ -25,39 +28,40 @@ pub struct UiLevelEditor {
     sprite_id:      u8,
     timestamp:      std::time::Instant,
     zoom:           f32,
+    // level_properties: LevelProperties,
+    // layer1:           EditableObjectLayer,
 }
 
 impl UiLevelEditor {
     pub fn new(gl: Arc<glow::Context>, rom: Arc<Rom>) -> Self {
         let level_renderer = Arc::new(Mutex::new(LevelRenderer::new(&gl)));
-        Self {
+        let mut editor = Self {
             gl,
             cpu: Cpu::new(CheckedMem::new(rom)),
             level_renderer,
-            initialized: false,
-            level_num: 0,
+            level_num: 0x105,
             offset: Vec2::ZERO,
             blue_pswitch: false,
             silver_pswitch: false,
             on_off_switch: false,
-            run_sprites: true,
+            run_sprites: false,
             palette_line: 0,
             sprite_id: 0,
             timestamp: std::time::Instant::now(),
             zoom: 1.,
-        }
+            // level_properties: LevelProperties::default(),
+            // layer1: EditableObjectLayer::default(),
+        };
+        editor.init_cpu();
+        editor.update_cpu_sprite();
+        editor.update_renderer();
+        editor
     }
 }
 
 // UI
 impl DockableEditorTool for UiLevelEditor {
     fn update(&mut self, ui: &mut Ui) {
-        if !self.initialized {
-            self.update_cpu();
-            self.update_cpu_sprite();
-            self.update_renderer();
-            self.initialized = true;
-        }
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
         CentralPanel::default().frame(Frame::none()).show_inside(ui, |ui| self.central_panel(ui));
 
@@ -160,8 +164,16 @@ impl UiLevelEditor {
 
 // Internals
 impl UiLevelEditor {
-    fn update_cpu(&mut self) {
+    fn init_cpu(&mut self) {
         smwe_emu::emu::decompress_sublevel(&mut self.cpu, self.level_num);
+        println!("Updated CPU");
+        self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
+        // self.layer1 = EditableObjectLayer::parse_from_ram(&mut self.cpu).expect("Failed to parse objects from ExtRAM");
+        // self.level_properties = LevelProperties::parse_from_ram(&mut self.cpu);
+    }
+
+    fn update_cpu(&mut self) {
+        // smwe_emu::emu::decompress_extram(&mut self.cpu, self.level_num);
         println!("Updated CPU");
         self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
     }

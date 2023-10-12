@@ -32,6 +32,7 @@ use crate::{
 pub struct UiMainWindow {
     gl:                 Arc<glow::Context>,
     project_creator:    Option<UiProjectCreator>,
+    dock_style:         DockStyle,
     dock_state:         DockState<Box<dyn DockableEditorTool>>,
     last_open_tool_idx: usize,
 }
@@ -51,10 +52,14 @@ impl UiMainWindow {
             });
         }
 
+        let mut dock_style = DockStyle::from_egui(&cc.egui_ctx.style());
+        dock_style.tab.tab_body.inner_margin = Margin::ZERO;
+
         Self {
-            gl:                 Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
-            project_creator:    None,
-            dock_state:         DockState::new(vec![]),
+            gl: Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
+            project_creator: None,
+            dock_style,
+            dock_state: DockState::new(vec![]),
             last_open_tool_idx: 0,
         }
     }
@@ -65,9 +70,7 @@ impl eframe::App for UiMainWindow {
         CentralPanel::default().show(ctx, |ui| {
             self.main_menu_bar(ctx, frame);
 
-            DockArea::new(&mut self.dock_state)
-                .style(DockStyle::from_egui(&ctx.style()))
-                .show(ctx, &mut EditorToolTabViewer);
+            DockArea::new(&mut self.dock_state).style(self.dock_style.clone()).show(ctx, &mut EditorToolTabViewer);
 
             if let Some(project_creator) = &mut self.project_creator {
                 if !project_creator.update(ui) {

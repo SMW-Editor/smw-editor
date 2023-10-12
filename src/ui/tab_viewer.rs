@@ -8,12 +8,12 @@ pub struct EditorToolTabViewer;
 impl TabViewer for EditorToolTabViewer {
     type Tab = Box<dyn DockableEditorTool>;
 
-    fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
-        tab.update(ui);
-    }
-
     fn title(&mut self, tab: &mut Self::Tab) -> WidgetText {
         tab.title()
+    }
+
+    fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
+        tab.update(ui);
     }
 
     fn on_close(&mut self, tab: &mut Self::Tab) -> bool {

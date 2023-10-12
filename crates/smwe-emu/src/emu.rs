@@ -346,6 +346,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         addr += 4;
     }
     let mut cy = 0;
+    // let layer1_data_ptr = cpu.mem.cart.resolve("Layer1DataPtr").unwrap();
     loop {
         cy += cpu.dispatch() as u64;
         //if cy > cy_limit { break; }
@@ -358,6 +359,63 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         }
         if cpu.pc == addr as u16 {
             break;
+        }
+        // if cpu.pc == 0x200C {
+        //     let layer1_ptr = cpu.mem.load_u24(layer1_data_ptr);
+        //     cpu.mem.store_u24(layer1_data_ptr, 0x600000);
+        //     // todo: properly load level data from RAM at `layer1_ptr`
+        //     let level_data = std::fs::read("debug/levels/105_YI1main.bin").unwrap();
+        //     cpu.mem.extram[..level_data.len()].copy_from_slice(&level_data);
+        // }
+        cpu.mem.process_dma();
+    }
+    println!("took {}µs", now.elapsed().as_micros());
+    cy
+}
+pub fn decompress_extram(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
+    let now = std::time::Instant::now();
+    cpu.emulation = false;
+    // set submap
+    cpu.mem.store(0x1F11, (id >> 8) as _);
+    cpu.mem.store(0x141A, 1);
+    cpu.s = 0x1FF;
+    cpu.pc = 0x2000;
+    cpu.pbr = 0x00;
+    cpu.dbr = 0x00;
+    cpu.trace = false;
+    // quasi-loader bytecode
+    let routines = [
+        "CODE_00A993",     // init layer 3 / sp0
+        "CODE_00B888",     // init gfx32/33
+        "CODE_05D796",     // init pointers
+        "CODE_05801E",     // decompress level
+        "UploadSpriteGFX", // upload graphics
+        "LoadPalette",     // init palette
+        "CODE_00922F",     // upload palette
+    ];
+    let mut addr = 0x2000;
+    for i in routines {
+        cpu.mem.store(addr, 0x22);
+        cpu.mem.store_u24(addr + 1, cpu.mem.cart.resolve(i).unwrap_or_else(|| panic!("no symbol: {}", i)));
+        addr += 4;
+    }
+    let mut cy = 0;
+    let layer1_data_ptr = cpu.mem.cart.resolve("Layer1DataPtr").unwrap();
+    loop {
+        cy += cpu.dispatch() as u64;
+        //if cy > cy_limit { break; }
+        if cpu.ill {
+            println!("ILLEGAL INSTR");
+            break;
+        }
+        if cpu.pc == 0xD8B7 && cpu.pbr == 0x05 {
+            cpu.mem.store_u16(0xE, id);
+        }
+        if cpu.pc == addr as u16 {
+            break;
+        }
+        if cpu.pc == 0x200C {
+            cpu.mem.store_u24(layer1_data_ptr, 0x600000);
         }
         cpu.mem.process_dma();
     }
