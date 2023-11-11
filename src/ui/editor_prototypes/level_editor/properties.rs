@@ -53,6 +53,7 @@ impl LevelProperties {
         cpu.mem.extram[4] =
             ((self.item_memory & 0x02) << 6) | ((self.vertical_scroll & 0x02) << 4) | (self.fg_bg_gfx & 0x0F);
 
+        // Other
         let b = cpu.mem.load_u8(0x5B);
         cpu.mem.store_u8(0x5B, if self.is_vertical { b | 1 } else { b & !1 });
     }

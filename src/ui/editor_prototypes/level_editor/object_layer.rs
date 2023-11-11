@@ -1,3 +1,5 @@
+#![allow(clippy::identity_op)]
+
 use smwe_emu::Cpu;
 use smwe_rom::objects::Object;
 
@@ -13,10 +15,10 @@ pub(super) struct EditableObject {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct EditableExit {
-    screen:    u8,
-    midway:    bool,
-    secondary: bool,
-    id:        u16,
+    pub screen:    u8,
+    pub midway:    bool,
+    pub secondary: bool,
+    pub id:        u16,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -26,16 +28,16 @@ pub(super) struct EditableObjectLayer {
 }
 
 impl EditableObject {
-    pub fn from_raw(current_screen: u32, object: Object) -> Option<Self> {
+    pub fn from_raw(object: Object, current_screen: u32, vertical_level: bool) -> Option<Self> {
         (!object.is_exit() && !object.is_screen_jump()).then(|| EditableObject {
-            x:        object.x() as u32 + (current_screen * SCREEN_WIDTH),
-            y:        object.y() as u32,
+            x:        object.x() as u32 + if vertical_level { 0 } else { current_screen * SCREEN_WIDTH },
+            y:        object.y() as u32 + if vertical_level { current_screen * SCREEN_WIDTH } else { 0 },
             id:       object.standard_object_number(),
             settings: object.settings(),
         })
     }
 
-    pub fn to_raw(&self, new_screen: bool) -> Object {
+    pub fn to_raw(self, new_screen: bool) -> Object {
         Object(
             ((new_screen as u32) << 31)
                 | ((self.id as u32 & 0x30) << 30)
@@ -57,7 +59,7 @@ impl EditableExit {
         })
     }
 
-    pub fn to_raw(&self) -> Object {
+    pub fn to_raw(self) -> Object {
         Object(
             ((self.screen as u32 & 0x1F) << 24)
                 | ((self.midway as u32) << 19)
@@ -68,7 +70,7 @@ impl EditableExit {
 }
 
 impl EditableObjectLayer {
-    pub fn parse_from_ram(cpu: &mut Cpu) -> Option<Self> {
+    pub fn parse_from_ram(cpu: &mut Cpu, is_vertical_level: bool) -> Option<Self> {
         let raw_objects = Object::parse_from_ram(&cpu.mem.extram)?;
         let mut layer = Self::default();
         let mut current_screen = 0;
@@ -82,7 +84,7 @@ impl EditableObjectLayer {
                 if raw_object.is_new_screen() {
                     current_screen += 1;
                 }
-                let object = EditableObject::from_raw(current_screen as u32, raw_object)?;
+                let object = EditableObject::from_raw(raw_object, current_screen as u32, is_vertical_level)?;
                 layer.objects.push(object);
             }
         }
@@ -90,7 +92,51 @@ impl EditableObjectLayer {
         Some(layer)
     }
 
-    pub fn write_to_ram(cpu: &mut Cpu) {
-        //
+    pub fn write_to_extram(&mut self, cpu: &mut Cpu, is_vertical_level: bool) {
+        let mut current_offset = 5; // Start after primary header
+
+        // Store exits
+        for exit in self.exits.iter() {
+            let raw = exit.to_raw();
+            for byte_index in 0..4 {
+                cpu.mem.extram[current_offset + byte_index] = (raw.0 >> ((3 - byte_index) * 8)) as u8;
+            }
+            current_offset += 4;
+        }
+
+        if is_vertical_level {
+            self.objects.sort_by(|a, b| a.y.cmp(&b.y));
+        } else {
+            self.objects.sort_by(|a, b| a.x.cmp(&b.x));
+        }
+
+        let mut current_screen = 0;
+        for object in self.objects.iter() {
+            let screen_number = if is_vertical_level { object.y } else { object.x } / SCREEN_WIDTH;
+            debug_assert!(screen_number >= current_screen, "screen numbers must be in increasing order");
+            debug_assert!(screen_number < 0x20, "exceeded maximum screens");
+
+            let screen_difference = screen_number - current_screen;
+            current_screen = screen_number;
+
+            let new_screen = match (screen_difference > 0, screen_difference > 1) {
+                (true, true) => {
+                    // Store screen jump
+                    cpu.mem.extram[current_offset + 0] = screen_number as u8 & 0x1F;
+                    cpu.mem.extram[current_offset + 1] = 0;
+                    cpu.mem.extram[current_offset + 2] = 1;
+                    current_offset += 3;
+                    false
+                }
+                (new_screen, _) => new_screen,
+            };
+
+            // Store standard/extended object
+            let raw = object.to_raw(new_screen);
+            for byte_index in 0..3 {
+                cpu.mem.extram[current_offset + byte_index] = (raw.0 >> ((3 - byte_index) * 8)) as u8;
+            }
+            current_offset += 3;
+        }
     }
 }

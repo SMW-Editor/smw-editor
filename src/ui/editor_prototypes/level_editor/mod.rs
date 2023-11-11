@@ -18,18 +18,18 @@ pub struct UiLevelEditor {
     cpu:            Cpu,
     level_renderer: Arc<Mutex<LevelRenderer>>,
 
-    offset:         Vec2,
-    level_num:      u16,
-    blue_pswitch:   bool,
-    silver_pswitch: bool,
-    on_off_switch:  bool,
-    run_sprites:    bool,
-    palette_line:   u8,
-    sprite_id:      u8,
-    timestamp:      std::time::Instant,
-    zoom:           f32,
-    // level_properties: LevelProperties,
-    // layer1:           EditableObjectLayer,
+    offset:           Vec2,
+    level_num:        u16,
+    blue_pswitch:     bool,
+    silver_pswitch:   bool,
+    on_off_switch:    bool,
+    run_sprites:      bool,
+    palette_line:     u8,
+    sprite_id:        u8,
+    timestamp:        std::time::Instant,
+    zoom:             f32,
+    level_properties: LevelProperties,
+    layer1:           EditableObjectLayer,
 }
 
 impl UiLevelEditor {
@@ -49,8 +49,8 @@ impl UiLevelEditor {
             sprite_id: 0,
             timestamp: std::time::Instant::now(),
             zoom: 1.,
-            // level_properties: LevelProperties::default(),
-            // layer1: EditableObjectLayer::default(),
+            level_properties: LevelProperties::default(),
+            layer1: EditableObjectLayer::default(),
         };
         editor.init_cpu();
         editor.update_cpu_sprite();
@@ -168,12 +168,13 @@ impl UiLevelEditor {
         smwe_emu::emu::decompress_sublevel(&mut self.cpu, self.level_num);
         println!("Updated CPU");
         self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
-        // self.layer1 = EditableObjectLayer::parse_from_ram(&mut self.cpu).expect("Failed to parse objects from ExtRAM");
-        // self.level_properties = LevelProperties::parse_from_ram(&mut self.cpu);
+        self.level_properties = LevelProperties::parse_from_ram(&mut self.cpu);
+        self.layer1 = EditableObjectLayer::parse_from_ram(&mut self.cpu, self.level_properties.is_vertical)
+            .expect("Failed to parse objects from ExtRAM");
     }
 
     fn update_cpu(&mut self) {
-        // smwe_emu::emu::decompress_extram(&mut self.cpu, self.level_num);
+        smwe_emu::emu::decompress_extram(&mut self.cpu, self.level_num);
         println!("Updated CPU");
         self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
     }

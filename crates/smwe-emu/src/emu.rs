@@ -346,7 +346,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         addr += 4;
     }
     let mut cy = 0;
-    // let layer1_data_ptr = cpu.mem.cart.resolve("Layer1DataPtr").unwrap();
+    let layer1_data_ptr = cpu.mem.cart.resolve("Layer1DataPtr").unwrap();
     loop {
         cy += cpu.dispatch() as u64;
         //if cy > cy_limit { break; }
@@ -360,13 +360,13 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
         if cpu.pc == addr as u16 {
             break;
         }
-        // if cpu.pc == 0x200C {
-        //     let layer1_ptr = cpu.mem.load_u24(layer1_data_ptr);
-        //     cpu.mem.store_u24(layer1_data_ptr, 0x600000);
-        //     // todo: properly load level data from RAM at `layer1_ptr`
-        //     let level_data = std::fs::read("debug/levels/105_YI1main.bin").unwrap();
-        //     cpu.mem.extram[..level_data.len()].copy_from_slice(&level_data);
-        // }
+        if cpu.pc == 0x200C {
+            let layer1_ptr = cpu.mem.load_u24(layer1_data_ptr);
+            cpu.mem.store_u24(layer1_data_ptr, 0x600000);
+            // todo: properly load level data from RAM at `layer1_ptr`
+            let level_data = std::fs::read("debug/levels/105_YI1main.bin").unwrap();
+            cpu.mem.extram[..level_data.len()].copy_from_slice(&level_data);
+        }
         cpu.mem.process_dma();
     }
     println!("took {}µs", now.elapsed().as_micros());

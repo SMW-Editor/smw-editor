@@ -145,7 +145,7 @@ impl Object {
     pub fn screen_number(self) -> u8 {
         debug_assert!(self.is_exit() || self.is_screen_jump());
         // Exit:        ---ppppp -------- -------- --------
-        // Screen junp: ---HHHHH -------- -------- --------
+        // Screen jump: ---HHHHH -------- -------- --------
         (self.0 >> 24) as u8 & 0x1F
     }
 
