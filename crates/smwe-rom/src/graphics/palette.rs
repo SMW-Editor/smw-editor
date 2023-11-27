@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 use duplicate::duplicate;
 use nom::{combinator::map, multi::many1, number::complete::le_u16};
@@ -349,9 +349,9 @@ impl LevelColorPaletteSet {
             }
 
             palette_set.back_area_colors[idx_bc] = bc[0];
-            palette_set.bg_palettes[idx_bg] = bg.try_into().unwrap();
-            palette_set.fg_palettes[idx_fg] = fg.try_into().unwrap();
-            palette_set.sprite_palettes[idx_sp] = sp.try_into().unwrap();
+            palette_set.bg_palettes[idx_bg] = bg.into();
+            palette_set.fg_palettes[idx_fg] = fg.into();
+            palette_set.sprite_palettes[idx_sp] = sp.into();
         }
 
         Ok(palette_set)
