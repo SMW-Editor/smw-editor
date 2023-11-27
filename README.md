@@ -52,4 +52,4 @@ a better product. If you want to join us and are experienced in at least one of 
 - SMW romhacking
 - UI design
 
-Then please contact me via Discord (`Ąhoš#8981`) or email (a.gasior@newcastle.ac.uk).
+Then please contact me via Discord (`anghosh`) or email (adanos020@gmail.com).
