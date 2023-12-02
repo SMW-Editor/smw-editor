@@ -95,13 +95,9 @@ impl EditableObjectLayer {
     pub fn write_to_extram(&mut self, cpu: &mut Cpu, is_vertical_level: bool) {
         let mut current_offset = 5; // Start after primary header
 
-        // Store exits
+        // Exits
         for exit in self.exits.iter() {
-            let raw = exit.to_raw();
-            for byte_index in 0..4 {
-                cpu.mem.extram[current_offset + byte_index] = (raw.0 >> ((3 - byte_index) * 8)) as u8;
-            }
-            current_offset += 4;
+            Self::store_object_at(cpu, exit.to_raw(), &mut current_offset, 4);
         }
 
         if is_vertical_level {
@@ -114,29 +110,32 @@ impl EditableObjectLayer {
         for object in self.objects.iter() {
             let screen_number = if is_vertical_level { object.y } else { object.x } / SCREEN_WIDTH;
             debug_assert!(screen_number >= current_screen, "screen numbers must be in increasing order");
-            debug_assert!(screen_number < 0x20, "exceeded maximum screens");
+            debug_assert!(screen_number < 0x20, "exceeded maximum number of screens");
 
             let screen_difference = screen_number - current_screen;
             current_screen = screen_number;
 
             let new_screen = match (screen_difference > 0, screen_difference > 1) {
                 (true, true) => {
-                    // Store screen jump
-                    cpu.mem.extram[current_offset + 0] = screen_number as u8 & 0x1F;
-                    cpu.mem.extram[current_offset + 1] = 0;
-                    cpu.mem.extram[current_offset + 2] = 1;
-                    current_offset += 3;
+                    // Screen jump
+                    let jump = Object(((screen_number & 0x1F) << 16) | 0x100);
+                    Self::store_object_at(cpu, jump, &mut current_offset, 3);
                     false
                 }
                 (new_screen, _) => new_screen,
             };
 
-            // Store standard/extended object
-            let raw = object.to_raw(new_screen);
-            for byte_index in 0..3 {
-                cpu.mem.extram[current_offset + byte_index] = (raw.0 >> ((3 - byte_index) * 8)) as u8;
-            }
-            current_offset += 3;
+            // Standard/extended object
+            Self::store_object_at(cpu, object.to_raw(new_screen), &mut current_offset, 3);
+        }
+    }
+
+    fn store_object_at(cpu: &mut Cpu, object: Object, current_offset: &mut usize, length: usize) {
+        debug_assert!(length > 0);
+        debug_assert!(length <= 4);
+        for byte_index in 0..length {
+            cpu.mem.extram[*current_offset] = (object.0 >> ((3 - byte_index) * 8)) as u8;
+            *current_offset += 1;
         }
     }
 }

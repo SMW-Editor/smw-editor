@@ -113,22 +113,15 @@ impl EditingMode {
     }
 
     pub fn flipped(self, response: &Response) -> Option<FlipDirection> {
-        match self {
-            Self::FlipHorizontally => response.clicked_by(PointerButton::Primary).then(|| {
-                if response.ctx.input(|input| input.modifiers.command_only()) {
-                    FlipDirection::Vertical
-                } else {
-                    FlipDirection::Horizontal
-                }
-            }),
-            Self::FlipVertically => response.clicked_by(PointerButton::Primary).then(|| {
-                if response.ctx.input(|input| input.modifiers.command_only()) {
-                    FlipDirection::Horizontal
-                } else {
-                    FlipDirection::Vertical
-                }
-            }),
-            _ => None,
+        if response.clicked_by(PointerButton::Primary) {
+            let invert = response.ctx.input(|input| input.modifiers.command_only());
+            match (self, invert) {
+                (Self::FlipHorizontally, false) | (Self::FlipVertically, true) => Some(FlipDirection::Horizontal),
+                (Self::FlipVertically, false) | (Self::FlipHorizontally, true) => Some(FlipDirection::Vertical),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 }

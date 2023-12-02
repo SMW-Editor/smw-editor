@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
+use inline_tweak::tweak;
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
 use smwe_render::color::Abgr1555;
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
@@ -18,16 +19,21 @@ pub struct UiLevelEditor {
     cpu:            Cpu,
     level_renderer: Arc<Mutex<LevelRenderer>>,
 
+    level_num:      u16,
+    blue_pswitch:   bool,
+    silver_pswitch: bool,
+    on_off_switch:  bool,
+    run_sprites:    bool,
+    palette_line:   u8,
+    sprite_id:      u8,
+    timestamp:      std::time::Instant,
+
     offset:           Vec2,
-    level_num:        u16,
-    blue_pswitch:     bool,
-    silver_pswitch:   bool,
-    on_off_switch:    bool,
-    run_sprites:      bool,
-    palette_line:     u8,
-    sprite_id:        u8,
-    timestamp:        std::time::Instant,
     zoom:             f32,
+    tile_size_px:     f32,
+    pixels_per_point: f32,
+    always_show_grid: bool,
+
     level_properties: LevelProperties,
     layer1:           EditableObjectLayer,
 }
@@ -40,7 +46,6 @@ impl UiLevelEditor {
             cpu: Cpu::new(CheckedMem::new(rom)),
             level_renderer,
             level_num: 0x105,
-            offset: Vec2::ZERO,
             blue_pswitch: false,
             silver_pswitch: false,
             on_off_switch: false,
@@ -48,7 +53,11 @@ impl UiLevelEditor {
             palette_line: 0,
             sprite_id: 0,
             timestamp: std::time::Instant::now(),
+            offset: Vec2::ZERO,
             zoom: 1.,
+            tile_size_px: 16.,
+            pixels_per_point: 1.,
+            always_show_grid: false,
             level_properties: LevelProperties::default(),
             layer1: EditableObjectLayer::default(),
         };
@@ -62,6 +71,8 @@ impl UiLevelEditor {
 // UI
 impl DockableEditorTool for UiLevelEditor {
     fn update(&mut self, ui: &mut Ui) {
+        self.pixels_per_point = ui.ctx().pixels_per_point();
+
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
         CentralPanel::default().frame(Frame::none()).show_inside(ui, |ui| self.central_panel(ui));
 
@@ -122,6 +133,8 @@ impl UiLevelEditor {
 
         ui.add(Slider::new(&mut self.zoom, 1.0..=3.0).step_by(0.25));
 
+        ui.checkbox(&mut self.always_show_grid, "Always show grid");
+
         if need_update_level {
             self.update_cpu();
             self.update_cpu_sprite_id();
@@ -158,6 +171,21 @@ impl UiLevelEditor {
                     );
                 })),
             });
+
+            if self.always_show_grid || ui.input(|i| i.modifiers.shift_only()) {
+                let spacing = self.zoom * self.tile_size_px / self.pixels_per_point;
+                let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
+                for col in 0..(screen_size.x / spacing) as u32 {
+                    let x_offset = (self.offset.x * self.zoom / self.pixels_per_point).rem_euclid(spacing);
+                    let x_coord = col as f32 * spacing + x_offset;
+                    ui.painter().vline(rect.min.x + x_coord, rect.min.y..=rect.max.y, stroke);
+                }
+                for row in 0..(screen_size.y / spacing) as u32 {
+                    let y_offset = (self.offset.y * self.zoom / self.pixels_per_point).rem_euclid(spacing);
+                    let y_coord = row as f32 * spacing + y_offset;
+                    ui.painter().hline(rect.min.x..=rect.max.x, rect.min.y + y_coord, stroke);
+                }
+            }
         });
     }
 }
