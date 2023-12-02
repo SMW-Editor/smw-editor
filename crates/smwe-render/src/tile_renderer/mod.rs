@@ -1,5 +1,5 @@
+use egui_glow::glow::*;
 use emath::*;
-use glow::*;
 use serde::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 use smwe_math::coordinates::{OnCanvas, OnScreen};

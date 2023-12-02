@@ -1,8 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use egui::*;
-use egui_glow::CallbackFn;
-use glow::Buffer;
+use egui_glow::{glow::Buffer, CallbackFn};
 use inline_tweak::tweak;
 use smwe_render::palette_renderer::{PaletteRenderer, PaletteUniforms};
 

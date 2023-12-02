@@ -1,4 +1,4 @@
-use glow::*;
+use egui_glow::glow::*;
 
 use crate::basic_renderer::{BasicRenderer, BindUniforms, GlVertexAttribute, ShaderSources};
 

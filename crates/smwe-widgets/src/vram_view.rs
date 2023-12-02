@@ -1,8 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use egui::{vec2, Color32, PaintCallback, PointerButton, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2, Widget};
-use egui_glow::CallbackFn;
-use glow::Context;
+use egui_glow::{glow::Context, CallbackFn};
 use inline_tweak::tweak;
 use itertools::Itertools;
 use smwe_render::{

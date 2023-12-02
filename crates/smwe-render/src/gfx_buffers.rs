@@ -1,5 +1,5 @@
+use egui_glow::glow::*;
 use epaint::Rgba;
-use glow::*;
 use itertools::Itertools;
 
 use crate::color::Abgr1555;

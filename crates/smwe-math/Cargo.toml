@@ -13,5 +13,5 @@ wrapped_vec2_derive = { path = "wrapped_vec2_derive" }
 wrapped_pos2_derive = { path = "wrapped_pos2_derive" }
 wrapped_rect_derive = { path = "wrapped_rect_derive" }
 duplicate = "1.0"
-emath = "0.23"
+emath = "0.24"
 shrinkwraprs = "0.3"

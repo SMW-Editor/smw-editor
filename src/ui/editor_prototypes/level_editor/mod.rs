@@ -2,7 +2,10 @@ mod level_renderer;
 mod object_layer;
 mod properties;
 
-use std::sync::{Arc, Mutex};
+use std::{
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
 use egui_glow::CallbackFn;
@@ -15,7 +18,7 @@ use self::{level_renderer::LevelRenderer, object_layer::EditableObjectLayer, pro
 use crate::ui::tool::DockableEditorTool;
 
 pub struct UiLevelEditor {
-    gl:             Arc<glow::Context>,
+    gl:             Rc<glow::Context>,
     cpu:            Cpu,
     level_renderer: Arc<Mutex<LevelRenderer>>,
 
@@ -39,7 +42,7 @@ pub struct UiLevelEditor {
 }
 
 impl UiLevelEditor {
-    pub fn new(gl: Arc<glow::Context>, rom: Arc<Rom>) -> Self {
+    pub fn new(gl: Rc<glow::Context>, rom: Arc<Rom>) -> Self {
         let level_renderer = Arc::new(Mutex::new(LevelRenderer::new(&gl)));
         let mut editor = Self {
             gl,
@@ -54,7 +57,7 @@ impl UiLevelEditor {
             sprite_id: 0,
             timestamp: std::time::Instant::now(),
             offset: Vec2::ZERO,
-            zoom: 1.,
+            zoom: 2.,
             tile_size_px: 16.,
             pixels_per_point: 1.,
             always_show_grid: false,
@@ -73,8 +76,8 @@ impl DockableEditorTool for UiLevelEditor {
     fn update(&mut self, ui: &mut Ui) {
         self.pixels_per_point = ui.ctx().pixels_per_point();
 
-        SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
         CentralPanel::default().frame(Frame::none()).show_inside(ui, |ui| self.central_panel(ui));
+        SidePanel::right("level_editor.debug_panel").resizable(false).show_inside(ui, |ui| self.debug_panel(ui));
 
         // Auto-play animations
         let ft = std::time::Duration::from_secs_f32(1. / 60.);
@@ -101,7 +104,7 @@ impl DockableEditorTool for UiLevelEditor {
 }
 
 impl UiLevelEditor {
-    fn left_panel(&mut self, ui: &mut Ui) {
+    fn debug_panel(&mut self, ui: &mut Ui) {
         let mut need_update_level = false;
         let mut need_update = false;
         need_update_level |= {

@@ -6,7 +6,7 @@ mod style;
 mod tab_viewer;
 mod tool;
 
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use eframe::{CreationContext, Frame};
 use egui::*;
@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct UiMainWindow {
-    gl:                 Arc<glow::Context>,
+    gl:                 Rc<glow::Context>,
     project_creator:    Option<UiProjectCreator>,
     dock_style:         DockStyle,
     dock_state:         DockState<Box<dyn DockableEditorTool>>,
@@ -56,7 +56,7 @@ impl UiMainWindow {
         dock_style.tab.tab_body.inner_margin = Margin::ZERO;
 
         Self {
-            gl: Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
+            gl: Rc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
             project_creator: None,
             dock_style,
             dock_state: DockState::new(vec![]),
@@ -66,9 +66,9 @@ impl UiMainWindow {
 }
 
 impl eframe::App for UiMainWindow {
-    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            self.main_menu_bar(ctx, frame);
+            self.main_menu_bar(ctx);
 
             DockArea::new(&mut self.dock_state).style(self.dock_style.clone()).show(ctx, &mut EditorToolTabViewer);
 
@@ -93,7 +93,7 @@ impl UiMainWindow {
         }
     }
 
-    fn main_menu_bar(&mut self, ctx: &Context, frame: &mut Frame) {
+    fn main_menu_bar(&mut self, ctx: &Context) {
         let rom: Option<Arc<Rom>> = ctx.data(|data| data.get_temp(Id::new("rom")));
 
         TopBottomPanel::top("main_top_bar").show(ctx, |ui| {
@@ -104,7 +104,7 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.button("Exit").clicked() {
-                        frame.close();
+                        ctx.send_viewport_cmd(ViewportCommand::Close);
                     }
                 });
 
@@ -121,11 +121,11 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.add_enabled(rom.is_some(), Button::new("Level editor")).clicked() {
-                        self.open_tool(UiLevelEditor::new(Arc::clone(&self.gl), rom.clone().unwrap()));
+                        self.open_tool(UiLevelEditor::new(Rc::clone(&self.gl), rom.clone().unwrap()));
                         ui.close_menu();
                     }
                     if ui.add_enabled(rom.is_some(), Button::new("Sprite map editor")).clicked() {
-                        self.open_tool(UiSpriteMapEditor::new(Arc::clone(&self.gl), rom.clone().unwrap()));
+                        self.open_tool(UiSpriteMapEditor::new(Rc::clone(&self.gl), rom.clone().unwrap()));
                         ui.close_menu();
                     }
                 });

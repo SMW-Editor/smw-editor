@@ -1,4 +1,4 @@
-use glow::*;
+use egui_glow::glow::*;
 use itertools::Itertools;
 
 #[derive(Clone, Debug)]

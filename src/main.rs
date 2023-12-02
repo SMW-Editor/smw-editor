@@ -1,7 +1,7 @@
 use std::{cell::RefCell, env, rc::Rc};
 
 use eframe::{NativeOptions, Renderer};
-use egui::vec2;
+use egui::{vec2, ViewportBuilder};
 use smw_editor::{
     project::{Project, ProjectRef},
     ui::UiMainWindow,
@@ -13,7 +13,7 @@ fn main() -> eframe::Result<()> {
     let project = dev_open_rom();
     let native_options = NativeOptions {
         renderer: Renderer::Glow,
-        min_window_size: Some(vec2(1280., 720.)),
+        viewport: ViewportBuilder::default().with_min_inner_size(vec2(1280., 720.)),
         ..NativeOptions::default()
     };
     eframe::run_native("SMW Editor v0.1.0", native_options, Box::new(|cc| Box::new(UiMainWindow::new(project, cc))))
