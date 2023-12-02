@@ -1,3 +1,5 @@
+mod central_panel;
+mod left_panel;
 mod level_renderer;
 mod object_layer;
 mod properties;
@@ -7,12 +9,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use egui::{CentralPanel, DragValue, SidePanel, Ui, WidgetText, *};
-use egui_glow::CallbackFn;
-use inline_tweak::tweak;
+use egui::{CentralPanel, SidePanel, Ui, WidgetText, *};
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
 use smwe_render::color::Abgr1555;
-use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use self::{level_renderer::LevelRenderer, object_layer::EditableObjectLayer, properties::LevelProperties};
 use crate::ui::tool::DockableEditorTool;
@@ -76,8 +75,13 @@ impl DockableEditorTool for UiLevelEditor {
     fn update(&mut self, ui: &mut Ui) {
         self.pixels_per_point = ui.ctx().pixels_per_point();
 
-        CentralPanel::default().frame(Frame::none()).show_inside(ui, |ui| self.central_panel(ui));
-        SidePanel::right("level_editor.debug_panel").resizable(false).show_inside(ui, |ui| self.debug_panel(ui));
+        SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
+
+        let bg_color = self.cpu.mem.load_u16(0x7E0701);
+        let bg_color = Color32::from(Abgr1555(bg_color));
+        CentralPanel::default()
+            .frame(Frame::none().inner_margin(0.).fill(bg_color))
+            .show_inside(ui, |ui| self.central_panel(ui));
 
         // Auto-play animations
         let ft = std::time::Duration::from_secs_f32(1. / 60.);
@@ -100,96 +104,6 @@ impl DockableEditorTool for UiLevelEditor {
 
     fn on_closed(&mut self) {
         self.level_renderer.lock().unwrap().destroy(&self.gl);
-    }
-}
-
-impl UiLevelEditor {
-    fn debug_panel(&mut self, ui: &mut Ui) {
-        let mut need_update_level = false;
-        let mut need_update = false;
-        need_update_level |= {
-            let switcher = ValueSwitcher::new(&mut self.level_num, "Level", ValueSwitcherButtons::MinusPlus)
-                .range(0..=0x1FF)
-                .hexadecimal(3, false, true);
-            ui.add(switcher).changed()
-        };
-        need_update_level |= {
-            let switcher = ValueSwitcher::new(&mut self.sprite_id, "Sprite ID", ValueSwitcherButtons::MinusPlus)
-                .range(0..=0xFF)
-                .hexadecimal(2, false, true);
-            ui.add(switcher).changed()
-        };
-        ui.horizontal(|ui| {
-            need_update |= ui
-                .add(DragValue::new(&mut self.palette_line).clamp_range(0x0..=0xF).hexadecimal(1, false, true))
-                .changed();
-            ui.label("Palette");
-        });
-        need_update |= ui.checkbox(&mut self.blue_pswitch, "Blue P-Switch").changed();
-        need_update |= ui.checkbox(&mut self.silver_pswitch, "Silver P-Switch").changed();
-        need_update |= ui.checkbox(&mut self.on_off_switch, "ON/OFF Switch").changed();
-        ui.checkbox(&mut self.run_sprites, "Run sprites");
-        if ui.button("»").clicked() {
-            self.update_cpu_sprite_id();
-            // self.draw_sprites(state, ui.ctx());
-        }
-
-        ui.add(Slider::new(&mut self.zoom, 1.0..=3.0).step_by(0.25));
-
-        ui.checkbox(&mut self.always_show_grid, "Always show grid");
-
-        if need_update_level {
-            self.update_cpu();
-            self.update_cpu_sprite_id();
-        }
-        if need_update || need_update_level {
-            self.update_renderer();
-        }
-    }
-
-    fn central_panel(&mut self, ui: &mut Ui) {
-        let bg_color = self.cpu.mem.load_u16(0x7E0701);
-        let bg_color = Color32::from(Abgr1555(bg_color));
-        CentralPanel::default().frame(Frame::none().inner_margin(0.).fill(bg_color)).show_inside(ui, |ui| {
-            let level_renderer = Arc::clone(&self.level_renderer);
-            let (rect, response) =
-                ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::click_and_drag());
-            let screen_size = rect.size() * ui.ctx().pixels_per_point();
-
-            let zoom = self.zoom;
-            if response.dragged_by(PointerButton::Middle) {
-                let mut r = level_renderer.lock().unwrap();
-                let delta = response.drag_delta();
-                self.offset += delta / zoom;
-                r.set_offset(self.offset);
-            }
-
-            ui.painter().add(PaintCallback {
-                rect,
-                callback: Arc::new(CallbackFn::new(move |_info, painter| {
-                    level_renderer.lock().expect("Cannot lock mutex on level_renderer").paint(
-                        painter.gl(),
-                        screen_size,
-                        zoom,
-                    );
-                })),
-            });
-
-            if self.always_show_grid || ui.input(|i| i.modifiers.shift_only()) {
-                let spacing = self.zoom * self.tile_size_px / self.pixels_per_point;
-                let stroke = Stroke::new(1., Color32::from_white_alpha(tweak!(70)));
-                for col in 0..(screen_size.x / spacing) as u32 {
-                    let x_offset = (self.offset.x * self.zoom / self.pixels_per_point).rem_euclid(spacing);
-                    let x_coord = col as f32 * spacing + x_offset;
-                    ui.painter().vline(rect.min.x + x_coord, rect.min.y..=rect.max.y, stroke);
-                }
-                for row in 0..(screen_size.y / spacing) as u32 {
-                    let y_offset = (self.offset.y * self.zoom / self.pixels_per_point).rem_euclid(spacing);
-                    let y_coord = row as f32 * spacing + y_offset;
-                    ui.painter().hline(rect.min.x..=rect.max.x, rect.min.y + y_coord, stroke);
-                }
-            }
-        });
     }
 }
 
