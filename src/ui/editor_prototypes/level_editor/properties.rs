@@ -20,12 +20,20 @@ pub(super) struct LevelProperties {
 
     // Other
     pub is_vertical: bool,
+    pub has_layer2:  bool,
 }
 
 impl LevelProperties {
     pub fn parse_from_ram(cpu: &mut Cpu) -> Self {
         let raw_header = PrimaryHeader::new(&cpu.mem.extram[..5]);
         let is_vertical = cpu.mem.load_u8(0x5B) & 1 != 0;
+        let has_layer2 = {
+            let mode = cpu.mem.load_u8(0x1925);
+            let renderer_table = cpu.mem.cart.resolve("CODE_058955").unwrap() + 9;
+            let renderer = cpu.mem.load_u24(renderer_table + (mode as u32) * 3);
+            let l2_renderers = [cpu.mem.cart.resolve("CODE_058B8D"), cpu.mem.cart.resolve("CODE_058C71")];
+            l2_renderers.contains(&Some(renderer))
+        };
         Self {
             palette_bg: raw_header.palette_bg(),
             level_length: raw_header.level_length(),
@@ -41,6 +49,7 @@ impl LevelProperties {
             vertical_scroll: raw_header.vertical_scroll(),
             fg_bg_gfx: raw_header.fg_bg_gfx(),
             is_vertical,
+            has_layer2,
         }
     }
 
@@ -56,5 +65,33 @@ impl LevelProperties {
         // Other
         let b = cpu.mem.load_u8(0x5B);
         cpu.mem.store_u8(0x5B, if self.is_vertical { b | 1 } else { b & !1 });
+    }
+
+    /// (width, height)
+    pub fn level_dimensions_in_tiles(&self) -> (u32, u32) {
+        let (screen_width, screen_height) = self.screen_dimensions_in_tiles();
+        if self.is_vertical {
+            (screen_width, screen_height * self.num_screens())
+        } else {
+            (screen_width * self.num_screens(), screen_height)
+        }
+    }
+
+    /// (width, height)
+    pub fn screen_dimensions_in_tiles(&self) -> (u32, u32) {
+        if self.is_vertical {
+            (32, 16)
+        } else {
+            (16, 27)
+        }
+    }
+
+    pub fn num_screens(&self) -> u32 {
+        match (self.is_vertical, self.has_layer2) {
+            (false, false) => 0x20,
+            (true, false) => 0x1C,
+            (false, true) => 0x10,
+            (true, true) => 0x0E,
+        }
     }
 }

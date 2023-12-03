@@ -1,4 +1,4 @@
-use egui::{vec2, DragValue, Slider, Ui};
+use egui::{vec2, ComboBox, DragValue, Slider, Ui};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use super::UiLevelEditor;
@@ -50,6 +50,8 @@ impl UiLevelEditor {
 
         if need_update_level {
             self.update_cpu();
+            self.update_level_properties();
+            self.update_layer1();
             self.update_cpu_sprite_id();
         }
         if need_update || need_update_level {

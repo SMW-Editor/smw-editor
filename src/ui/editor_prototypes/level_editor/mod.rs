@@ -77,11 +77,7 @@ impl DockableEditorTool for UiLevelEditor {
 
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
 
-        let bg_color = self.cpu.mem.load_u16(0x7E0701);
-        let bg_color = Color32::from(Abgr1555(bg_color));
-        CentralPanel::default()
-            .frame(Frame::none().inner_margin(0.).fill(bg_color))
-            .show_inside(ui, |ui| self.central_panel(ui));
+        CentralPanel::default().frame(Frame::none().inner_margin(0.)).show_inside(ui, |ui| self.central_panel(ui));
 
         // Auto-play animations
         let ft = std::time::Duration::from_secs_f32(1. / 60.);
@@ -113,15 +109,23 @@ impl UiLevelEditor {
         smwe_emu::emu::decompress_sublevel(&mut self.cpu, self.level_num);
         println!("Updated CPU");
         self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
-        self.level_properties = LevelProperties::parse_from_ram(&mut self.cpu);
-        self.layer1 = EditableObjectLayer::parse_from_ram(&mut self.cpu, self.level_properties.is_vertical)
-            .expect("Failed to parse objects from ExtRAM");
+        self.update_level_properties();
+        self.update_layer1();
     }
 
     fn update_cpu(&mut self) {
         smwe_emu::emu::decompress_extram(&mut self.cpu, self.level_num);
         println!("Updated CPU");
         self.level_renderer.lock().unwrap().upload_level(&self.gl, &mut self.cpu);
+    }
+
+    fn update_level_properties(&mut self) {
+        self.level_properties = LevelProperties::parse_from_ram(&mut self.cpu);
+    }
+
+    fn update_layer1(&mut self) {
+        self.layer1 = EditableObjectLayer::parse_from_ram(&mut self.cpu, self.level_properties.is_vertical)
+            .expect("Failed to parse objects from ExtRAM");
     }
 
     fn update_timers(&mut self) {
