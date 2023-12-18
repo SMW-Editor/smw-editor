@@ -29,10 +29,10 @@ impl UiLevelEditor {
 
         let zoom = self.zoom;
         if response.dragged_by(PointerButton::Middle) {
-            let mut r = level_renderer.lock().unwrap();
+            let mut level_renderer = level_renderer.lock().unwrap();
             let delta = response.drag_delta();
             self.offset += delta / zoom;
-            r.set_offset(self.offset);
+            level_renderer.set_offset(self.offset);
         }
 
         // Background.

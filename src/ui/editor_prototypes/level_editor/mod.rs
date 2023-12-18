@@ -77,7 +77,9 @@ impl DockableEditorTool for UiLevelEditor {
 
         SidePanel::left("level_editor.left_panel").resizable(false).show_inside(ui, |ui| self.left_panel(ui));
 
-        CentralPanel::default().frame(Frame::none().inner_margin(0.)).show_inside(ui, |ui| self.central_panel(ui));
+        CentralPanel::default()
+            .frame(Frame::none().inner_margin(0.).fill(Color32::GRAY))
+            .show_inside(ui, |ui| self.central_panel(ui));
 
         // Auto-play animations
         let ft = std::time::Duration::from_secs_f32(1. / 60.);
