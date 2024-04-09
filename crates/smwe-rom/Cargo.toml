@@ -12,7 +12,7 @@ smwe-render = { path = "../smwe-render" }
 
 anyhow = "1.0"
 duplicate = "1.0"
-epaint = "0.24"
+epaint = "0.27"
 itertools = "0.12"
 log = "0.4"
 nom = "7.0"

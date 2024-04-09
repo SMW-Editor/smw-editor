@@ -6,7 +6,7 @@ mod style;
 mod tab_viewer;
 mod tool;
 
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use eframe::{CreationContext, Frame};
 use egui::*;
@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct UiMainWindow {
-    gl:                 Rc<glow::Context>,
+    gl:                 Arc<glow::Context>,
     project_creator:    Option<UiProjectCreator>,
     dock_style:         DockStyle,
     dock_state:         DockState<Box<dyn DockableEditorTool>>,
@@ -56,7 +56,7 @@ impl UiMainWindow {
         dock_style.tab.tab_body.inner_margin = Margin::ZERO;
 
         Self {
-            gl: Rc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
+            gl: Arc::clone(cc.gl.as_ref().expect("must use the glow renderer")),
             project_creator: None,
             dock_style,
             dock_state: DockState::new(vec![]),
@@ -121,11 +121,11 @@ impl UiMainWindow {
                         ui.close_menu();
                     }
                     if ui.add_enabled(rom.is_some(), Button::new("Level editor")).clicked() {
-                        self.open_tool(UiLevelEditor::new(Rc::clone(&self.gl), rom.clone().unwrap()));
+                        self.open_tool(UiLevelEditor::new(Arc::clone(&self.gl), rom.clone().unwrap()));
                         ui.close_menu();
                     }
                     if ui.add_enabled(rom.is_some(), Button::new("Sprite map editor")).clicked() {
-                        self.open_tool(UiSpriteMapEditor::new(Rc::clone(&self.gl), rom.clone().unwrap()));
+                        self.open_tool(UiSpriteMapEditor::new(Arc::clone(&self.gl), rom.clone().unwrap()));
                         ui.close_menu();
                     }
                 });

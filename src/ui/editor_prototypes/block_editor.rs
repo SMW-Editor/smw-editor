@@ -102,7 +102,8 @@ impl UiBlockEditor {
                 });
             })
             .body(|tb| {
-                tb.rows(tweak!(15.0), 4, |i, mut tr| {
+                let mut i = 0;
+                tb.rows(tweak!(15.0), 4, |mut tr| {
                     tr.col(|ui| {
                         ui.label(i.to_string());
                     });
@@ -121,6 +122,7 @@ impl UiBlockEditor {
                     tr.col(|ui| {
                         ui.checkbox(&mut self.tile_priorities[i], "");
                     });
+                    i += 1;
                 })
             });
     }

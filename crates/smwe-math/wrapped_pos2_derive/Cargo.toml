@@ -7,6 +7,6 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-emath = "0.22"
+emath = "0.27"
 quote = "1.0"
 syn = "2.0"

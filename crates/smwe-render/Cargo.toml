@@ -12,9 +12,9 @@ rust-version = "1.70"
 smwe-emu = { path = "../smwe-emu" }
 smwe-math = { path = "../smwe-math" }
 
-emath = "0.24"
-epaint = "0.24"
-egui_glow = "0.24"
+emath = "0.27"
+epaint = "0.27"
+egui_glow = "0.27"
 itertools = "0.12"
 log = "0.4"
 thiserror = "1.0"

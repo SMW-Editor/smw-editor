@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct UiSpriteMapEditor {
-    gl:                Rc<Context>,
+    gl:                Arc<Context>,
     cpu:               Cpu,
     tile_palette:      Vec<Tile>,
     vram_renderer:     Arc<Mutex<TileRenderer>>,
@@ -62,7 +62,7 @@ pub struct UiSpriteMapEditor {
 }
 
 impl UiSpriteMapEditor {
-    pub fn new(gl: Rc<Context>, rom: Arc<Rom>) -> Self {
+    pub fn new(gl: Arc<Context>, rom: Arc<Rom>) -> Self {
         let (vram_renderer, tile_palette) = VramView::new_renderer(&gl);
         let sprite_renderer = TileRenderer::new(&gl);
         let palette_renderer = PaletteRenderer::new(&gl);

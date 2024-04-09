@@ -14,7 +14,7 @@ pub(in super::super) const SHORTCUT_UNSELECT_ALL: Shortcut = Shortcut::new(Modif
 
 pub(in super::super) const SHORTCUT_DELETE_SELECTED: Shortcut = Shortcut::new(Modifiers::NONE, Delete);
 
-pub(in super::super) const SHORTCUT_ZOOM_IN: Shortcut = Shortcut::new(Modifiers::COMMAND, PlusEquals);
+pub(in super::super) const SHORTCUT_ZOOM_IN: Shortcut = Shortcut::new(Modifiers::COMMAND, Plus);
 pub(in super::super) const SHORTCUT_ZOOM_OUT: Shortcut = Shortcut::new(Modifiers::COMMAND, Minus);
 
 pub(in super::super) const SHORTCUT_MODE_INSERT: Shortcut = Shortcut::new(Modifiers::NONE, Num1);

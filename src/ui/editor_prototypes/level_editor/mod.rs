@@ -17,7 +17,7 @@ use self::{level_renderer::LevelRenderer, object_layer::EditableObjectLayer, pro
 use crate::ui::tool::DockableEditorTool;
 
 pub struct UiLevelEditor {
-    gl:             Rc<glow::Context>,
+    gl:             Arc<glow::Context>,
     cpu:            Cpu,
     level_renderer: Arc<Mutex<LevelRenderer>>,
 
@@ -41,7 +41,7 @@ pub struct UiLevelEditor {
 }
 
 impl UiLevelEditor {
-    pub fn new(gl: Rc<glow::Context>, rom: Arc<Rom>) -> Self {
+    pub fn new(gl: Arc<glow::Context>, rom: Arc<Rom>) -> Self {
         let level_renderer = Arc::new(Mutex::new(LevelRenderer::new(&gl)));
         let mut editor = Self {
             gl,
