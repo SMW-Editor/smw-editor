@@ -1,15 +1,14 @@
 use std::fmt::Write;
 
 use egui::{TextEdit, Ui, WidgetText};
-use smwe_project::ProjectRef;
 use smwe_rom::snes_utils::addr::{AddrPc, AddrSnes};
 
 use crate::ui::{
-    color,
     dev_utils::address_converter::{
         helpers::adjust_to_header,
         modes::{ConvDir, ConversionMode},
     },
+    style::{EditorStyle, ErrorStyle},
     tool::DockableEditorTool,
 };
 
@@ -36,7 +35,7 @@ impl Default for UiAddressConverter {
 }
 
 impl DockableEditorTool for UiAddressConverter {
-    fn update(&mut self, ui: &mut Ui, _project_ref: &mut Option<ProjectRef>) {
+    fn update(&mut self, ui: &mut Ui) {
         self.mode_selection(ui);
         self.conversions(ui);
     }
@@ -69,7 +68,7 @@ impl UiAddressConverter {
         self.address_input(ui, ConvDir::PcToSnes);
         self.address_input(ui, ConvDir::SnesToPc);
         if !self.text_error.is_empty() {
-            ui.colored_label(color::TEXT_ERROR, &self.text_error);
+            ui.colored_label(ErrorStyle::get_from_egui(ui.ctx(), |style| style.text_color), &self.text_error);
         }
     }
 

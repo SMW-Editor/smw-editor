@@ -1,21 +1,22 @@
-mod ui;
+use std::{cell::RefCell, env, rc::Rc};
 
-use std::{cell::RefCell, env, sync::Arc};
+use eframe::{NativeOptions, Renderer};
+use egui::{vec2, ViewportBuilder};
+use smw_editor::{
+    project::{Project, ProjectRef},
+    ui::UiMainWindow,
+};
 
-use smwe_project::{Project, ProjectRef};
-use smwe_rom::SmwRom;
-
-use crate::ui::UiMainWindow;
-
-fn main() {
+fn main() -> eframe::Result<()> {
     log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize log4rs");
 
     let project = dev_open_rom();
-    let options = eframe::NativeOptions::default();
-    if let Err(e) = eframe::run_native("SMW Editor v0.1.0", options, Box::new(|_| Box::new(UiMainWindow::new(project))))
-    {
-        log::error!("Application error: {e}");
+    let native_options = NativeOptions {
+        renderer: Renderer::Glow,
+        viewport: ViewportBuilder::default().with_min_inner_size(vec2(1280., 720.)),
+        ..NativeOptions::default()
     };
+    eframe::run_native("SMW Editor v0.1.0", native_options, Box::new(|cc| Box::new(UiMainWindow::new(project, cc))))
 }
 
 fn dev_open_rom() -> Option<ProjectRef> {
@@ -25,14 +26,12 @@ fn dev_open_rom() -> Option<ProjectRef> {
     };
 
     log::info!("Opening ROM from path defined in ROM_PATH");
-    let project = Project {
-        title:    String::from("Test Project"),
-        rom_data: SmwRom::from_file(rom_path)
-            .map_err(|e| {
-                log::error!("Couldn't load ROM: {e}");
-                e
-            })
-            .ok()?,
-    };
-    Some(Arc::new(RefCell::new(project)))
+    let project = Project::new(rom_path)
+        .map_err(|e| {
+            log::info!("Cannot create project: {e}");
+            e
+        })
+        .ok()?;
+
+    Some(Rc::new(RefCell::new(project)))
 }

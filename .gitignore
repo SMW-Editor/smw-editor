@@ -12,8 +12,10 @@
 # Added by Idea ItelliJ
 .idea
 *.iml
+Folder.DotSettings.user
 
 # Misc
 imgui.ini
 ROM
 log
+debug

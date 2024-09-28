@@ -1,0 +1,9 @@
+[package]
+name = "wdc65816"
+description = "A WDC65816 emulator - The CPU used in the Super Nintendo (SNES)"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jonas Schievink <jonas@schievink.net>"]
+license = "Apache-2.0/MIT"
+
+[dependencies]

@@ -1,36 +1,54 @@
 [workspace]
 
 members = [
-    "smwe-project",
-    "smwe-rom",
-    "smwe-widgets",
+    "crates/smwe-emu",
+    "crates/smwe-math",
+    "crates/smwe-math/wrapped_vec2_derive",
+    "crates/smwe-math/wrapped_pos2_derive",
+    "crates/smwe-math/wrapped_rect_derive",
+    "crates/smwe-render",
+    "crates/smwe-rom",
+    "crates/smwe-widgets",
+    "crates/wdc65816",
 ]
 
 [package]
 name = "smw-editor"
 version = "0.1.0"
-authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)"]
+authors = ["Adam Gąsior (Adanos020)", "Raven Szewczyk (eigenraven)", "Selicre"]
 license = "MIT"
 edition = "2021"
 readme = "README.md"
-rust-version = "1.65"
+rust-version = "1.70"
 
 [dependencies]
-smwe-project = { path = "smwe-project" }
-smwe-rom = { path = "smwe-rom" }
-smwe-widgets = { path = "smwe-widgets" }
+smwe-emu = { path = "crates/smwe-emu" }
+smwe-math = { path = "crates/smwe-math" }
+smwe-render = { path = "crates/smwe-render" }
+smwe-rom = { path = "crates/smwe-rom" }
+smwe-widgets = { path = "crates/smwe-widgets" }
+wdc65816 = { path = "crates/wdc65816" }
 
 anyhow = "1.0"
-eframe = "0.21"
-egui = "0.21"
-egui_dock = "0.4"
-egui_extras = "0.21"
-enum_dispatch = "0.3"
+duplicate = "1.0"
+eframe = "0.27"
+egui = { version = "0.27", features = ["serde"] }
+egui_dock = "0.12"
+egui_extras = "0.27"
+egui_glow = "0.27"
+#egui-phosphor = "0.4"
+egui-phosphor = { git = "https://github.com/Adanos020/egui-phosphor", branch = "egui-0.27" }
+glow = "0.13"
 inline_tweak = "1.0"
-itertools = "0.10"
+itertools = "0.12"
 log = "0.4"
 log4rs = "1.0"
 num = "0.4"
-num_enum = "0.6"
-rfd = "0.11"
+num_enum = "0.7"
+paste = "1.0"
+rfd = "0.14"
+serde = "1.0"
+serde_json = "1.0"
+shrinkwraprs = "0.3"
 thiserror = "1.0"
+zstd = { version = "0.13", features = ["experimental"] }
