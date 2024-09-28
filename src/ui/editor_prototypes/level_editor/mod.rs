@@ -4,14 +4,10 @@ mod level_renderer;
 mod object_layer;
 mod properties;
 
-use std::{
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use egui::{CentralPanel, SidePanel, Ui, WidgetText, *};
 use smwe_emu::{emu::CheckedMem, rom::Rom, Cpu};
-use smwe_render::color::Abgr1555;
 
 use self::{level_renderer::LevelRenderer, object_layer::EditableObjectLayer, properties::LevelProperties};
 use crate::ui::tool::DockableEditorTool;

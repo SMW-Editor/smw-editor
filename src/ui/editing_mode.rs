@@ -76,7 +76,7 @@ impl EditingMode {
     /// Must be called after [`Self::moving`] to get correct data in the return value.
     pub fn dropped(&mut self, response: &Response) -> Option<Drag> {
         match self {
-            Self::Move(drag) => response.drag_released_by(PointerButton::Primary).then_some(drag.take()).flatten(),
+            Self::Move(drag) => response.drag_stopped_by(PointerButton::Primary).then_some(drag.take()).flatten(),
             _ => None,
         }
     }

@@ -220,7 +220,7 @@ where
     RV: IsDecompressed,
     Self: Sized,
 {
-    pub fn view(&'r self) -> RomViewWithErrorMapper<'r, &EM, ET, DecompressedView<'r>> {
+    pub fn view(&'r self) -> RomViewWithErrorMapper<'r, &'r EM, ET, DecompressedView<'r>> {
         self.rom_view.as_decompressed().view().with_error_mapper(&self.error_mapper)
     }
 }

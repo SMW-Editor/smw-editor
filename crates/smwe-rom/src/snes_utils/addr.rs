@@ -149,7 +149,6 @@ duplicate! {
             self.0.count_zeros()
         }
 
-        #[cfg(has_leading_trailing_ones)]
         #[inline]
         fn leading_ones(self) -> u32 {
             self.0.leading_ones()
@@ -160,7 +159,6 @@ duplicate! {
             self.0.leading_zeros()
         }
 
-        #[cfg(has_leading_trailing_ones)]
         #[inline]
         fn trailing_ones(self) -> u32 {
             self.0.trailing_ones()
@@ -206,7 +204,6 @@ duplicate! {
             Self(self.0.swap_bytes())
         }
 
-        #[cfg(has_reverse_bits)]
         #[inline]
         fn reverse_bits(self) -> Self {
             Self(self.0.reverse_bits())

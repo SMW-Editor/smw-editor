@@ -1,4 +1,4 @@
-use egui::{vec2, ComboBox, DragValue, Slider, Ui};
+use egui::{vec2, DragValue, Slider, Ui};
 use smwe_widgets::value_switcher::{ValueSwitcher, ValueSwitcherButtons};
 
 use super::UiLevelEditor;

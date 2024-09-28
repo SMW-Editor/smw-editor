@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{vec2, Color32, PaintCallback, PointerButton, Pos2, Rect, Rounding, Sense, Stroke, Ui, Vec2};
+use egui::{vec2, Color32, PaintCallback, PointerButton, Rect, Rounding, Sense, Stroke, Ui, Vec2};
 use egui_glow::CallbackFn;
 use inline_tweak::tweak;
 use smwe_math::coordinates::{OnCanvas, OnGrid, OnScreen};

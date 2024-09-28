@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use smwe_emu::Cpu;
 use smwe_rom::level::PrimaryHeader;
 

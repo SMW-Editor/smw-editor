@@ -1,4 +1,5 @@
 #![allow(clippy::identity_op)]
+#![allow(dead_code)]
 
 use smwe_emu::Cpu;
 use smwe_rom::objects::Object;

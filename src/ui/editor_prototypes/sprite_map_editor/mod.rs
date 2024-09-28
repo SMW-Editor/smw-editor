@@ -8,7 +8,6 @@ mod sprite_tiles;
 
 use std::{
     collections::HashSet,
-    rc::Rc,
     sync::{Arc, Mutex},
 };
 
