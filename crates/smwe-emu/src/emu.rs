@@ -361,7 +361,7 @@ pub fn decompress_sublevel(cpu: &mut Cpu<CheckedMem>, id: u16) -> u64 {
             break;
         }
         if cpu.pc == 0x200C {
-            let layer1_ptr = cpu.mem.load_u24(layer1_data_ptr);
+            let _layer1_ptr = cpu.mem.load_u24(layer1_data_ptr);
             cpu.mem.store_u24(layer1_data_ptr, 0x600000);
             // todo: properly load level data from RAM at `layer1_ptr`
             let level_data = std::fs::read("debug/levels/105_YI1main.bin").unwrap();
